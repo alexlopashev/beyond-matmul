@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "beyond-matmul"
+version = "0.1.0"
+description = "Provenance-aware linear operator IR and fixed-weight lowering planner."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [{ name = "Beyond Matmul Contributors" }]
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+dev = []
+numpy = ["numpy>=1.24"]
+
+[tool.setuptools.packages.find]
+include = ["beyond_matmul*"]

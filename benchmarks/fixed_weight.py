@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""Synthetic fixed-weight benchmark for planner sanity checks."""
+
+from __future__ import annotations
+
+import os
+import sys
+import time
+from typing import List, Tuple
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+from beyond_matmul import _linalg as la
+from beyond_matmul.ir import DiagonalOperator, LowRankOperator
+from beyond_matmul.planner import PlanningRequest, plan_fixed_weight
+
+
+def _time_apply(operator, inputs, repeats: int = 20) -> float:
+    start = time.perf_counter()
+    for _ in range(repeats):
+        operator.apply(inputs)
+    end = time.perf_counter()
+    return (end - start) / repeats
+
+
+def _sparse_matrix(rows: int, cols: int) -> la.Matrix:
+    matrix = la.zeros(rows, cols)
+    for row in range(rows):
+        matrix[row][(row * 7) % cols] = 1.0 + (row % 5) * 0.1
+    return matrix
+
+
+def _codebook_matrix(rows: int, cols: int) -> la.Matrix:
+    values = [-1.0, -0.25, 0.0, 0.5]
+    return [[values[(row * 3 + col * 5) % len(values)] for col in range(cols)] for row in range(rows)]
+
+
+def cases() -> List[Tuple[str, object]]:
+    left = la.random_matrix(64, 4, seed=3)
+    right = la.random_matrix(4, 64, seed=4)
+    return [
+        ("diagonal", DiagonalOperator([1.0 + index * 0.01 for index in range(64)])),
+        ("sparse", _sparse_matrix(64, 64)),
+        ("low_rank", LowRankOperator(left, right)),
+        ("codebook", _codebook_matrix(64, 64)),
+        ("dense_random", la.random_matrix(64, 64, seed=5)),
+    ]
+
+
+def main() -> None:
+    inputs = la.random_batch(32, 64, seed=12)
+    request = PlanningRequest(
+        batch_size=32,
+        calls=32,
+        max_relative_error=0.05,
+        allow_approximate=True,
+        sample_inputs=inputs,
+    )
+    print("case          selected           valid  est_cost    rel_err    dense_s    chosen_s")
+    print("------------  -----------------  -----  ---------  --------  --------  --------")
+    for name, weight in cases():
+        plan = plan_fixed_weight(weight, request)
+        dense_op = next(option.operator for option in plan.options if option.name == "dense_gemm")
+        dense_time = _time_apply(dense_op, inputs)
+        chosen_time = _time_apply(plan.selected.operator, inputs)
+        print(
+            f"{name:<12}  {plan.selected.name:<17}  "
+            f"{str(plan.selected.valid):<5}  "
+            f"{plan.selected.amortized_cost:9.1f}  "
+            f"{plan.selected.relative_error:8.3g}  "
+            f"{dense_time:8.5f}  {chosen_time:8.5f}"
+        )
+
+
+if __name__ == "__main__":
+    main()
