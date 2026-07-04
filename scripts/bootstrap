@@ -1,0 +1,261 @@
+#!/usr/bin/env sh
+set -eu
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PROJECT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+MISE_CONFIG="$PROJECT_DIR/.mise.toml"
+MISE_INSTALL_URL=${MISE_INSTALL_URL:-https://mise.run}
+
+ASSUME_YES=0
+SKIP_SHELL_ACTIVATION=0
+TARGET_SHELL=auto
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/bootstrap [options]
+
+Install mise if needed, trust this repository's .mise.toml, install pinned tools,
+and optionally add mise activation to the current shell startup file.
+
+Run from any shell as:
+
+  sh scripts/bootstrap
+
+Options:
+  -y, --yes                 Do not prompt; install shell activation if detected.
+      --shell SHELL         Activation target: auto, sh, bash, zsh, fish, nu, nushell.
+      --no-shell-activation Skip activation prompt and profile edits.
+  -h, --help                Show this help.
+
+Environment:
+  MISE_INSTALL_URL          Override mise installer URL. Default: https://mise.run
+EOF
+}
+
+log() {
+  printf '%s\n' "$*"
+}
+
+die() {
+  printf 'error: %s\n' "$*" >&2
+  exit 1
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -y|--yes)
+      ASSUME_YES=1
+      ;;
+    --shell)
+      [ "$#" -ge 2 ] || die "--shell requires a value"
+      TARGET_SHELL=$2
+      shift
+      ;;
+    --no-shell-activation)
+      SKIP_SHELL_ACTIVATION=1
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      die "unknown option: $1"
+      ;;
+  esac
+  shift
+done
+
+normalize_shell() {
+  shell_name=$(basename -- "$1" 2>/dev/null || printf '%s' "$1")
+  shell_name=${shell_name#-}
+  case "$shell_name" in
+    bash) printf 'bash' ;;
+    zsh) printf 'zsh' ;;
+    fish) printf 'fish' ;;
+    nu|nushell) printf 'nu' ;;
+    sh|dash|ash) printf 'sh' ;;
+    *) printf 'unknown' ;;
+  esac
+}
+
+detect_shell() {
+  requested=$(normalize_shell "$TARGET_SHELL")
+  if [ "$TARGET_SHELL" != "auto" ]; then
+    [ "$requested" != "unknown" ] || die "unsupported shell: $TARGET_SHELL"
+    printf '%s\n' "$requested"
+    return
+  fi
+
+  if [ -n "${PPID:-}" ]; then
+    parent=$(ps -p "$PPID" -o comm= 2>/dev/null | sed 's/[[:space:]]//g' || true)
+    detected=$(normalize_shell "$parent")
+    if [ "$detected" != "unknown" ]; then
+      printf '%s\n' "$detected"
+      return
+    fi
+  fi
+
+  if [ -n "${SHELL:-}" ]; then
+    detected=$(normalize_shell "$SHELL")
+    if [ "$detected" != "unknown" ]; then
+      printf '%s\n' "$detected"
+      return
+    fi
+  fi
+
+  detected=$(normalize_shell "$0")
+  printf '%s\n' "$detected"
+}
+
+find_mise() {
+  if command -v mise >/dev/null 2>&1; then
+    command -v mise
+    return 0
+  fi
+
+  for candidate in "$HOME/.local/bin/mise" "$HOME/.mise/bin/mise"; do
+    if [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+install_mise() {
+  if MISE_BIN=$(find_mise); then
+    log "mise already installed: $MISE_BIN"
+    return
+  fi
+
+  log "Installing mise from $MISE_INSTALL_URL"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$MISE_INSTALL_URL" | sh
+  elif command -v wget >/dev/null 2>&1; then
+    wget -qO- "$MISE_INSTALL_URL" | sh
+  else
+    die "curl or wget is required to install mise"
+  fi
+
+  if MISE_BIN=$(find_mise); then
+    log "mise installed: $MISE_BIN"
+    return
+  fi
+
+  die "mise installer completed, but mise was not found on PATH or in ~/.local/bin"
+}
+
+append_block() {
+  file=$1
+  block=$2
+  marker="# >>> beyond-matmul mise >>>"
+
+  mkdir -p "$(dirname -- "$file")"
+  touch "$file"
+
+  if grep -F "$marker" "$file" >/dev/null 2>&1; then
+    log "Activation already configured in $file"
+    return
+  fi
+
+  {
+    printf '\n%s\n' "$marker"
+    printf '%s\n' "$block"
+    printf '%s\n' "# <<< beyond-matmul mise <<<"
+  } >> "$file"
+
+  log "Added mise activation to $file"
+}
+
+nu_config_dir() {
+  if command -v nu >/dev/null 2>&1; then
+    dir=$(nu -c '$nu.default-config-dir' 2>/dev/null | tail -n 1 || true)
+    if [ -n "$dir" ]; then
+      printf '%s\n' "$dir"
+      return
+    fi
+  fi
+
+  if [ "$(uname -s 2>/dev/null || true)" = "Darwin" ]; then
+    printf '%s\n' "$HOME/Library/Application Support/nushell"
+  else
+    printf '%s\n' "${XDG_CONFIG_HOME:-$HOME/.config}/nushell"
+  fi
+}
+
+install_activation_for_shell() {
+  shell_name=$1
+  case "$shell_name" in
+    bash)
+      append_block "$HOME/.bashrc" "eval \"\$(\"$MISE_BIN\" activate bash)\""
+      ;;
+    zsh)
+      zsh_dir=${ZDOTDIR:-$HOME}
+      append_block "$zsh_dir/.zshrc" "eval \"\$(\"$MISE_BIN\" activate zsh)\""
+      ;;
+    fish)
+      fish_dir=${XDG_CONFIG_HOME:-$HOME/.config}/fish
+      append_block "$fish_dir/config.fish" "$MISE_BIN activate fish | source"
+      ;;
+    nu)
+      nu_dir=$(nu_config_dir)
+      env_file="$nu_dir/env.nu"
+      config_file="$nu_dir/config.nu"
+      append_block "$env_file" "let mise_path = \$nu.default-config-dir | path join mise.nu
+^$MISE_BIN activate nu | save \$mise_path --force"
+      append_block "$config_file" "use (\$nu.default-config-dir | path join mise.nu)"
+      ;;
+    sh)
+      append_block "$HOME/.profile" "export PATH=\"\$HOME/.local/bin:\$HOME/.local/share/mise/shims:\$PATH\""
+      log "Plain sh does not support 'mise activate'; installed a PATH/shims fallback instead."
+      ;;
+    *)
+      die "unsupported shell: $shell_name"
+      ;;
+  esac
+}
+
+offer_shell_activation() {
+  [ "$SKIP_SHELL_ACTIVATION" -eq 0 ] || {
+    log "Skipping shell activation."
+    return
+  }
+
+  shell_name=$(detect_shell)
+  if [ "$shell_name" = "unknown" ]; then
+    log "Could not detect current shell. Re-run with --shell bash, zsh, fish, nu, or sh."
+    return
+  fi
+
+  log "Detected shell: $shell_name"
+  if [ "$ASSUME_YES" -eq 1 ]; then
+    install_activation_for_shell "$shell_name"
+    return
+  fi
+
+  printf 'Add mise activation for %s now? [y/N] ' "$shell_name"
+  read answer || answer=
+  case "$answer" in
+    y|Y|yes|YES)
+      install_activation_for_shell "$shell_name"
+      ;;
+    *)
+      log "Skipping shell activation. You can re-run with --shell $shell_name later."
+      ;;
+  esac
+}
+
+[ -f "$MISE_CONFIG" ] || die "missing $MISE_CONFIG"
+
+install_mise
+
+log "Trusting $MISE_CONFIG"
+"$MISE_BIN" trust "$MISE_CONFIG"
+
+log "Installing pinned tools from $MISE_CONFIG"
+"$MISE_BIN" install -C "$PROJECT_DIR"
+
+offer_shell_activation
+
+log "Bootstrap complete."
