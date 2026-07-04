@@ -17,6 +17,14 @@ The current artifact is scoped to fixed-weight inference:
 
 ## Quick Start
 
+Install mise, trust the local tool config, and install pinned tools:
+
+```bash
+sh scripts/bootstrap
+```
+
+Then run the project checks and demos:
+
 ```bash
 python3 -m unittest discover -s tests
 python3 examples/fixed_weight_inference_demo.py
