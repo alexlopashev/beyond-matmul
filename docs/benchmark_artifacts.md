@@ -19,5 +19,10 @@ The JSON schema is versioned with `schema_version: 1`. Each case records:
 - dense and selected-lowering seconds per apply
 - Python and platform metadata for the run
 
+The controlled case set includes diagonal, sparse, low-rank, codebook, dense,
+single-channel valid Conv1d, and multi-channel valid Conv1d operators. Conv1d
+rows are expected to select the direct Conv1d lowerings when the benchmark
+request and backend contract allow them.
+
 The timings are pure-Python latency proxies for research triage and figure
 generation. They are not hardware-calibrated production performance claims.
