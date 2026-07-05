@@ -14,7 +14,8 @@ lowerings that are cheaper than dense GEMM for fixed-weight inference.
 3. Exact lowerings: dense, diagonal, sparse COO, low-rank product, direct conv1d.
 4. Approximate lowerings: low-rank sketch, top-k sparse, codebook, bitpacked.
 5. Benchmarks comparing latency proxy, memory proxy, preprocessing, and output
-   error against dense fallback.
+   error against dense fallback, with JSON artifacts documented in
+   `docs/benchmark_artifacts.md`.
 
 ## Prototype Modules
 
@@ -23,7 +24,8 @@ lowerings that are cheaper than dense GEMM for fixed-weight inference.
 - `analyzer.py`: cheap recovery after provenance is lost.
 - `approximations.py`: product-aware approximation builders and metrics.
 - `planner.py`: valid lowering selection.
-- `benchmarks/fixed_weight.py`: synthetic fixed-weight benchmark.
+- `benchmarks/fixed_weight.py`: synthetic fixed-weight benchmark with optional
+  machine-readable JSON output.
 
 ## Evaluation Plan
 
