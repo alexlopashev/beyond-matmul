@@ -146,7 +146,10 @@ suggest candidates, but confidence, error, and validation must be explicit.
 
 Approximation builders produce candidate low-rank, sparse, codebook, or binary
 operators. They are scored by product-aware metrics so that output error on
-representative inputs can matter more than raw matrix reconstruction error.
+representative inputs can matter more than raw matrix reconstruction error. A
+small deterministic ablation now covers one synthetic dense case where low-rank
+and sparse top-k candidates pass a matrix-relative threshold but fail the same
+output-relative threshold; codebook and bitpacked candidates fail both.
 
 \subsection{Planner}
 
@@ -160,8 +163,8 @@ footprint, preprocessing cost, and amortization over repeated calls.
 
 The codebase must produce evidence that the paper can cite: tests for semantics
 and negative capture cases, demos for workload narratives, benchmark artifacts
-for cost comparisons, and docs/wiki pages that describe the current boundary of
-truth.
+for cost comparisons, an approximation-error ablation artifact, and docs/wiki
+pages that describe the current boundary of truth.
 
 \section{Research Questions}
 
@@ -211,6 +214,8 @@ workload case studies.
 \begin{itemize}
   \item dense equivalence for exact lowerings;
   \item output-relative error for approximate lowerings;
+  \item matrix-reconstruction versus output-error decisions for a bounded
+  approximation ablation;
   \item operation-count proxy;
   \item memory-footprint and memory-movement proxy;
   \item preprocessing cost and calls required to amortize it;

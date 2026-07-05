@@ -16,6 +16,9 @@ lowerings that are cheaper than dense GEMM for fixed-weight inference.
 5. Benchmarks comparing latency proxy, memory proxy, preprocessing, and output
    error against dense fallback, with JSON artifacts documented in
    `docs/benchmark_artifacts.md`.
+6. A small approximation-error ablation that compares matrix reconstruction
+   error with output-relative error for low-rank, sparse top-k, codebook, and
+   bitpacked candidates.
 
 ## Prototype Modules
 
@@ -26,6 +29,8 @@ lowerings that are cheaper than dense GEMM for fixed-weight inference.
 - `planner.py`: valid lowering selection.
 - `benchmarks/fixed_weight.py`: synthetic fixed-weight benchmark with optional
   machine-readable JSON output.
+- `benchmarks/approximation_error_ablation.py`: deterministic table source for
+  the current matrix-error versus output-error ablation.
 
 ## Evaluation Plan
 
@@ -53,6 +58,13 @@ Metrics:
 - required calls to amortize preprocessing
 - matrix reconstruction error
 - product/output error on representative inputs
+
+Current bounded evidence: `benchmarks/approximation_error_ablation.py` emits a
+deterministic JSON artifact for one synthetic dense matrix and one fixed sample
+input set. In that case, low-rank and sparse top-k candidates pass a
+matrix-relative threshold but fail the same output-relative threshold, while
+codebook and bitpacked candidates fail both. This supports using output-aware
+scoring for planner acceptance, but it is not a broad model-quality study.
 
 ## Ablations
 

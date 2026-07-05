@@ -49,8 +49,17 @@ jobs:
       - name: Run benchmark smoke test and JSON artifact
         run: mise exec -- uv run python benchmarks/fixed_weight.py --json-output docs/results/fixed_weight.json
 
+      - name: Run approximation error ablation artifact
+        run: mise exec -- uv run python benchmarks/approximation_error_ablation.py --json-output docs/results/approximation_error_ablation.json
+
       - name: Upload fixed-weight benchmark JSON
         uses: actions/upload-artifact@v4
         with:
           name: fixed-weight-benchmark-json
           path: docs/results/fixed_weight.json
+
+      - name: Upload approximation error ablation JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: approximation-error-ablation-json
+          path: docs/results/approximation_error_ablation.json
