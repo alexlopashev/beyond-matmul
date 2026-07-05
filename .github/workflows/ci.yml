@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validation:
+    name: Validate research artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Bootstrap pinned tools
+        run: |
+          sh scripts/bootstrap --no-shell-activation
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          echo "$HOME/.mise/bin" >> "$GITHUB_PATH"
+
+      - name: Sync dependencies
+        run: mise exec -- uv sync --locked
+
+      - name: Run unit tests
+        run: mise exec -- uv run python -m unittest discover -s tests
+
+      - name: Run fixed-weight inference demo
+        run: mise exec -- uv run python examples/fixed_weight_inference_demo.py
+
+      - name: Run Torch FX frontend demo
+        run: mise exec -- uv run python examples/torch_fx_frontend_demo.py
+
+      - name: Run benchmark smoke test
+        run: mise exec -- uv run python benchmarks/fixed_weight.py
