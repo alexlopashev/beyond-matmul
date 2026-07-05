@@ -17,7 +17,12 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from beyond_matmul import _linalg as la
-from beyond_matmul.ir import DiagonalOperator, LowRankOperator
+from beyond_matmul.ir import (
+    Convolution1DOperator,
+    DiagonalOperator,
+    LowRankOperator,
+    MultiChannelConvolution1DOperator,
+)
 from beyond_matmul.planner import PlanningRequest, plan_fixed_weight
 
 
@@ -52,6 +57,17 @@ def cases() -> List[Tuple[str, object]]:
         ("sparse", _sparse_matrix(64, 64)),
         ("low_rank", LowRankOperator(left, right)),
         ("codebook", _codebook_matrix(64, 64)),
+        ("conv1d_valid", Convolution1DOperator([0.25, -1.0, 0.5], input_length=64)),
+        (
+            "conv1d_channel_valid",
+            MultiChannelConvolution1DOperator(
+                [
+                    [[0.25, -1.0, 0.5], [1.0, 0.0, -0.25]],
+                    [[-0.5, 0.75, 0.25], [0.5, -0.5, 1.0]],
+                ],
+                input_length=32,
+            ),
+        ),
         ("dense_random", la.random_matrix(64, 64, seed=5)),
     ]
 
@@ -139,11 +155,17 @@ def _write_json(output_path: str | os.PathLike[str], artifact: Dict[str, Any]) -
 
 
 def _print_table(artifact: Dict[str, Any]) -> None:
-    print("case          selected           valid  est_cost    rel_err    dense_s    chosen_s")
-    print("------------  -----------------  -----  ---------  --------  --------  --------")
-    for result in artifact["cases"]:
+    cases = artifact["cases"]
+    case_width = max([len("case"), *(len(result["case"]) for result in cases)])
+    selected_width = max([len("selected"), *(len(result["selected_lowering"]) for result in cases)])
+    print(
+        f"{'case':<{case_width}}  {'selected':<{selected_width}}  "
+        "valid  est_cost    rel_err    dense_s    chosen_s"
+    )
+    print(f"{'-' * case_width}  {'-' * selected_width}  -----  ---------  --------  --------  --------")
+    for result in cases:
         print(
-            f"{result['case']:<12}  {result['selected_lowering']:<17}  "
+            f"{result['case']:<{case_width}}  {result['selected_lowering']:<{selected_width}}  "
             f"{str(result['valid']):<5}  "
             f"{result['estimated_cost']:9.1f}  "
             f"{result['relative_error']:8.3g}  "
