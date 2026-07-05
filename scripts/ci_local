@@ -1,14 +1,40 @@
 #!/usr/bin/env sh
 set -eu
 
-sh scripts/bootstrap --no-shell-activation
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PROJECT_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 
-mise exec -- uv sync --locked
-mise exec -- uv run python -m unittest discover -s tests
-mise exec -- uv run python -m py_compile beyond_matmul/*.py examples/*.py tests/*.py
-mise exec -- uv run python examples/fixed_weight_inference_demo.py
-mise exec -- uv run python examples/torch_fx_frontend_demo.py
-mise exec -- uv run python examples/adapter_workload_demo.py
-mise exec -- uv run python examples/conv1d_workload_demo.py
-mise exec -- uv run python examples/torch_coverage_demo.py
-mise exec -- uv run python benchmarks/fixed_weight.py
+find_mise() {
+  if command -v mise >/dev/null 2>&1; then
+    command -v mise
+    return 0
+  fi
+
+  for candidate in "$HOME/.local/bin/mise" "$HOME/.mise/bin/mise"; do
+    if [ -x "$candidate" ]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+sh "$SCRIPT_DIR/bootstrap" --no-shell-activation
+
+if ! MISE_BIN=$(find_mise); then
+  printf '%s\n' "error: mise was not found after bootstrap" >&2
+  exit 1
+fi
+
+cd "$PROJECT_DIR"
+
+"$MISE_BIN" exec -- uv sync --locked
+"$MISE_BIN" exec -- uv run python -m unittest discover -s tests
+"$MISE_BIN" exec -- uv run python -m py_compile beyond_matmul/*.py examples/*.py tests/*.py
+"$MISE_BIN" exec -- uv run python examples/fixed_weight_inference_demo.py
+"$MISE_BIN" exec -- uv run python examples/torch_fx_frontend_demo.py
+"$MISE_BIN" exec -- uv run python examples/adapter_workload_demo.py
+"$MISE_BIN" exec -- uv run python examples/conv1d_workload_demo.py
+"$MISE_BIN" exec -- uv run python examples/torch_coverage_demo.py
+"$MISE_BIN" exec -- uv run python benchmarks/fixed_weight.py
