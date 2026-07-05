@@ -20,7 +20,15 @@ The current artifact is scoped to fixed-weight inference:
 ```bash
 python3 -m unittest discover -s tests
 python3 examples/fixed_weight_inference_demo.py
+python3 examples/torch_fx_frontend_demo.py
 python3 benchmarks/fixed_weight.py
+```
+
+Install project dependencies with uv:
+
+```bash
+uv sync
+uv run python examples/torch_fx_frontend_demo.py
 ```
 
 ## Repository Map
@@ -34,6 +42,8 @@ python3 benchmarks/fixed_weight.py
   provenance before densification
 - `examples/fixed_weight_inference_demo.py`: end-to-end provenance, recovery,
   planning, error, and timing demo
+- `examples/torch_fx_frontend_demo.py`: PyTorch FX demo that captures a LoRA-style
+  low-rank linear pattern before densification
 - `docs/taxonomy.md`: taxonomy of dense lowerings and lost structure
 - `docs/ir_spec.md`: IR schema and examples
 - `docs/research_outline.md`: paper-shaped outline and evaluation plan
