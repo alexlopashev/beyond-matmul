@@ -33,7 +33,7 @@ def _report_case(label: str, captured_name: str, operator, input_rows, torch_out
     plan = plan_fixed_weight(operator, request)
     operator_outputs = operator.apply(input_rows)
     error = la.rms_relative_error(torch_outputs, operator_outputs)
-    print(f"{label:<24} {captured_name:<12} {_operator_kind(operator):<18} {error:>10.3g} {plan.selected.name:<18}")
+    print(f"{label:<26} {captured_name:<12} {_operator_kind(operator):<24} {error:>10.3g} {plan.selected.name:<24}")
 
 
 def main() -> int:
@@ -44,7 +44,7 @@ def main() -> int:
     except Exception:
         print("PyTorch is not installed in this environment, so the Torch coverage demo was skipped.")
         print("Install project dependencies and rerun:")
-        print("  mise exec -- uv sync")
+        print("  mise exec -- uv sync --locked")
         print("  mise exec -- uv run python examples/torch_coverage_demo.py")
         return 0
 
@@ -101,10 +101,34 @@ def main() -> int:
         def forward(self, x):
             return self.conv(x)
 
+    channel_weight = torch.tensor([
+        [[1.0, 0.5, -1.0], [0.25, 2.0, -0.5]],
+        [[-1.5, 0.75, 0.25], [1.25, -0.25, 0.5]],
+    ])
+
+    class MultiChannelConv1d(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.conv = nn.Conv1d(2, 2, kernel_size=3, bias=False)
+            with torch.no_grad():
+                self.conv.weight.copy_(channel_weight)
+
+        def forward(self, x):
+            return self.conv(x)
+
+    class FunctionalConv1d(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.register_buffer("weight", channel_weight)
+            self.register_buffer("bias", torch.tensor([0.1, -0.2]))
+
+        def forward(self, x):
+            return F.conv1d(x, self.weight, self.bias)
+
     print("Torch frontend coverage demo")
     print()
-    print(f"{'pattern':<24} {'captured':<12} {'ir kind':<18} {'error':>10} {'lowering':<18}")
-    print("-" * 86)
+    print(f"{'pattern':<26} {'captured':<12} {'ir kind':<24} {'error':>10} {'lowering':<24}")
+    print("-" * 102)
 
     dense_input = torch.tensor([[1.0, 0.0, -1.0], [0.5, 2.0, 1.0]])
     matmul = MatmulProjection().eval()
@@ -127,8 +151,21 @@ def main() -> int:
     conv_outputs = conv(conv_input).detach().squeeze(1).tolist()
     _report_case("narrow Conv1d", conv_capture.name, conv_capture.operator, conv_rows, conv_outputs)
 
+    channel_input = torch.randn(4, 2, 5, generator=torch.Generator().manual_seed(31))
+    channel_conv = MultiChannelConv1d().eval()
+    channel_capture = capture_torch_fx_operators(channel_conv, sample_inputs=channel_input)["conv"]
+    channel_rows = channel_input.flatten(1).tolist()
+    channel_outputs = channel_conv(channel_input).detach().flatten(1).tolist()
+    _report_case("multi-channel Conv1d", channel_capture.name, channel_capture.operator, channel_rows, channel_outputs)
+
+    functional_conv = FunctionalConv1d().eval()
+    functional_captures = capture_torch_fx_operators(functional_conv, sample_inputs=channel_input)
+    functional_capture = next(item for item in functional_captures.values() if item.event.notes.get("capture") == "conv1d_function")
+    functional_outputs = functional_conv(channel_input).detach().flatten(1).tolist()
+    _report_case("functional Conv1d", functional_capture.name, functional_capture.operator, channel_rows, functional_outputs)
+
     print()
-    print("Takeaway: coverage is now explicit and the dense matmul/addmm rows have executable capture checks.")
+    print("Takeaway: coverage is explicit across dense matmul/addmm, low-rank, and valid Conv1d module/function rows.")
     return 0
 
 

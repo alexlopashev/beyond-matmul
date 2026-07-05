@@ -37,12 +37,13 @@ executable IR payloads for:
   `torch.addmm(bias, x, weight.T)` patterns, represented as `DenseOperator` or
   `AffineOperator(DenseOperator)` when the right-hand weight is explicitly
   transposed
-- single-channel valid `nn.Conv1d` modules, represented as
-  `Convolution1DOperator` or affine convolution when an input length is known
-  from `sample_inputs` shape propagation or a module input-length hint
+- valid `nn.Conv1d` modules and fixed-weight functional `conv1d`, represented
+  as `Convolution1DOperator`, `MultiChannelConvolution1DOperator`, or affine
+  convolution when an input length is known from `sample_inputs` shape
+  propagation or a module input-length hint
 
 `capture_torch_fx_linear_operators` remains as a backward-compatible alias.
 
 See `docs/torch_frontend_coverage.md` for the current support matrix. Open
-frontend targets remain functional convolution, multi-channel convolution,
-quantized modules, and richer provenance hints around exported graphs.
+frontend targets remain grouped/depthwise convolution, stride/padding/dilation
+variants, quantized modules, and richer provenance hints around exported graphs.
