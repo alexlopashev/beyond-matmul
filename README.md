@@ -32,6 +32,8 @@ mise exec -- uv run python -m unittest discover -s tests
 mise exec -- uv run python examples/fixed_weight_inference_demo.py
 mise exec -- uv run python examples/torch_fx_frontend_demo.py
 mise exec -- uv run python examples/adapter_workload_demo.py
+mise exec -- uv run python examples/conv1d_workload_demo.py
+mise exec -- uv run python examples/torch_coverage_demo.py
 mise exec -- uv run python benchmarks/fixed_weight.py
 ```
 
@@ -57,8 +59,13 @@ uv run python examples/torch_fx_frontend_demo.py
   low-rank linear pattern before densification
 - `examples/adapter_workload_demo.py`: tiny PyTorch adapter case study with a
   merged dense weight and recovered low-rank factors
+- `examples/conv1d_workload_demo.py`: tiny PyTorch Conv1d case study comparing
+  convolution provenance against dense materialization
+- `examples/torch_coverage_demo.py`: Torch frontend coverage smoke demo for
+  supported fixed-weight patterns
 - `docs/taxonomy.md`: taxonomy of dense lowerings and lost structure
 - `docs/ir_spec.md`: IR schema and examples
+- `docs/torch_frontend_coverage.md`: support matrix for Torch FX capture
 - `docs/research_outline.md`: paper-shaped outline and evaluation plan
 - `docs/handoff_next_layer.md`: current state and next-layer handoff
 

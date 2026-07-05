@@ -33,11 +33,16 @@ executable IR payloads for:
   `A`/`B`, including cases where forward uses a nearby merged dense weight
 - `Embedding` followed by `Linear`, represented as a low-rank projection over
   one-hot token inputs
+- fixed-weight `x @ weight.T`, `torch.matmul`, `torch.mm`, and
+  `torch.addmm(bias, x, weight.T)` patterns, represented as `DenseOperator` or
+  `AffineOperator(DenseOperator)` when the right-hand weight is explicitly
+  transposed
 - single-channel valid `nn.Conv1d` modules, represented as
   `Convolution1DOperator` or affine convolution when an input length is known
   from `sample_inputs` shape propagation or a module input-length hint
 
 `capture_torch_fx_linear_operators` remains as a backward-compatible alias.
 
-Open frontend targets remain broader `matmul`, multi-channel convolution,
-quantized modules, and richer provenance hints around merged or exported graphs.
+See `docs/torch_frontend_coverage.md` for the current support matrix. Open
+frontend targets remain functional convolution, multi-channel convolution,
+quantized modules, and richer provenance hints around exported graphs.

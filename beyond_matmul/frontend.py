@@ -132,8 +132,8 @@ def capture_torch_fx_operators(module, sample_inputs: Any = None) -> Dict[str, C
 
     where `right` has shape `(rank, in_features)` and `left` has shape
     `(out_features, rank)`. The broader helper also captures narrow fixed-weight
-    `nn.Conv1d` modules as `Convolution1DOperator` when an input length is known
-    from FX shape propagation or an explicit module hint.
+    `matmul`/`addmm` patterns and `nn.Conv1d` modules when enough shape and
+    orientation information is present.
     """
 
     try:
@@ -167,7 +167,7 @@ def extract_torch_fx_linear_operators(graph_module: Any) -> Dict[str, CapturedOp
 
 
 def extract_torch_fx_operators(graph_module: Any) -> Dict[str, CapturedOperator]:
-    """Extract low-rank linear operators from a traced FX graph-like object.
+    """Extract fixed-weight operators from a traced FX graph-like object.
 
     The function accepts real `torch.fx.GraphModule` objects and lightweight
     fakes used by tests. It intentionally depends on FX node conventions rather
@@ -179,6 +179,16 @@ def extract_torch_fx_operators(graph_module: Any) -> Dict[str, CapturedOperator]
     for node in nodes:
         if _is_conv1d_node(graph_module, node):
             captured_operator = _capture_conv1d_module(graph_module, node)
+            if captured_operator is not None:
+                captured[captured_operator.name] = captured_operator
+            continue
+        if _is_addmm_node(node):
+            captured_operator = _capture_dense_addmm(graph_module, node)
+            if captured_operator is not None:
+                captured[captured_operator.name] = captured_operator
+            continue
+        if _is_matmul_node(node):
+            captured_operator = _capture_dense_matmul(graph_module, node)
             if captured_operator is not None:
                 captured[captured_operator.name] = captured_operator
             continue
@@ -369,6 +379,88 @@ def _capture_conv1d_module(graph_module: Any, node: Any) -> Optional[CapturedOpe
     return CapturedOperator(name=event.name, operator=operator, event=event)
 
 
+def _capture_dense_matmul(graph_module: Any, node: Any) -> Optional[CapturedOperator]:
+    args = list(getattr(node, "args", ()) or ())
+    if len(args) < 2:
+        return None
+    activation, rhs = args[0], args[1]
+    if not _is_runtime_activation_operand(activation):
+        return None
+    weight = _fixed_weight_from_transposed_operand(graph_module, rhs)
+    if weight is None or not _matmul_shapes_compatible(activation, weight):
+        return None
+
+    name = str(getattr(node, "name", "torch_fx_matmul"))
+    weight_source = _source_name(_transpose_base(rhs)) or "fixed_weight"
+    provenance = Provenance(
+        source=name,
+        framework="torch.fx",
+        expression="x @ weight.T",
+        inputs=(_source_name(activation) or "activation", weight_source),
+        transform_history=("torch.fx symbolic_trace", "dense_matmul_pattern"),
+        confidence=0.9,
+    )
+    notes = {
+        "capture": "dense_matmul",
+        "rhs": weight_source,
+        "rhs_orientation": "transposed_fixed_weight",
+        "weight_layout": "out_in",
+    }
+    try:
+        operator = DenseOperator(weight, provenance=provenance)
+    except ValueError:
+        return None
+    event = TraceEvent(name=name, op_type="dense_matmul", provenance=operator.metadata.provenance, notes=notes)
+    return CapturedOperator(name=event.name, operator=operator, event=event)
+
+
+def _capture_dense_addmm(graph_module: Any, node: Any) -> Optional[CapturedOperator]:
+    args = list(getattr(node, "args", ()) or ())
+    kwargs = dict(getattr(node, "kwargs", {}) or {})
+    if len(args) < 3:
+        return None
+    if not (_is_default_scale(args[3] if len(args) >= 4 else kwargs.get("beta", 1.0))):
+        return None
+    if not (_is_default_scale(args[4] if len(args) >= 5 else kwargs.get("alpha", 1.0))):
+        return None
+
+    bias_operand, activation, rhs = args[0], args[1], args[2]
+    if not _is_runtime_activation_operand(activation):
+        return None
+    weight = _fixed_weight_from_transposed_operand(graph_module, rhs)
+    if weight is None or not _matmul_shapes_compatible(activation, weight):
+        return None
+    bias = _bias_value(_node_value(graph_module, bias_operand), expected_length=len(weight))
+    if bias is None:
+        return None
+
+    name = str(getattr(node, "name", "torch_fx_addmm"))
+    weight_source = _source_name(_transpose_base(rhs)) or "fixed_weight"
+    bias_source = _source_name(bias_operand) or "fixed_bias"
+    provenance = Provenance(
+        source=name,
+        framework="torch.fx",
+        expression="torch.addmm(bias, x, weight.T)",
+        inputs=(bias_source, _source_name(activation) or "activation", weight_source),
+        transform_history=("torch.fx symbolic_trace", "dense_addmm_pattern"),
+        confidence=0.9,
+    )
+    notes = {
+        "capture": "dense_addmm",
+        "bias": bias_source,
+        "rhs": weight_source,
+        "rhs_orientation": "transposed_fixed_weight",
+        "weight_layout": "out_in",
+    }
+    try:
+        linear = DenseOperator(weight, provenance=provenance)
+        operator = AffineOperator(linear, bias, provenance=provenance)
+    except ValueError:
+        return None
+    event = TraceEvent(name=name, op_type="affine_dense_matmul", provenance=operator.metadata.provenance, notes=notes)
+    return CapturedOperator(name=event.name, operator=operator, event=event)
+
+
 def _propagate_torch_fx_shapes(graph_module: Any, sample_inputs: Any) -> None:
     try:
         from torch.fx.passes.shape_prop import ShapeProp  # type: ignore
@@ -398,6 +490,19 @@ def _is_linear_node(graph_module: Any, node: Any) -> bool:
             return True
         return "linear" in target_text.lower()
     return False
+
+
+def _is_matmul_node(node: Any) -> bool:
+    op = getattr(node, "op", None)
+    if op == "call_function":
+        return _target_has_name(getattr(node, "target", None), {"matmul", "mm"})
+    if op == "call_method":
+        return str(getattr(node, "target", "")) in {"matmul", "mm"}
+    return False
+
+
+def _is_addmm_node(node: Any) -> bool:
+    return getattr(node, "op", None) == "call_function" and _target_has_name(getattr(node, "target", None), {"addmm"})
 
 
 def _is_conv1d_node(graph_module: Any, node: Any) -> bool:
@@ -473,6 +578,13 @@ def _node_last_sequence_dim(value: Any) -> Optional[int]:
         return None
     channel_dim = shape[-2]
     if channel_dim is not None and channel_dim != 1:
+        return None
+    return shape[-1]
+
+
+def _node_last_feature_dim(value: Any) -> Optional[int]:
+    shape = _shape_from_value(value)
+    if shape is None:
         return None
     return shape[-1]
 
@@ -632,6 +744,90 @@ def _compose_linear_bias(
 
 def _has_merged_weight_hint(module: Any) -> bool:
     return any(hasattr(module, name) for name in ("merged_weight", "merged_linear", "base_layer", "base"))
+
+
+def _is_runtime_activation_operand(value: Any, seen: Optional[set[int]] = None) -> bool:
+    op = getattr(value, "op", None)
+    if op == "placeholder":
+        return True
+    if op not in {"call_function", "call_method", "call_module"}:
+        return False
+    seen = seen or set()
+    identity = id(value)
+    if identity in seen:
+        return False
+    seen.add(identity)
+    args = list(getattr(value, "args", ()) or ())
+    return any(_is_runtime_activation_operand(arg, seen) for arg in args)
+
+
+def _matmul_shapes_compatible(activation: Any, weight: Sequence[Sequence[float]]) -> bool:
+    feature_dim = _node_last_feature_dim(activation)
+    if feature_dim is None:
+        return True
+    if not weight:
+        return False
+    return feature_dim == len(weight[0])
+
+
+def _fixed_weight_from_transposed_operand(graph_module: Any, value: Any) -> Optional[List[List[float]]]:
+    base = _transpose_base(value)
+    if base is None:
+        return None
+    return _node_value_as_matrix(graph_module, base)
+
+
+def _transpose_base(value: Any) -> Optional[Any]:
+    op = getattr(value, "op", None)
+    args = list(getattr(value, "args", ()) or ())
+    target = getattr(value, "target", None)
+    if op == "call_function":
+        if _target_has_name(target, {"getattr"}) and len(args) >= 2 and args[1] == "T":
+            return args[0]
+        if _target_has_name(target, {"transpose"}) and _is_2d_transpose_args(args[1:]):
+            return args[0]
+    if op == "call_method":
+        target_text = str(target)
+        if target_text in {"t", "T"} and args:
+            return args[0]
+        if target_text == "transpose" and _is_2d_transpose_args(args[1:]):
+            return args[0]
+    return None
+
+
+def _is_2d_transpose_args(args: Sequence[Any]) -> bool:
+    if len(args) < 2:
+        return False
+    try:
+        dims = (int(args[0]), int(args[1]))
+    except (TypeError, ValueError):
+        return False
+    return dims in {(0, 1), (1, 0), (-1, -2), (-2, -1)}
+
+
+def _is_default_scale(value: Any) -> bool:
+    try:
+        return abs(float(value) - 1.0) <= 1e-12
+    except (TypeError, ValueError):
+        return False
+
+
+def _target_has_name(target: Any, names: set[str]) -> bool:
+    direct_name = getattr(target, "__name__", None)
+    if direct_name in names:
+        return True
+    text = str(target)
+    return any(text == name or text.endswith(f".{name}") or f" {name}" in text for name in names)
+
+
+def _source_name(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    for attr in ("target", "name"):
+        source = getattr(value, attr, None)
+        if source is not None:
+            return str(source)
+    return None
 
 
 def _node_value(graph_module: Any, value: Any) -> Any:
