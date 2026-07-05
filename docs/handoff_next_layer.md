@@ -83,7 +83,7 @@ after dense materialization.
 
 ## Known Gaps
 
-- CI is configured, but it has not been expanded to publish benchmark artifacts.
+- CI publishes the fixed-weight benchmark JSON as `fixed-weight-benchmark-json`.
 - No GPU or production kernels exist.
 - Benchmarks are pure-Python latency proxies, not serious performance evidence.
 - Recovery probes are cheap heuristics and do not yet emit calibrated confidence
@@ -111,10 +111,10 @@ after dense materialization.
    The next best case is convolution, because dense lowering loses a very
    different kind of structure than adapters do.
 
-4. Add result artifacts.
+4. Expand result artifacts.
 
-   Write benchmark results to JSON/CSV so later paper figures can be generated
-   without parsing console text.
+   Add any next benchmark artifacts needed for paper figures without parsing
+   console text.
 
 ## Suggested Next PR
 
