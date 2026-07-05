@@ -24,8 +24,8 @@ For a real compiler pass:
    a valid lowering.
 
 `capture_torch_fx_patterns` is a dependency-free placeholder that uses
-`torch.fx` only when PyTorch is installed. `capture_torch_fx_linear_operators`
-extracts executable IR payloads for:
+`torch.fx` only when PyTorch is installed. `capture_torch_fx_operators` extracts
+executable IR payloads for:
 
 - nested `F.linear` or `nn.Linear` factors, including bias as an
   `AffineOperator`
@@ -33,6 +33,11 @@ extracts executable IR payloads for:
   `A`/`B`, including cases where forward uses a nearby merged dense weight
 - `Embedding` followed by `Linear`, represented as a low-rank projection over
   one-hot token inputs
+- single-channel valid `nn.Conv1d` modules, represented as
+  `Convolution1DOperator` or affine convolution when an input length is known
+  from `sample_inputs` shape propagation or a module input-length hint
 
-Open frontend targets remain broader `matmul`, convolution, quantized modules,
-and richer provenance hints around merged or exported graphs.
+`capture_torch_fx_linear_operators` remains as a backward-compatible alias.
+
+Open frontend targets remain broader `matmul`, multi-channel convolution,
+quantized modules, and richer provenance hints around merged or exported graphs.

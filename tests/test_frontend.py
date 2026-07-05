@@ -1,11 +1,14 @@
 import unittest
 
 from beyond_matmul.frontend import (
+    capture_torch_fx_operators,
     capture_torch_fx_linear_operators,
+    extract_torch_fx_operators,
     capture_torch_named_adapter_operators,
     extract_torch_fx_low_rank_operators,
 )
-from beyond_matmul.ir import AffineOperator
+from beyond_matmul.ir import AffineOperator, Convolution1DOperator, DenseOperator
+from beyond_matmul.planner import PlanningRequest, plan_fixed_weight
 
 try:
     import torch
@@ -24,6 +27,24 @@ class FakeNode:
         self.target = target
         self.args = args
         self.kwargs = kwargs or {}
+        self.meta = {}
+
+
+class FakeTensorMeta:
+    def __init__(self, shape):
+        self.shape = shape
+
+
+class Conv1d:
+    def __init__(self, weight, bias=None, stride=1, padding=0, dilation=1, groups=1, in_channels=1, out_channels=1):
+        self.weight = weight
+        self.bias = bias
+        self.stride = (stride,)
+        self.padding = (padding,)
+        self.dilation = (dilation,)
+        self.groups = groups
+        self.in_channels = in_channels
+        self.out_channels = out_channels
 
 
 class FakeGraph:
@@ -78,6 +99,24 @@ class FrontendTests(unittest.TestCase):
         graph_module.graph.nodes = [x, right, inner, left, outer]
 
         self.assertEqual(extract_torch_fx_low_rank_operators(graph_module), {})
+
+    def test_ignores_unsupported_fake_conv1d_variants(self):
+        unsupported_modules = [
+            Conv1d([[[1.0, 2.0, 3.0]]], stride=2),
+            Conv1d([[[1.0, 2.0, 3.0]]], padding=1),
+            Conv1d([[[1.0, 2.0, 3.0]]], dilation=2),
+            Conv1d([[[1.0, 2.0, 3.0]], [[4.0, 5.0, 6.0]]], in_channels=2),
+        ]
+        for module in unsupported_modules:
+            with self.subTest(module=module):
+                graph_module = FakeGraphModule([])
+                graph_module.conv = module
+                x = FakeNode("x", "placeholder", "x")
+                x.meta["tensor_meta"] = FakeTensorMeta((1, 1, 5))
+                conv = FakeNode("conv", "call_module", "conv", args=(x,))
+                graph_module.graph.nodes = [x, conv]
+
+                self.assertEqual(extract_torch_fx_operators(graph_module), {})
 
     def test_extracts_biased_functional_linear_pattern_as_affine(self):
         graph_module = FakeGraphModule([])
@@ -153,6 +192,76 @@ class FrontendTests(unittest.TestCase):
         self.assertIsInstance(operator, AffineOperator)
         self.assertEqual(operator.shape, (2, 3))
         self.assertMatrixAlmostEqual(operator.apply(inputs), module(torch.tensor(inputs)).detach().tolist())
+
+    @unittest.skipIf(torch is None, "PyTorch is not installed")
+    def test_captures_real_biasless_torch_conv1d_module(self):
+        class TinyConv(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.conv = nn.Conv1d(1, 1, kernel_size=3, bias=False)
+                with torch.no_grad():
+                    self.conv.weight.copy_(torch.tensor([[[1.0, -2.0, 0.5]]]))
+
+            def forward(self, x):
+                return self.conv(x)
+
+        module = TinyConv().eval()
+        torch_input = torch.tensor([
+            [[1.0, 0.0, -1.0, 2.0, 0.5, -0.5]],
+            [[0.5, -1.5, 1.0, 0.0, 2.0, -2.0]],
+        ])
+        input_rows = torch_input.squeeze(1).tolist()
+
+        captured = capture_torch_fx_operators(module, sample_inputs=torch_input)
+
+        self.assertIn("conv", captured)
+        operator = captured["conv"].operator
+        self.assertIsInstance(operator, Convolution1DOperator)
+        self.assertEqual(operator.shape, (4, 6))
+        self.assertEqual(operator.metadata.provenance.framework, "torch.fx")
+        self.assertMatrixAlmostEqual(operator.apply(input_rows), DenseOperator(operator.to_dense()).apply(input_rows))
+        self.assertMatrixAlmostEqual(operator.apply(input_rows), module(torch_input).detach().squeeze(1).tolist())
+
+        plan = plan_fixed_weight(
+            operator,
+            PlanningRequest(batch_size=len(input_rows), calls=32, sample_inputs=input_rows, codebook_sizes=(2,)),
+        )
+        self.assertEqual(plan.selected.name, "conv1d_direct")
+        self.assertTrue(plan.selected.exact)
+
+    @unittest.skipIf(torch is None, "PyTorch is not installed")
+    def test_captures_real_biased_torch_conv1d_module_as_affine(self):
+        class TinyBiasedConv(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.conv = nn.Conv1d(1, 1, kernel_size=3, bias=True)
+                with torch.no_grad():
+                    self.conv.weight.copy_(torch.tensor([[[0.25, 1.5, -0.75]]]))
+                    self.conv.bias.copy_(torch.tensor([0.125]))
+
+            def forward(self, x):
+                return self.conv(x)
+
+        module = TinyBiasedConv().eval()
+        torch_input = torch.tensor([[[1.0, -1.0, 2.0, 0.0, -0.5, 1.5]]])
+        input_rows = torch_input.squeeze(1).tolist()
+
+        captured = capture_torch_fx_operators(module, sample_inputs=torch_input)
+
+        self.assertIn("conv", captured)
+        operator = captured["conv"].operator
+        self.assertIsInstance(operator, AffineOperator)
+        self.assertIsInstance(operator.linear, Convolution1DOperator)
+        self.assertEqual(operator.shape, (4, 6))
+        self.assertEqual(operator.bias, [0.125, 0.125, 0.125, 0.125])
+        self.assertMatrixAlmostEqual(operator.apply(input_rows), module(torch_input).detach().squeeze(1).tolist())
+
+        plan = plan_fixed_weight(
+            operator,
+            PlanningRequest(batch_size=len(input_rows), calls=32, sample_inputs=input_rows, codebook_sizes=(2,)),
+        )
+        self.assertEqual(plan.selected.name, "conv1d_direct_bias")
+        self.assertTrue(plan.selected.exact)
 
     @unittest.skipIf(torch is None, "PyTorch is not installed")
     def test_captures_named_adapter_factors_with_merged_weight_hint(self):
