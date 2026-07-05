@@ -1,13 +1,14 @@
 # Provenance-Aware Linear Operator IR
 
-The IR represents a linear map with shape `(out_features, in_features)`. Applying
-an operator to a row-major batch `x` computes `x @ W.T`.
+The IR represents fixed-weight linear and affine maps with shape
+`(out_features, in_features)`. Applying a linear operator to a row-major batch
+`x` computes `x @ W.T`; applying an affine operator computes `x @ W.T + b`.
 
 ## Schema
 
 ```python
 OperatorMetadata(
-    kind="dense | diagonal | sparse_coo | low_rank | conv1d | codebook | bitpacked_binary",
+    kind="dense | diagonal | sparse_coo | low_rank | affine | conv1d | codebook | bitpacked_binary",
     shape=(out_features, in_features),
     provenance=Provenance(
         source="framework node, compiler pass, analyzer, or fallback",
@@ -68,6 +69,16 @@ LowRankOperator(left=U, right=V)  # W = U @ V
 
 Structure: rank `r`, factor shapes `(out, r)` and `(r, in)`.
 Lowerings: `low_rank_product`, `dense_gemm`.
+
+### Affine
+
+```python
+AffineOperator(LowRankOperator(left=U, right=V), bias=b)
+```
+
+Structure: any linear operator plus an output bias vector.
+Lowerings: fused bias variants such as `low_rank_product_bias`, plus
+`dense_gemm_bias`.
 
 ### Convolutional
 

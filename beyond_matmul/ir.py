@@ -232,6 +232,45 @@ class LowRankOperator(LinearOperator):
 
 
 @dataclass
+class AffineOperator(LinearOperator):
+    linear: LinearOperator
+    bias: Sequence[float]
+    provenance: Optional[Provenance] = None
+    metadata: Optional[OperatorMetadata] = None
+
+    def __post_init__(self) -> None:
+        bias = la.as_vector(self.bias)
+        if len(bias) != self.linear.out_features:
+            raise ValueError("affine bias length must match operator output dimension")
+        self.bias = bias
+        primary_lowering = f"{self.linear.metadata.lowerings[0]}_bias"
+        self.metadata = _metadata(
+            kind="affine",
+            shape=self.linear.shape,
+            metadata=self.metadata,
+            provenance=self.provenance or self.linear.metadata.provenance,
+            structure={
+                "linear_kind": self.linear.metadata.kind,
+                "linear_structure": dict(self.linear.metadata.structure),
+                "bias_length": len(bias),
+            },
+            reuse=self.linear.metadata.reuse,
+            layout=self.linear.metadata.layout,
+            hardware=self.linear.metadata.hardware,
+            lowerings=(primary_lowering, "dense_gemm_bias"),
+        )
+
+    def to_dense(self) -> la.Matrix:
+        """Return the linear weight component; bias is represented separately."""
+
+        return self.linear.to_dense()
+
+    def apply(self, inputs: Sequence[Sequence[float]] | Sequence[float]) -> la.Matrix:
+        outputs = self.linear.apply(inputs)
+        return [[value + self.bias[index] for index, value in enumerate(row)] for row in outputs]
+
+
+@dataclass
 class SparseCOOOperator(LinearOperator):
     rows: Sequence[int]
     cols: Sequence[int]

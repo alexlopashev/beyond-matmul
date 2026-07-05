@@ -6,7 +6,7 @@ operators.
 
 The current artifact is scoped to fixed-weight inference:
 
-- a provenance-aware linear operator IR
+- a provenance-aware linear and affine operator IR
 - exact operators for dense, diagonal, sparse COO, low-rank, convolutional,
   codebook, and bitpacked weights
 - cheap structure recovery from dense matrices
@@ -23,16 +23,19 @@ Install mise, trust the local tool config, and install pinned tools:
 sh scripts/bootstrap
 ```
 
-Then run the project checks and demos:
+Then install dependencies and run the project checks and demos through the pinned
+toolchain:
 
 ```bash
-python3 -m unittest discover -s tests
-python3 examples/fixed_weight_inference_demo.py
-python3 examples/torch_fx_frontend_demo.py
-python3 benchmarks/fixed_weight.py
+mise exec -- uv sync
+mise exec -- uv run python -m unittest discover -s tests
+mise exec -- uv run python examples/fixed_weight_inference_demo.py
+mise exec -- uv run python examples/torch_fx_frontend_demo.py
+mise exec -- uv run python examples/adapter_workload_demo.py
+mise exec -- uv run python benchmarks/fixed_weight.py
 ```
 
-Install project dependencies with uv:
+If your shell has mise activation configured, the shorter forms work too:
 
 ```bash
 uv sync
@@ -52,12 +55,15 @@ uv run python examples/torch_fx_frontend_demo.py
   planning, error, and timing demo
 - `examples/torch_fx_frontend_demo.py`: PyTorch FX demo that captures a LoRA-style
   low-rank linear pattern before densification
+- `examples/adapter_workload_demo.py`: tiny PyTorch adapter case study with a
+  merged dense weight and recovered low-rank factors
 - `docs/taxonomy.md`: taxonomy of dense lowerings and lost structure
 - `docs/ir_spec.md`: IR schema and examples
 - `docs/research_outline.md`: paper-shaped outline and evaluation plan
+- `docs/handoff_next_layer.md`: current state and next-layer handoff
 
 ## Crisp Contribution
 
-This work introduces a provenance-aware linear-operator IR and planner that
-preserves or recovers structure behind dense matmuls, then selects exact or
+This work introduces a provenance-aware linear/affine-operator IR and planner
+that preserves or recovers structure behind dense matmuls, then selects exact or
 bounded-error lowerings that reduce inference cost relative to dense GEMM.

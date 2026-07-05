@@ -11,7 +11,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
+from beyond_matmul import _linalg as la
 from beyond_matmul.ir import (
+    AffineOperator,
     Convolution1DOperator,
     DenseOperator,
     DiagonalOperator,
@@ -118,7 +120,7 @@ def capture_torch_fx_patterns(module) -> List[TraceEvent]:
 def capture_torch_fx_linear_operators(module) -> Dict[str, CapturedOperator]:
     """Trace a PyTorch module and capture structured linear operators.
 
-    The first implemented pattern is a fixed-weight low-rank projection:
+    The core pattern is a fixed-weight low-rank or affine low-rank projection:
 
         y = linear(linear(x, right), left)
 
@@ -135,10 +137,19 @@ def capture_torch_fx_linear_operators(module) -> Dict[str, CapturedOperator]:
         raise RuntimeError("PyTorch is required for capture_torch_fx_linear_operators") from exc
 
     graph_module = fx.symbolic_trace(module)
-    return extract_torch_fx_low_rank_operators(graph_module)
+    captured = extract_torch_fx_linear_operators(graph_module)
+    for name, operator in capture_torch_named_adapter_operators(module).items():
+        captured.setdefault(name, operator)
+    return captured
 
 
 def extract_torch_fx_low_rank_operators(graph_module: Any) -> Dict[str, CapturedOperator]:
+    """Backward-compatible alias for linear-operator FX extraction."""
+
+    return extract_torch_fx_linear_operators(graph_module)
+
+
+def extract_torch_fx_linear_operators(graph_module: Any) -> Dict[str, CapturedOperator]:
     """Extract low-rank linear operators from a traced FX graph-like object.
 
     The function accepts real `torch.fx.GraphModule` objects and lightweight
@@ -149,45 +160,146 @@ def extract_torch_fx_low_rank_operators(graph_module: Any) -> Dict[str, Captured
     captured: Dict[str, CapturedOperator] = {}
     nodes = list(_iter_fx_nodes(graph_module))
     for node in nodes:
-        if not _is_linear_node(node):
+        if not _is_linear_node(graph_module, node):
             continue
         args = list(getattr(node, "args", ()) or ())
         if not args:
             continue
         inner = args[0]
-        if not _is_linear_node(inner):
-            continue
-        right = _linear_weight(graph_module, inner)
-        left = _linear_weight(graph_module, node)
-        if right is None or left is None:
-            continue
-        try:
-            operator = LowRankOperator(
-                left,
-                right,
-                provenance=Provenance(
-                    source=str(getattr(node, "name", "torch_fx_low_rank")),
-                    framework="torch.fx",
-                    expression="linear(linear(x, right), left)",
-                    inputs=(str(getattr(inner, "name", "inner")), str(getattr(node, "name", "outer"))),
-                    transform_history=("torch.fx symbolic_trace", "low_rank_linear_pattern"),
-                    confidence=0.95,
-                ),
-            )
-        except ValueError:
-            continue
-        event = TraceEvent(
-            name=str(getattr(node, "name", "torch_fx_low_rank")),
-            op_type="low_rank_linear",
-            provenance=operator.metadata.provenance,
-            notes={
-                "inner_node": str(getattr(inner, "name", "unknown")),
-                "outer_node": str(getattr(node, "name", "unknown")),
-                "rank": str(operator.rank),
-            },
-        )
-        captured[event.name] = CapturedOperator(name=event.name, operator=operator, event=event)
+        captured_operator = None
+        if _is_linear_node(graph_module, inner):
+            captured_operator = _capture_nested_linear(graph_module, inner, node)
+        elif _is_embedding_node(graph_module, inner):
+            captured_operator = _capture_embedding_projection(graph_module, inner, node)
+        if captured_operator is not None:
+            captured[captured_operator.name] = captured_operator
     return captured
+
+
+def capture_torch_named_adapter_operators(module: Any) -> Dict[str, CapturedOperator]:
+    """Capture named low-rank adapter factors even when forward uses a merged weight."""
+
+    captured: Dict[str, CapturedOperator] = {}
+    for prefix, parent in _iter_named_modules(module):
+        children = _named_children(parent)
+        for right_name, left_name in (
+            ("down", "up"),
+            ("lora_A", "lora_B"),
+            ("adapter_A", "adapter_B"),
+            ("A", "B"),
+            ("right", "left"),
+        ):
+            right_module = children.get(right_name)
+            left_module = children.get(left_name)
+            if not (_is_linear_module(right_module) and _is_linear_module(left_module)):
+                continue
+            right = _module_weight(right_module)
+            left = _module_weight(left_module)
+            if right is None or left is None:
+                continue
+            inner_bias = _module_bias(right_module, expected_length=len(right))
+            outer_bias = _module_bias(left_module, expected_length=len(left))
+            if inner_bias is None or outer_bias is None:
+                continue
+            source = ".".join(part for part in (prefix, left_name) if part) or left_name
+            provenance = Provenance(
+                source=source,
+                framework="torch.nn",
+                expression=f"{left_name}({right_name}(x))",
+                inputs=(right_name, left_name),
+                transform_history=("named_module_scan", "low_rank_adapter_factors"),
+                confidence=0.9,
+            )
+            notes = {
+                "inner_node": right_name,
+                "outer_node": left_name,
+                "rank": str(len(right)),
+                "capture": "named_adapter_pair",
+            }
+            if _has_merged_weight_hint(parent):
+                notes["merged_weight_hint"] = "true"
+            captured_operator = _captured_low_rank_or_affine(source, left, right, inner_bias, outer_bias, provenance, notes)
+            if captured_operator is not None:
+                captured[captured_operator.name] = captured_operator
+    return captured
+
+
+def _capture_nested_linear(graph_module: Any, inner: Any, outer: Any) -> Optional[CapturedOperator]:
+    right = _linear_weight(graph_module, inner)
+    left = _linear_weight(graph_module, outer)
+    if right is None or left is None:
+        return None
+    inner_bias = _linear_bias(graph_module, inner, expected_length=len(right))
+    outer_bias = _linear_bias(graph_module, outer, expected_length=len(left))
+    if inner_bias is None or outer_bias is None:
+        return None
+    provenance = Provenance(
+        source=str(getattr(outer, "name", "torch_fx_low_rank")),
+        framework="torch.fx",
+        expression="linear(linear(x, right), left)",
+        inputs=(str(getattr(inner, "name", "inner")), str(getattr(outer, "name", "outer"))),
+        transform_history=("torch.fx symbolic_trace", "low_rank_linear_pattern"),
+        confidence=0.95,
+    )
+    notes = {
+        "inner_node": str(getattr(inner, "name", "unknown")),
+        "outer_node": str(getattr(outer, "name", "unknown")),
+        "rank": str(len(right)),
+    }
+    return _captured_low_rank_or_affine(str(getattr(outer, "name", "torch_fx_low_rank")), left, right, inner_bias, outer_bias, provenance, notes)
+
+
+def _capture_embedding_projection(graph_module: Any, embedding: Any, projection: Any) -> Optional[CapturedOperator]:
+    embedding_weight = _embedding_weight(graph_module, embedding)
+    left = _linear_weight(graph_module, projection)
+    if embedding_weight is None or left is None:
+        return None
+    right = la.transpose(embedding_weight)
+    inner_bias = [0.0 for _ in right]
+    outer_bias = _linear_bias(graph_module, projection, expected_length=len(left))
+    if outer_bias is None:
+        return None
+    provenance = Provenance(
+        source=str(getattr(projection, "name", "torch_fx_embedding_projection")),
+        framework="torch.fx",
+        expression="linear(embedding(ids), projection) over one_hot(ids)",
+        inputs=(str(getattr(embedding, "name", "embedding")), str(getattr(projection, "name", "projection"))),
+        transform_history=("torch.fx symbolic_trace", "embedding_projection_pattern"),
+        confidence=0.85,
+    )
+    notes = {
+        "inner_node": str(getattr(embedding, "name", "unknown")),
+        "outer_node": str(getattr(projection, "name", "unknown")),
+        "rank": str(len(right)),
+        "input_basis": "one_hot",
+    }
+    return _captured_low_rank_or_affine(str(getattr(projection, "name", "torch_fx_embedding_projection")), left, right, inner_bias, outer_bias, provenance, notes)
+
+
+def _captured_low_rank_or_affine(
+    name: str,
+    left: Sequence[Sequence[float]],
+    right: Sequence[Sequence[float]],
+    inner_bias: Sequence[float],
+    outer_bias: Sequence[float],
+    provenance: Provenance,
+    notes: Dict[str, str],
+) -> Optional[CapturedOperator]:
+    try:
+        linear = LowRankOperator(left, right, provenance=provenance)
+        bias = _compose_linear_bias(left, inner_bias, outer_bias)
+        operator: LinearOperator
+        if _is_zero_vector(bias):
+            operator = linear
+            op_type = "low_rank_linear"
+        else:
+            operator = AffineOperator(linear, bias, provenance=provenance)
+            op_type = "affine_low_rank_linear"
+            notes = {**notes, "bias": "true"}
+    except ValueError:
+        return None
+    event = TraceEvent(name=name, op_type=op_type, provenance=operator.metadata.provenance, notes=notes)
+    return CapturedOperator(name=event.name, operator=operator, event=event)
 
 
 def _iter_fx_nodes(graph_module: Any) -> Iterable[Any]:
@@ -195,21 +307,26 @@ def _iter_fx_nodes(graph_module: Any) -> Iterable[Any]:
     return getattr(graph, "nodes", ())
 
 
-def _is_linear_node(node: Any) -> bool:
+def _is_linear_node(graph_module: Any, node: Any) -> bool:
     op = getattr(node, "op", None)
     target = getattr(node, "target", None)
     target_text = str(target)
     if op == "call_function":
         return target_text.endswith("linear") or "linear" in target_text
     if op == "call_module":
-        return "Linear" in type(target).__name__ or "linear" in target_text.lower()
+        module = _maybe_resolve_attr(graph_module, target_text)
+        if module is not None and type(module).__name__ == "Linear":
+            return True
+        return "linear" in target_text.lower()
     return False
 
 
 def _linear_weight(graph_module: Any, node: Any) -> Optional[List[List[float]]]:
     op = getattr(node, "op", None)
     if op == "call_module":
-        module = _resolve_attr(graph_module, str(getattr(node, "target", "")))
+        module = _maybe_resolve_attr(graph_module, str(getattr(node, "target", "")))
+        if module is None:
+            return None
         return _to_matrix(getattr(module, "weight", None))
 
     args = list(getattr(node, "args", ()) or ())
@@ -218,10 +335,101 @@ def _linear_weight(graph_module: Any, node: Any) -> Optional[List[List[float]]]:
     return _node_value_as_matrix(graph_module, args[1])
 
 
-def _node_value_as_matrix(graph_module: Any, value: Any) -> Optional[List[List[float]]]:
+def _linear_bias(graph_module: Any, node: Any, expected_length: int) -> Optional[List[float]]:
+    op = getattr(node, "op", None)
+    if op == "call_module":
+        module = _maybe_resolve_attr(graph_module, str(getattr(node, "target", "")))
+        if module is None:
+            return None
+        return _module_bias(module, expected_length)
+
+    args = list(getattr(node, "args", ()) or ())
+    kwargs = dict(getattr(node, "kwargs", {}) or {})
+    bias = args[2] if len(args) >= 3 else kwargs.get("bias")
+    return _bias_value(_node_value(graph_module, bias), expected_length)
+
+
+def _is_embedding_node(graph_module: Any, node: Any) -> bool:
+    op = getattr(node, "op", None)
+    target_text = str(getattr(node, "target", ""))
+    if op != "call_module":
+        return False
+    module = _maybe_resolve_attr(graph_module, target_text)
+    if module is not None and type(module).__name__ == "Embedding":
+        return True
+    return "embedding" in target_text.lower()
+
+
+def _embedding_weight(graph_module: Any, node: Any) -> Optional[List[List[float]]]:
+    module = _maybe_resolve_attr(graph_module, str(getattr(node, "target", "")))
+    if module is None:
+        return None
+    return _module_weight(module)
+
+
+def _iter_named_modules(module: Any) -> Iterable[tuple[str, Any]]:
+    named_modules = getattr(module, "named_modules", None)
+    if named_modules is None:
+        return ()
+    return named_modules()
+
+
+def _named_children(module: Any) -> Dict[str, Any]:
+    named_children = getattr(module, "named_children", None)
+    if named_children is None:
+        return {}
+    return dict(named_children())
+
+
+def _is_linear_module(module: Any) -> bool:
+    return module is not None and type(module).__name__ == "Linear"
+
+
+def _module_weight(module: Any) -> Optional[List[List[float]]]:
+    return _to_matrix(getattr(module, "weight", None))
+
+
+def _module_bias(module: Any, expected_length: int) -> Optional[List[float]]:
+    return _bias_value(getattr(module, "bias", None), expected_length)
+
+
+def _bias_value(value: Any, expected_length: int) -> Optional[List[float]]:
+    if value is None:
+        return [0.0 for _ in range(expected_length)]
+    bias = _to_vector(value)
+    if bias is None or len(bias) != expected_length:
+        return None
+    return bias
+
+
+def _compose_linear_bias(
+    left: Sequence[Sequence[float]],
+    inner_bias: Sequence[float],
+    outer_bias: Sequence[float],
+) -> List[float]:
+    propagated = la.apply_weight(left, [inner_bias])[0]
+    return [propagated[index] + float(outer_bias[index]) for index in range(len(propagated))]
+
+
+def _has_merged_weight_hint(module: Any) -> bool:
+    return any(hasattr(module, name) for name in ("merged_weight", "merged_linear", "base_layer", "base"))
+
+
+def _node_value(graph_module: Any, value: Any) -> Any:
     if getattr(value, "op", None) == "get_attr":
-        return _to_matrix(_resolve_attr(graph_module, str(getattr(value, "target", ""))))
-    return _to_matrix(value)
+        return _resolve_attr(graph_module, str(getattr(value, "target", "")))
+    return value
+
+
+def _node_value_as_matrix(graph_module: Any, value: Any) -> Optional[List[List[float]]]:
+    return _to_matrix(_node_value(graph_module, value))
+
+
+def _maybe_resolve_attr(obj: Any, path: str) -> Any:
+    try:
+        return _resolve_attr(obj, path)
+    except AttributeError:
+        return None
 
 
 def _resolve_attr(obj: Any, path: str) -> Any:
@@ -231,6 +439,53 @@ def _resolve_attr(obj: Any, path: str) -> Any:
             continue
         current = getattr(current, part)
     return current
+
+
+def _is_zero_value(value: Any, tolerance: float = 1e-12) -> bool:
+    if value is None:
+        return True
+    if hasattr(value, "detach"):
+        value = value.detach()
+    if hasattr(value, "cpu"):
+        value = value.cpu()
+    if hasattr(value, "tolist"):
+        value = value.tolist()
+    flattened = _flatten_numeric(value)
+    return flattened is not None and all(abs(item) <= tolerance for item in flattened)
+
+
+def _is_zero_vector(vector: Sequence[float], tolerance: float = 1e-12) -> bool:
+    return all(abs(float(item)) <= tolerance for item in vector)
+
+
+def _flatten_numeric(value: Any) -> Optional[List[float]]:
+    if isinstance(value, (int, float)):
+        return [float(value)]
+    if not isinstance(value, (list, tuple)):
+        return None
+    flattened: List[float] = []
+    for item in value:
+        item_values = _flatten_numeric(item)
+        if item_values is None:
+            return None
+        flattened.extend(item_values)
+    return flattened
+
+
+def _to_vector(value: Any) -> Optional[List[float]]:
+    if value is None:
+        return None
+    if hasattr(value, "detach"):
+        value = value.detach()
+    if hasattr(value, "cpu"):
+        value = value.cpu()
+    if hasattr(value, "tolist"):
+        value = value.tolist()
+    if not isinstance(value, (list, tuple)) or not value:
+        return None
+    if any(isinstance(item, (list, tuple)) for item in value):
+        return None
+    return [float(item) for item in value]
 
 
 def _to_matrix(value: Any) -> Optional[List[List[float]]]:

@@ -1,6 +1,7 @@
 """Provenance-aware linear operators and lowering planner."""
 
 from beyond_matmul.ir import (
+    AffineOperator,
     ApproximationContract,
     BitpackedBinaryOperator,
     CodebookOperator,
@@ -17,13 +18,15 @@ from beyond_matmul.ir import (
     ReuseBudget,
     SparseCOOOperator,
 )
-from beyond_matmul.planner import LoweringPlan, PlanningRequest, plan_fixed_weight
+from beyond_matmul.planner import CostBreakdown, LoweringPlan, PlanningRequest, plan_fixed_weight
 
 __all__ = [
+    "AffineOperator",
     "ApproximationContract",
     "BitpackedBinaryOperator",
     "CodebookOperator",
     "Convolution1DOperator",
+    "CostBreakdown",
     "DenseOperator",
     "DiagonalOperator",
     "HardwareTarget",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Iterable, List, Optional, Sequence, Tuple
 
@@ -10,11 +11,11 @@ from beyond_matmul.approximations import (
     bitpacked_binary_approximation,
     codebook_quantize,
     low_rank_approximation,
-    product_relative_error,
     sparse_from_dense,
     sparse_topk_by_density,
 )
 from beyond_matmul.ir import (
+    AffineOperator,
     ApproximationContract,
     CodebookOperator,
     DenseOperator,
@@ -37,6 +38,13 @@ BACKEND_SUPPORT = {
         "codebook_kernel",
         "bitpacked_kernel",
         "conv1d_direct",
+        "dense_gemm_bias",
+        "diagonal_kernel_bias",
+        "sparse_kernel_bias",
+        "low_rank_product_bias",
+        "codebook_kernel_bias",
+        "bitpacked_kernel_bias",
+        "conv1d_direct_bias",
     },
     "cpu": {
         "dense_gemm",
@@ -46,6 +54,13 @@ BACKEND_SUPPORT = {
         "codebook_kernel",
         "bitpacked_kernel",
         "conv1d_direct",
+        "dense_gemm_bias",
+        "diagonal_kernel_bias",
+        "sparse_kernel_bias",
+        "low_rank_product_bias",
+        "codebook_kernel_bias",
+        "bitpacked_kernel_bias",
+        "conv1d_direct_bias",
     },
     "gpu": {
         "dense_gemm",
@@ -53,6 +68,11 @@ BACKEND_SUPPORT = {
         "low_rank_product",
         "bitpacked_kernel",
         "conv1d_direct",
+        "dense_gemm_bias",
+        "sparse_kernel_bias",
+        "low_rank_product_bias",
+        "bitpacked_kernel_bias",
+        "conv1d_direct_bias",
     },
 }
 
@@ -70,6 +90,29 @@ class PlanningRequest:
     codebook_sizes: Tuple[int, ...] = (2, 4, 8)
 
 
+@dataclass(frozen=True)
+class CostBreakdown:
+    apply_ops: float
+    memory_bytes_read: int
+    memory_bytes_written: int
+    cache_bytes: int
+    preprocessing_ops: float
+    calls: int
+
+    @property
+    def memory_bytes_moved(self) -> int:
+        return self.memory_bytes_read + self.memory_bytes_written
+
+    @property
+    def amortized_preprocessing_ops(self) -> float:
+        return self.preprocessing_ops / max(1, self.calls)
+
+    @property
+    def score(self) -> float:
+        float32_memory_ops = self.memory_bytes_moved / 4.0
+        return self.apply_ops + float32_memory_ops + self.amortized_preprocessing_ops
+
+
 @dataclass
 class PlanOption:
     name: str
@@ -83,12 +126,12 @@ class PlanOption:
     backend_supported: bool
     reuse_supported: bool
     valid: bool
+    cost: CostBreakdown
     reasons: Tuple[str, ...] = ()
 
     @property
     def amortized_cost(self) -> float:
-        calls = max(1, self.requested_calls)
-        return self.estimated_apply_cost + (self.estimated_preprocessing_cost / calls)
+        return self.cost.score
 
 
 @dataclass
@@ -111,6 +154,8 @@ def _lowering_name(operator: LinearOperator) -> str:
 def _estimate_apply_cost(operator: LinearOperator, batch_size: int, word_bits: int = 64) -> float:
     out_features, in_features = operator.shape
     kind = operator.metadata.kind
+    if isinstance(operator, AffineOperator):
+        return _estimate_apply_cost(operator.linear, batch_size, word_bits=word_bits) + batch_size * out_features
     if kind == "diagonal":
         return batch_size * in_features
     if kind == "sparse_coo":
@@ -131,6 +176,8 @@ def _estimate_apply_cost(operator: LinearOperator, batch_size: int, word_bits: i
 def _estimate_memory_bytes(operator: LinearOperator) -> int:
     out_features, in_features = operator.shape
     kind = operator.metadata.kind
+    if isinstance(operator, AffineOperator):
+        return _estimate_memory_bytes(operator.linear) + out_features * 4
     if kind == "diagonal":
         return in_features * 4
     if kind == "sparse_coo":
@@ -146,6 +193,38 @@ def _estimate_memory_bytes(operator: LinearOperator) -> int:
     if kind == "bitpacked_binary":
         return 4 + ((out_features * in_features) + 7) // 8
     return out_features * in_features * 4
+
+
+def _estimate_cost(operator: LinearOperator, batch_size: int, calls: int) -> CostBreakdown:
+    out_features, in_features = operator.shape
+    if isinstance(operator, AffineOperator):
+        inner = _estimate_cost(operator.linear, batch_size, calls)
+        bias_bytes = out_features * 4
+        return CostBreakdown(
+            apply_ops=_estimate_apply_cost(operator, batch_size),
+            memory_bytes_read=inner.memory_bytes_read + bias_bytes,
+            memory_bytes_written=inner.memory_bytes_written,
+            cache_bytes=inner.cache_bytes + bias_bytes,
+            preprocessing_ops=operator.metadata.reuse.preprocessing_cost,
+            calls=calls,
+        )
+
+    cache_bytes = _estimate_memory_bytes(operator)
+    read_bytes = cache_bytes + batch_size * in_features * 4
+    write_bytes = batch_size * out_features * 4
+    if operator.metadata.kind == "low_rank":
+        rank = getattr(operator, "rank")
+        hidden_bytes = batch_size * rank * 4
+        read_bytes += hidden_bytes
+        write_bytes += hidden_bytes
+    return CostBreakdown(
+        apply_ops=_estimate_apply_cost(operator, batch_size),
+        memory_bytes_read=read_bytes,
+        memory_bytes_written=write_bytes,
+        cache_bytes=cache_bytes,
+        preprocessing_ops=operator.metadata.reuse.preprocessing_cost,
+        calls=calls,
+    )
 
 
 def _backend_supported(operator: LinearOperator, backend: str) -> bool:
@@ -183,6 +262,8 @@ def _with_contract(operator: LinearOperator, relative_error: float, metric: str,
         return SparseCOOOperator(operator.rows, operator.cols, operator.values, operator.shape, metadata=updated)
     if isinstance(operator, LowRankOperator):
         return LowRankOperator(operator.left, operator.right, metadata=updated)
+    if isinstance(operator, AffineOperator):
+        return AffineOperator(operator.linear, operator.bias, metadata=updated)
     if isinstance(operator, CodebookOperator):
         return CodebookOperator(operator.codes, operator.codebook, metadata=updated)
     # Bitpacked and convolution operators already expose accurate metadata for planning.
@@ -190,14 +271,41 @@ def _with_contract(operator: LinearOperator, relative_error: float, metric: str,
     return operator
 
 
+def _bias_vector(operator: LinearOperator) -> List[float]:
+    if isinstance(operator, AffineOperator):
+        return list(operator.bias)
+    return [0.0 for _ in range(operator.out_features)]
+
+
+def _matrix_and_bias_relative_error(reference: LinearOperator, candidate: LinearOperator) -> float:
+    reference_matrix = reference.to_dense()
+    candidate_matrix = candidate.to_dense()
+    matrix_delta = la.subtract(reference_matrix, candidate_matrix)
+    reference_bias = _bias_vector(reference)
+    candidate_bias = _bias_vector(candidate)
+    if len(reference_bias) != len(candidate_bias):
+        return math.inf
+    numerator = la.frobenius_norm(matrix_delta) ** 2
+    numerator += sum((a - b) * (a - b) for a, b in zip(reference_bias, candidate_bias))
+    denominator = la.frobenius_norm(reference_matrix) ** 2
+    denominator += sum(value * value for value in reference_bias)
+    if denominator == 0.0:
+        return math.sqrt(numerator)
+    return math.sqrt(numerator / denominator)
+
+
 def _relative_error(
-    reference_matrix: Sequence[Sequence[float]],
+    reference: LinearOperator,
     candidate: LinearOperator,
     sample_inputs: Optional[Sequence[Sequence[float]]],
 ) -> Tuple[float, str, int]:
     if sample_inputs is not None:
-        return product_relative_error(reference_matrix, candidate, sample_inputs), "output_relative_l2", len(sample_inputs)
-    return la.relative_frobenius_error(reference_matrix, candidate.to_dense()), "matrix_relative_frobenius", 0
+        exact = reference.apply(sample_inputs)
+        observed = candidate.apply(sample_inputs)
+        return la.rms_relative_error(exact, observed), "output_relative_l2", len(sample_inputs)
+    if isinstance(reference, AffineOperator) or isinstance(candidate, AffineOperator):
+        return _matrix_and_bias_relative_error(reference, candidate), "matrix_bias_relative_l2", 0
+    return la.relative_frobenius_error(reference.to_dense(), candidate.to_dense()), "matrix_relative_frobenius", 0
 
 
 def _diagonal_candidate(matrix: Sequence[Sequence[float]]) -> Optional[DiagonalOperator]:
@@ -220,6 +328,9 @@ def _exact_codebook_candidate(matrix: Sequence[Sequence[float]], max_codebook_si
 
 
 def _candidate_operators(operator: LinearOperator, request: PlanningRequest) -> List[LinearOperator]:
+    if isinstance(operator, AffineOperator):
+        return [AffineOperator(candidate, operator.bias) for candidate in _candidate_operators(operator.linear, request)]
+
     matrix = operator.to_dense()
     candidates: List[LinearOperator] = []
 
@@ -255,9 +366,10 @@ def _candidate_operators(operator: LinearOperator, request: PlanningRequest) -> 
     return candidates
 
 
-def _make_plan_option(reference_matrix: Sequence[Sequence[float]], candidate: LinearOperator, request: PlanningRequest) -> PlanOption:
-    error, metric, sample_count = _relative_error(reference_matrix, candidate, request.sample_inputs)
+def _make_plan_option(reference: LinearOperator, candidate: LinearOperator, request: PlanningRequest) -> PlanOption:
+    error, metric, sample_count = _relative_error(reference, candidate, request.sample_inputs)
     candidate = _with_contract(candidate, error, metric, sample_count)
+    cost = _estimate_cost(candidate, request.batch_size, request.calls)
     exact = candidate.metadata.contract.is_exact
     backend_supported = _backend_supported(candidate, request.backend)
     reuse_supported = request.calls >= candidate.metadata.reuse.amortize_over_calls
@@ -275,20 +387,27 @@ def _make_plan_option(reference_matrix: Sequence[Sequence[float]], candidate: Li
         operator=candidate,
         exact=exact,
         relative_error=error,
-        estimated_apply_cost=_estimate_apply_cost(candidate, request.batch_size),
-        estimated_preprocessing_cost=candidate.metadata.reuse.preprocessing_cost,
-        estimated_memory_bytes=_estimate_memory_bytes(candidate),
+        estimated_apply_cost=cost.apply_ops + (cost.memory_bytes_moved / 4.0),
+        estimated_preprocessing_cost=cost.preprocessing_ops,
+        estimated_memory_bytes=cost.cache_bytes,
         requested_calls=request.calls,
         backend_supported=backend_supported,
         reuse_supported=reuse_supported,
         valid=valid,
+        cost=cost,
         reasons=tuple(reasons),
     )
 
 
+def _dense_fallback_for(reference: LinearOperator) -> LinearOperator:
+    dense = DenseOperator(reference.to_dense())
+    if isinstance(reference, AffineOperator):
+        return AffineOperator(dense, reference.bias)
+    return dense
+
+
 def plan_operator(operator: LinearOperator, request: PlanningRequest) -> LoweringPlan:
-    reference_matrix = operator.to_dense()
-    options = [_make_plan_option(reference_matrix, candidate, request) for candidate in _candidate_operators(operator, request)]
+    options = [_make_plan_option(operator, candidate, request) for candidate in _candidate_operators(operator, request)]
     valid_options = [option for option in options if option.valid]
     if not valid_options:
         fallback_request = PlanningRequest(
@@ -299,7 +418,7 @@ def plan_operator(operator: LinearOperator, request: PlanningRequest) -> Lowerin
             allow_approximate=False,
             sample_inputs=request.sample_inputs,
         )
-        fallback = _make_plan_option(reference_matrix, DenseOperator(reference_matrix), fallback_request)
+        fallback = _make_plan_option(operator, _dense_fallback_for(operator), fallback_request)
         fallback.valid = True
         options.append(fallback)
         valid_options = [fallback]
