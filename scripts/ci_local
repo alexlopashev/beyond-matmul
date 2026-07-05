@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+set -eu
+
+sh scripts/bootstrap --no-shell-activation
+
+mise exec -- uv sync --locked
+mise exec -- uv run python -m unittest discover -s tests
+mise exec -- uv run python -m py_compile beyond_matmul/*.py examples/*.py tests/*.py
+mise exec -- uv run python examples/fixed_weight_inference_demo.py
+mise exec -- uv run python examples/torch_fx_frontend_demo.py
+mise exec -- uv run python examples/adapter_workload_demo.py
+mise exec -- uv run python examples/conv1d_workload_demo.py
+mise exec -- uv run python examples/torch_coverage_demo.py
+mise exec -- uv run python benchmarks/fixed_weight.py

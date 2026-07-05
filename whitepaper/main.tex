@@ -1,0 +1,289 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{hyperref}
+
+\title{Beyond Matmul: Provenance-Aware Computation for Fixed-Weight ML Inference}
+\author{Beyond Matmul Contributors}
+\date{Draft 0.1 -- July 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Modern machine-learning systems routinely lower semantically rich computations
+into dense matrix multiplication because dense GEMM is universal, convenient,
+and heavily optimized. That default is useful, but it can erase why a matrix
+exists: a convolution becomes an anonymous Toeplitz matrix, an adapter becomes a
+materialized product, an embedding projection becomes a dense multiply, and a
+quantized operator becomes dequantized storage. This paper explores a
+provenance-aware framing for fixed-weight inference in which dense GEMM remains
+a valid fallback rather than the default semantic intermediate representation.
+We propose a linear and affine operator IR that preserves or recovers structure,
+a planner that selects exact or bounded-error lowerings under backend and reuse
+contracts, and an evaluation program that ties frontend coverage, tests,
+benchmarks, and case studies to the research claims.
+\end{abstract}
+
+\section{North Star}
+
+The north star of Beyond Matmul is a completed research artifact with two
+mutually reinforcing outputs:
+
+\begin{enumerate}
+  \item A final whitepaper that explains, evaluates, and bounds the claim that
+  provenance-aware computation can improve fixed-weight ML inference by
+  retaining structure normally lost during dense lowering.
+  \item An accompanying codebase that provides executable evidence: operator
+  semantics, Torch frontend capture, recovery probes, approximation builders,
+  planner decisions, tests, demos, and benchmark data.
+\end{enumerate}
+
+The project is complete when the paper's claims are supported by the codebase
+and its generated evidence, the GitHub wiki concisely defines the project for
+humans and agents, and GitHub issues no longer contain unresolved high-priority
+gaps against the stated research questions.
+
+\section{Problem}
+
+Dense matrix multiplication is an excellent implementation target and a robust
+fallback abstraction. It is not always an excellent semantic representation.
+When a framework lowers a structured computation into an anonymous matrix, it
+often discards facts that matter for inference:
+
+\begin{itemize}
+  \item convolution preserves local receptive fields and weight sharing;
+  \item low-rank adapters preserve factorization and rank bounds;
+  \item embeddings preserve lookup semantics and repeated token structure;
+  \item masks preserve causal, banded, block, or page sparsity;
+  \item quantized weights preserve packing, scale, zero point, and codebooks;
+  \item diagonal gates preserve elementwise scaling rather than general mixing.
+\end{itemize}
+
+Once these facts are erased, a downstream compiler or runtime must either use
+dense GEMM or rediscover structure heuristically from the dense matrix. The
+first path can waste work and memory; the second path is lossy and expensive to
+trust.
+
+\section{Thesis}
+
+Many matrix multiplications in ML systems are semantically structured
+computations that were densified for convenience. A provenance-aware
+linear-operator IR can preserve or recover that structure and allow a planner to
+choose exact or bounded-error lowerings that are cheaper, clearer, or more
+controllable than dense GEMM for fixed-weight inference.
+
+The claim is deliberately not ``GEMM is bad.'' Dense GEMM should remain one
+lowering in a richer operator space. The research question is when and how much
+additional provenance lets the system choose something better.
+
+\section{Scope}
+
+The initial artifact focuses on fixed-weight inference. This scope makes reuse
+contracts explicit: preprocessing can be amortized across calls, weights do not
+mutate during training, and exact dense equivalence can be checked for small
+operators.
+
+Out of scope for the first complete artifact:
+
+\begin{itemize}
+  \item training-time weight mutation and gradient semantics;
+  \item production GPU kernels;
+  \item claims of hardware-calibrated speedup without benchmark evidence;
+  \item universal Torch operation support in a single pass.
+\end{itemize}
+
+\section{Computation Reason Provenance}
+
+This project uses provenance to mean the reason an operator exists, not merely
+where the tensor was allocated. A provenance-aware operator records:
+
+\begin{itemize}
+  \item source framework node or expression;
+  \item input and weight identities;
+  \item transformation history, such as convolution to Toeplitz or adapter
+  factors to a merged dense weight;
+  \item structural metadata, such as rank, sparsity, kernel shape, codebook, or
+  quantization layout;
+  \item exactness or approximation contract;
+  \item reuse and cache assumptions;
+  \item backend and layout constraints.
+\end{itemize}
+
+This framing lets later passes ask not only ``what matrix is this?'' but ``what
+computation did this matrix come from, and what lowerings are still valid?''
+
+\section{System Design}
+
+The artifact is organized around six components.
+
+\subsection{Frontend Capture}
+
+Framework frontends preserve structure before densification. The current Torch
+FX path captures fixed-weight inference patterns such as nested linear factors,
+adapter pairs, embedding followed by projection, valid Conv1d, fixed-weight
+matmul forms, and narrow addmm forms. A visible coverage matrix distinguishes
+supported, next, and unsupported patterns.
+
+\subsection{Operator IR}
+
+The IR represents fixed-weight linear maps with shape
+$(\mathrm{out\_features}, \mathrm{in\_features})$ and affine maps as a linear
+operator plus bias. Implemented operator families include dense, diagonal,
+sparse COO, low-rank, convolutional, codebook, and bitpacked binary weights.
+Each operator exposes executable semantics and a dense fallback for equivalence
+testing.
+
+\subsection{Recovery Analyzer}
+
+When provenance is lost, cheap analyzers probe dense matrices for recoverable
+structure. Recovery is intentionally weaker than preserved provenance: it can
+suggest candidates, but confidence, error, and validation must be explicit.
+
+\subsection{Approximation Builders}
+
+Approximation builders produce candidate low-rank, sparse, codebook, or binary
+operators. They are scored by product-aware metrics so that output error on
+representative inputs can matter more than raw matrix reconstruction error.
+
+\subsection{Planner}
+
+The planner selects a valid lowering under exactness, error, reuse, backend,
+and layout contracts. Examples include direct convolution, low-rank product,
+sparse kernels, codebook kernels, bitpacked kernels, and dense GEMM fallback.
+Planner costs currently estimate operation count, memory movement, cache
+footprint, preprocessing cost, and amortization over repeated calls.
+
+\subsection{Evidence Surface}
+
+The codebase must produce evidence that the paper can cite: tests for semantics
+and negative capture cases, demos for workload narratives, benchmark artifacts
+for cost comparisons, and docs/wiki pages that describe the current boundary of
+truth.
+
+\section{Research Questions}
+
+\begin{enumerate}
+  \item Which common fixed-weight Torch inference patterns can be captured
+  exactly before they become anonymous dense matrices?
+  \item When provenance is missing, which structures can be recovered cheaply
+  enough to be useful, and how should uncertainty be represented?
+  \item Under what reuse and backend contracts does a structured lowering beat
+  dense GEMM according to operation, memory, preprocessing, or measured latency
+  proxies?
+  \item How should approximate lowerings be evaluated so output-level error is
+  aligned with real inference behavior?
+  \item What minimum wiki, issue, and automation loop keeps agentic development
+  aligned with the research goal instead of accumulating unrelated code?
+\end{enumerate}
+
+\section{Evaluation Plan}
+
+The evaluation should combine controlled synthetic cases and small real
+workload case studies.
+
+\subsection{Controlled Cases}
+
+\begin{itemize}
+  \item exact diagonal operators;
+  \item exact sparse operators;
+  \item exact low-rank operators;
+  \item exact convolutional operators;
+  \item small-codebook and bitpacked approximations;
+  \item random dense fallback baselines.
+\end{itemize}
+
+\subsection{Workload Case Studies}
+
+\begin{itemize}
+  \item Conv/linear lowering from a CNN-style block;
+  \item attention projection or masked attention block;
+  \item embedding plus projection in a language-model-like block;
+  \item LoRA or adapter weights merged into a dense projection;
+  \item quantized linear or convolutional modules once the IR can represent
+  their contracts honestly.
+\end{itemize}
+
+\subsection{Metrics}
+
+\begin{itemize}
+  \item dense equivalence for exact lowerings;
+  \item output-relative error for approximate lowerings;
+  \item operation-count proxy;
+  \item memory-footprint and memory-movement proxy;
+  \item preprocessing cost and calls required to amortize it;
+  \item wall-clock latency where measurement is meaningful;
+  \item coverage matrix rows connected to executable tests.
+\end{itemize}
+
+\section{Development Methodology}
+
+All code work should be test-driven and issue-driven. Each issue should be
+small enough for one PR, labeled for priority, risk, area, kind, and status, and
+linked to blockers when necessary. Worker agents implement from fresh worktrees
+based on latest main. Reviewer agents independently check correctness, local CI
+parity, minimality, and north-star alignment before merging. Retrospective
+agents periodically trim duplication, detect stuck PRs, and create corrective
+issues.
+
+\section{Current Risks}
+
+\begin{itemize}
+  \item Coverage drift: docs may claim support that tests do not prove.
+  \item Benchmark overclaiming: pure-Python proxies may be mistaken for
+  production performance evidence.
+  \item Abstraction inflation: operator families may grow before their contracts
+  are stable.
+  \item Agent drift: autonomous workers may optimize for local issue completion
+  instead of paper-quality evidence.
+  \item Recovery ambiguity: dense structure probes may look convincing without
+  sufficient confidence or output-error validation.
+\end{itemize}
+
+\section{Completion Criteria}
+
+The project reaches its north star when:
+
+\begin{enumerate}
+  \item the whitepaper is internally consistent and all major claims map to
+  tests, demos, benchmark artifacts, or clearly labeled future work;
+  \item the codebase covers the selected high-leverage fixed-weight operator
+  families with exact equivalence and negative tests;
+  \item benchmark outputs are generated as machine-readable artifacts suitable
+  for paper figures;
+  \item the wiki concisely defines the project, north star, coverage boundary,
+  issue loop, and artifact map;
+  \item GitHub issues show no unresolved priority-zero or priority-one blockers
+  against the paper thesis;
+  \item retrospective review finds no major duplication, stale claims, or stuck
+  PRs that would change the conclusions.
+\end{enumerate}
+
+\section{Planned Paper Structure}
+
+The final paper should evolve from this draft into:
+
+\begin{enumerate}
+  \item introduction and motivation;
+  \item taxonomy of lost structure;
+  \item provenance-aware IR and contracts;
+  \item frontend capture and recovery methods;
+  \item planner and cost model;
+  \item evaluation on controlled and workload cases;
+  \item limitations and threats to validity;
+  \item related work;
+  \item conclusion.
+\end{enumerate}
+
+\section{Conclusion}
+
+Beyond Matmul treats dense multiplication as a powerful lowering, not the only
+truth a compiler or runtime should remember. By preserving computation reason
+provenance, the project aims to make structured inference paths measurable,
+testable, and available to a planner. The final success condition is not a large
+surface area of code; it is a clear research argument with enough executable
+evidence to make the argument hard to dismiss.
+
+\end{document}
