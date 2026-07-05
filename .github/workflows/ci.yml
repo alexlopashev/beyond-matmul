@@ -43,5 +43,8 @@ jobs:
       - name: Run Conv1d workload demo
         run: mise exec -- uv run python examples/conv1d_workload_demo.py
 
+      - name: Run Torch coverage demo
+        run: mise exec -- uv run python examples/torch_coverage_demo.py
+
       - name: Run benchmark smoke test
         run: mise exec -- uv run python benchmarks/fixed_weight.py
