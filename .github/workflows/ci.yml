@@ -37,5 +37,8 @@ jobs:
       - name: Run Torch FX frontend demo
         run: mise exec -- uv run python examples/torch_fx_frontend_demo.py
 
+      - name: Run adapter workload demo
+        run: mise exec -- uv run python examples/adapter_workload_demo.py
+
       - name: Run benchmark smoke test
         run: mise exec -- uv run python benchmarks/fixed_weight.py

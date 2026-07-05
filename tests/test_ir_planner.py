@@ -2,6 +2,7 @@ import unittest
 
 from beyond_matmul import _linalg as la
 from beyond_matmul.ir import (
+    AffineOperator,
     CodebookOperator,
     Convolution1DOperator,
     DenseOperator,
@@ -24,6 +25,11 @@ class OperatorTests(unittest.TestCase):
 
         low_rank = LowRankOperator([[1.0], [2.0], [3.0]], [[4.0, 5.0, 6.0]])
         self.assertEqual(low_rank.apply(inputs), DenseOperator(low_rank.to_dense()).apply(inputs))
+
+        affine = AffineOperator(low_rank, [0.5, -1.0, 2.0])
+        dense_outputs = DenseOperator(affine.to_dense()).apply(inputs)
+        expected = [[row[index] + affine.bias[index] for index in range(len(row))] for row in dense_outputs]
+        self.assertEqual(affine.apply(inputs), expected)
 
         codebook = CodebookOperator([[0, 1, 0], [1, 0, 1], [0, 0, 1]], [0.0, 2.0])
         self.assertEqual(codebook.apply(inputs), DenseOperator(codebook.to_dense()).apply(inputs))
@@ -64,6 +70,28 @@ class PlannerTests(unittest.TestCase):
         plan = plan_fixed_weight(weight, request)
         self.assertEqual(plan.selected.name, "low_rank_product")
         self.assertLessEqual(plan.selected.relative_error, 1e-8)
+
+    def test_planner_preserves_affine_low_rank_bias(self):
+        left = [[1.0], [2.0], [3.0]]
+        right = [[4.0, 5.0, 6.0]]
+        weight = AffineOperator(LowRankOperator(left, right), [0.5, -1.0, 2.0])
+        inputs = [[2.0, -1.0, 3.0]]
+        request = PlanningRequest(batch_size=1, calls=8, sample_inputs=inputs)
+
+        plan = plan_fixed_weight(weight, request)
+
+        self.assertEqual(plan.selected.name, "low_rank_product_bias")
+        self.assertTrue(plan.selected.exact)
+        self.assertEqual(plan.selected.operator.apply(inputs), weight.apply(inputs))
+
+    def test_plan_option_exposes_cost_breakdown(self):
+        weight = DiagonalOperator([1.0, 2.0, 3.0, 4.0])
+        plan = plan_fixed_weight(weight, PlanningRequest(batch_size=8, calls=10))
+
+        self.assertGreater(plan.selected.cost.apply_ops, 0.0)
+        self.assertGreater(plan.selected.cost.memory_bytes_moved, 0)
+        self.assertEqual(plan.selected.cost.cache_bytes, plan.selected.estimated_memory_bytes)
+        self.assertEqual(plan.selected.amortized_cost, plan.selected.cost.score)
 
 
 if __name__ == "__main__":
