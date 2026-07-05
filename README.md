@@ -68,6 +68,8 @@ uv run python examples/torch_fx_frontend_demo.py
 - `docs/torch_frontend_coverage.md`: support matrix for Torch FX capture
 - `docs/research_outline.md`: paper-shaped outline and evaluation plan
 - `docs/handoff_next_layer.md`: current state and next-layer handoff
+- `whitepaper/main.tex`: first-draft whitepaper source and completion criteria
+- `AGENTS.md`: operating contract for issue-driven, worktree-based agent loops
 
 ## Crisp Contribution
 
