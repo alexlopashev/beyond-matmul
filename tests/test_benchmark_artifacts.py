@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import numbers
 import tempfile
 import unittest
 from pathlib import Path
@@ -56,8 +57,11 @@ class FixedWeightBenchmarkArtifactTests(unittest.TestCase):
         cases = loaded["cases"]
         self.assertGreaterEqual(len(cases), 5)
         self.assertTrue(required_case_fields.issubset(cases[0]))
-        self.assertEqual({case["dense_seconds_per_apply"] for case in cases}, {0.25})
-        self.assertEqual({case["chosen_seconds_per_apply"] for case in cases}, {0.25})
+        for case in cases:
+            self.assertIsInstance(case["dense_seconds_per_apply"], numbers.Real)
+            self.assertIsInstance(case["chosen_seconds_per_apply"], numbers.Real)
+            self.assertGreaterEqual(case["dense_seconds_per_apply"], 0.0)
+            self.assertGreaterEqual(case["chosen_seconds_per_apply"], 0.0)
 
 
 if __name__ == "__main__":

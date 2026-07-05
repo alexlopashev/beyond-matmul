@@ -46,5 +46,11 @@ jobs:
       - name: Run Torch coverage demo
         run: mise exec -- uv run python examples/torch_coverage_demo.py
 
-      - name: Run benchmark smoke test
-        run: mise exec -- uv run python benchmarks/fixed_weight.py
+      - name: Run benchmark smoke test and JSON artifact
+        run: mise exec -- uv run python benchmarks/fixed_weight.py --json-output docs/results/fixed_weight.json
+
+      - name: Upload fixed-weight benchmark JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixed-weight-benchmark-json
+          path: docs/results/fixed_weight.json

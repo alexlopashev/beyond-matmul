@@ -1,7 +1,9 @@
 # Benchmark Artifacts
 
 `benchmarks/fixed_weight.py` can emit a machine-readable JSON artifact while
-preserving the human-readable smoke table used by local CI.
+preserving the human-readable smoke table used by local CI. CI uploads
+`docs/results/fixed_weight.json` as the workflow artifact
+`fixed-weight-benchmark-json`.
 
 Regenerate the fixed-weight benchmark artifact with:
 
