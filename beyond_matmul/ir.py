@@ -455,3 +455,108 @@ class Convolution1DOperator(LinearOperator):
                     total += value * input_row[out_index + kernel_index]
                 outputs[batch_index][out_index] = total
         return outputs
+
+
+@dataclass
+class MultiChannelConvolution1DOperator(LinearOperator):
+    weight: Sequence[Sequence[Sequence[float]]]
+    input_length: int
+    mode: str = "valid"
+    provenance: Optional[Provenance] = None
+    metadata: Optional[OperatorMetadata] = None
+
+    def __post_init__(self) -> None:
+        weight = self._checked_weight(self.weight)
+        if self.mode != "valid":
+            raise ValueError("only valid multi-channel 1D convolution is implemented in the prototype")
+        kernel_size = len(weight[0][0])
+        if self.input_length < kernel_size:
+            raise ValueError("input length must be at least kernel length")
+        self.weight = weight
+        out_channels = len(weight)
+        in_channels = len(weight[0])
+        output_length = self.input_length - kernel_size + 1
+        self.metadata = _metadata(
+            kind="conv1d_channel",
+            shape=(out_channels * output_length, in_channels * self.input_length),
+            metadata=self.metadata,
+            provenance=self.provenance,
+            structure={
+                "out_channels": out_channels,
+                "in_channels": in_channels,
+                "kernel_size": kernel_size,
+                "input_length": self.input_length,
+                "output_length": output_length,
+                "mode": self.mode,
+                "lowering": "block_toeplitz",
+            },
+            lowerings=("conv1d_channel_direct", "dense_gemm"),
+        )
+
+    @staticmethod
+    def _checked_weight(values: Sequence[Sequence[Sequence[float]]]) -> List[List[List[float]]]:
+        weight: List[List[List[float]]] = []
+        if not values:
+            raise ValueError("conv1d weight must have at least one output channel")
+        expected_in_channels: Optional[int] = None
+        expected_kernel_size: Optional[int] = None
+        for out_channel in values:
+            if not out_channel:
+                raise ValueError("conv1d weight must have at least one input channel")
+            checked_out: List[List[float]] = []
+            if expected_in_channels is None:
+                expected_in_channels = len(out_channel)
+            elif len(out_channel) != expected_in_channels:
+                raise ValueError("conv1d output channels must share the same input-channel count")
+            for kernel in out_channel:
+                checked_kernel = la.as_vector(kernel)
+                if expected_kernel_size is None:
+                    expected_kernel_size = len(checked_kernel)
+                elif len(checked_kernel) != expected_kernel_size:
+                    raise ValueError("conv1d kernels must all have the same length")
+                checked_out.append(checked_kernel)
+            weight.append(checked_out)
+        return weight
+
+    @property
+    def out_channels(self) -> int:
+        return int(self.metadata.structure["out_channels"])
+
+    @property
+    def in_channels(self) -> int:
+        return int(self.metadata.structure["in_channels"])
+
+    @property
+    def kernel_size(self) -> int:
+        return int(self.metadata.structure["kernel_size"])
+
+    @property
+    def output_length(self) -> int:
+        return int(self.metadata.structure["output_length"])
+
+    def to_dense(self) -> la.Matrix:
+        dense = la.zeros(self.out_features, self.in_features)
+        for out_channel, channel_weight in enumerate(self.weight):
+            for out_position in range(self.output_length):
+                out_index = out_channel * self.output_length + out_position
+                for in_channel, kernel in enumerate(channel_weight):
+                    input_offset = in_channel * self.input_length
+                    for kernel_index, value in enumerate(kernel):
+                        dense[out_index][input_offset + out_position + kernel_index] = value
+        return dense
+
+    def apply(self, inputs: Sequence[Sequence[float]] | Sequence[float]) -> la.Matrix:
+        batch = la.ensure_batch(inputs)
+        if any(len(row) != self.in_features for row in batch):
+            raise ValueError("input width does not match multi-channel convolution operator")
+        outputs = la.zeros(len(batch), self.out_features)
+        for batch_index, input_row in enumerate(batch):
+            for out_channel, channel_weight in enumerate(self.weight):
+                for out_position in range(self.output_length):
+                    total = 0.0
+                    for in_channel, kernel in enumerate(channel_weight):
+                        input_offset = in_channel * self.input_length
+                        for kernel_index, value in enumerate(kernel):
+                            total += value * input_row[input_offset + out_position + kernel_index]
+                    outputs[batch_index][out_channel * self.output_length + out_position] = total
+        return outputs

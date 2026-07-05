@@ -8,7 +8,7 @@ from beyond_matmul.frontend import (
     capture_torch_named_adapter_operators,
     extract_torch_fx_low_rank_operators,
 )
-from beyond_matmul.ir import AffineOperator, Convolution1DOperator, DenseOperator
+from beyond_matmul.ir import AffineOperator, Convolution1DOperator, DenseOperator, MultiChannelConvolution1DOperator
 from beyond_matmul.planner import PlanningRequest, plan_fixed_weight
 
 try:
@@ -106,7 +106,7 @@ class FrontendTests(unittest.TestCase):
             Conv1d([[[1.0, 2.0, 3.0]]], stride=2),
             Conv1d([[[1.0, 2.0, 3.0]]], padding=1),
             Conv1d([[[1.0, 2.0, 3.0]]], dilation=2),
-            Conv1d([[[1.0, 2.0, 3.0]], [[4.0, 5.0, 6.0]]], in_channels=2),
+            Conv1d([[[1.0, 2.0, 3.0]]], groups=2),
         ]
         for module in unsupported_modules:
             with self.subTest(module=module):
@@ -118,6 +118,86 @@ class FrontendTests(unittest.TestCase):
                 graph_module.graph.nodes = [x, conv]
 
                 self.assertEqual(extract_torch_fx_operators(graph_module), {})
+
+    def test_extracts_fake_multi_channel_conv1d_module(self):
+        graph_module = FakeGraphModule([])
+        graph_module.conv = Conv1d(
+            [
+                [[1.0, 0.5, -1.0], [0.25, 2.0, -0.5]],
+                [[-1.5, 0.75, 0.25], [1.25, -0.25, 0.5]],
+            ],
+            bias=[0.1, -0.2],
+            in_channels=2,
+            out_channels=2,
+        )
+        x = FakeNode("x", "placeholder", "x")
+        x.meta["tensor_meta"] = FakeTensorMeta((1, 2, 5))
+        conv = FakeNode("conv", "call_module", "conv", args=(x,))
+        graph_module.graph.nodes = [x, conv]
+
+        captured = extract_torch_fx_operators(graph_module)
+
+        self.assertIn("conv", captured)
+        operator = captured["conv"].operator
+        self.assertIsInstance(operator, AffineOperator)
+        self.assertIsInstance(operator.linear, MultiChannelConvolution1DOperator)
+        self.assertEqual(operator.shape, (6, 10))
+        self.assertEqual(operator.bias, [0.1, 0.1, 0.1, -0.2, -0.2, -0.2])
+        self.assertEqual(captured["conv"].event.notes["capture"], "conv1d_module")
+
+    def test_extracts_fake_functional_conv1d(self):
+        graph_module = FakeGraphModule([])
+        graph_module.weight = [
+            [[1.0, 0.5, -1.0], [0.25, 2.0, -0.5]],
+            [[-1.5, 0.75, 0.25], [1.25, -0.25, 0.5]],
+        ]
+        graph_module.bias = [0.1, -0.2]
+
+        x = FakeNode("x", "placeholder", "x")
+        x.meta["tensor_meta"] = FakeTensorMeta((1, 2, 5))
+        weight = FakeNode("weight", "get_attr", "weight")
+        bias = FakeNode("bias", "get_attr", "bias")
+        conv = FakeNode("conv1d", "call_function", "torch.nn.functional.conv1d", args=(x, weight, bias))
+        graph_module.graph.nodes = [x, weight, bias, conv]
+
+        captured = extract_torch_fx_operators(graph_module)
+
+        self.assertIn("conv1d", captured)
+        operator = captured["conv1d"].operator
+        self.assertIsInstance(operator, AffineOperator)
+        self.assertIsInstance(operator.linear, MultiChannelConvolution1DOperator)
+        self.assertEqual(operator.shape, (6, 10))
+        self.assertEqual(operator.bias, [0.1, 0.1, 0.1, -0.2, -0.2, -0.2])
+        self.assertEqual(captured["conv1d"].event.notes["capture"], "conv1d_function")
+
+    def test_ignores_unsupported_fake_functional_conv1d_variants(self):
+        graph_module = FakeGraphModule([])
+        graph_module.weight = [[[1.0, 2.0, 3.0]]]
+        graph_module.bias = [0.1]
+
+        x = FakeNode("x", "placeholder", "x")
+        x.meta["tensor_meta"] = FakeTensorMeta((1, 1, 5))
+        dynamic_weight = FakeNode("dynamic_weight", "placeholder", "dynamic_weight")
+        dynamic_bias = FakeNode("dynamic_bias", "placeholder", "dynamic_bias")
+        weight = FakeNode("weight", "get_attr", "weight")
+        bias = FakeNode("bias", "get_attr", "bias")
+        dynamic_weight_conv = FakeNode("conv1d", "call_function", "torch.nn.functional.conv1d", args=(x, dynamic_weight, bias))
+        dynamic_bias_conv = FakeNode("conv1d_1", "call_function", "torch.nn.functional.conv1d", args=(x, weight, dynamic_bias))
+        strided_conv = FakeNode("conv1d_2", "call_function", "torch.nn.functional.conv1d", args=(x, weight, bias), kwargs={"stride": 2})
+        grouped_conv = FakeNode("conv1d_3", "call_function", "torch.nn.functional.conv1d", args=(x, weight, bias), kwargs={"groups": 2})
+        graph_module.graph.nodes = [
+            x,
+            dynamic_weight,
+            dynamic_bias,
+            weight,
+            bias,
+            dynamic_weight_conv,
+            dynamic_bias_conv,
+            strided_conv,
+            grouped_conv,
+        ]
+
+        self.assertEqual(extract_torch_fx_operators(graph_module), {})
 
     def test_extracts_fixed_weight_matmul_pattern_as_dense(self):
         graph_module = FakeGraphModule([])
@@ -450,6 +530,122 @@ class FrontendTests(unittest.TestCase):
             PlanningRequest(batch_size=len(input_rows), calls=32, sample_inputs=input_rows, codebook_sizes=(2,)),
         )
         self.assertEqual(plan.selected.name, "conv1d_direct_bias")
+        self.assertTrue(plan.selected.exact)
+
+    @unittest.skipIf(torch is None, "PyTorch is not installed")
+    def test_captures_real_multi_channel_torch_conv1d_module(self):
+        class MultiChannelConv(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.conv = nn.Conv1d(2, 2, kernel_size=3, bias=False)
+                with torch.no_grad():
+                    self.conv.weight.copy_(
+                        torch.tensor([
+                            [[1.0, 0.5, -1.0], [0.25, 2.0, -0.5]],
+                            [[-1.5, 0.75, 0.25], [1.25, -0.25, 0.5]],
+                        ])
+                    )
+
+            def forward(self, x):
+                return self.conv(x)
+
+        module = MultiChannelConv().eval()
+        torch_input = torch.tensor([
+            [[1.0, 2.0, 3.0, 4.0, 5.0], [-1.0, 0.5, 2.0, -2.0, 1.5]],
+            [[0.0, -1.0, 1.5, 2.5, -0.5], [2.0, -0.5, 1.0, 0.25, -1.5]],
+        ])
+        input_rows = torch_input.flatten(1).tolist()
+
+        captured = capture_torch_fx_operators(module, sample_inputs=torch_input)
+
+        self.assertIn("conv", captured)
+        operator = captured["conv"].operator
+        self.assertIsInstance(operator, MultiChannelConvolution1DOperator)
+        self.assertEqual(operator.shape, (6, 10))
+        self.assertMatrixAlmostEqual(operator.apply(input_rows), DenseOperator(operator.to_dense()).apply(input_rows))
+        self.assertMatrixAlmostEqual(operator.apply(input_rows), module(torch_input).detach().flatten(1).tolist())
+
+        plan = plan_fixed_weight(
+            operator,
+            PlanningRequest(batch_size=len(input_rows), calls=32, sample_inputs=input_rows, codebook_sizes=(2,)),
+        )
+        self.assertEqual(plan.selected.name, "conv1d_channel_direct")
+        self.assertTrue(plan.selected.exact)
+
+    @unittest.skipIf(torch is None, "PyTorch is not installed")
+    def test_captures_real_functional_torch_conv1d_without_bias(self):
+        class FunctionalConv(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.register_buffer("weight", torch.tensor([[[1.0, -2.0, 0.5]]]))
+
+            def forward(self, x):
+                return F.conv1d(x, self.weight)
+
+        module = FunctionalConv().eval()
+        torch_input = torch.tensor([
+            [[1.0, 0.0, -1.0, 2.0, 0.5]],
+            [[0.5, -1.5, 1.0, 0.0, 2.0]],
+        ])
+        input_rows = torch_input.squeeze(1).tolist()
+
+        captured = capture_torch_fx_operators(module, sample_inputs=torch_input)
+        functional = next((item for item in captured.values() if item.event.notes.get("capture") == "conv1d_function"), None)
+
+        self.assertIsNotNone(functional)
+        operator = functional.operator
+        self.assertIsInstance(operator, Convolution1DOperator)
+        self.assertEqual(operator.shape, (3, 5))
+        self.assertMatrixAlmostEqual(operator.apply(input_rows), module(torch_input).detach().squeeze(1).tolist())
+
+        plan = plan_fixed_weight(
+            operator,
+            PlanningRequest(batch_size=len(input_rows), calls=32, sample_inputs=input_rows, codebook_sizes=(2,)),
+        )
+        self.assertEqual(plan.selected.name, "conv1d_direct")
+        self.assertTrue(plan.selected.exact)
+
+    @unittest.skipIf(torch is None, "PyTorch is not installed")
+    def test_captures_real_functional_torch_conv1d_as_affine(self):
+        class FunctionalConv(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.register_buffer(
+                    "weight",
+                    torch.tensor([
+                        [[1.0, 0.5, -1.0], [0.25, 2.0, -0.5]],
+                        [[-1.5, 0.75, 0.25], [1.25, -0.25, 0.5]],
+                    ]),
+                )
+                self.register_buffer("bias", torch.tensor([0.1, -0.2]))
+
+            def forward(self, x):
+                return F.conv1d(x, self.weight, self.bias)
+
+        module = FunctionalConv().eval()
+        torch_input = torch.tensor([
+            [[1.0, 2.0, 3.0, 4.0, 5.0], [-1.0, 0.5, 2.0, -2.0, 1.5]],
+            [[0.0, -1.0, 1.5, 2.5, -0.5], [2.0, -0.5, 1.0, 0.25, -1.5]],
+        ])
+        input_rows = torch_input.flatten(1).tolist()
+
+        captured = capture_torch_fx_operators(module, sample_inputs=torch_input)
+        functional = next((item for item in captured.values() if item.event.notes.get("capture") == "conv1d_function"), None)
+
+        self.assertIsNotNone(functional)
+        operator = functional.operator
+        self.assertIsInstance(operator, AffineOperator)
+        self.assertIsInstance(operator.linear, MultiChannelConvolution1DOperator)
+        self.assertEqual(operator.shape, (6, 10))
+        for actual, expected in zip(operator.bias, [0.1, 0.1, 0.1, -0.2, -0.2, -0.2]):
+            self.assertAlmostEqual(actual, expected)
+        self.assertMatrixAlmostEqual(operator.apply(input_rows), module(torch_input).detach().flatten(1).tolist())
+
+        plan = plan_fixed_weight(
+            operator,
+            PlanningRequest(batch_size=len(input_rows), calls=32, sample_inputs=input_rows, codebook_sizes=(2,)),
+        )
+        self.assertEqual(plan.selected.name, "conv1d_channel_direct_bias")
         self.assertTrue(plan.selected.exact)
 
     @unittest.skipIf(torch is None, "PyTorch is not installed")

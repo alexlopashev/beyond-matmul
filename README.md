@@ -59,8 +59,8 @@ uv run python examples/torch_fx_frontend_demo.py
   low-rank linear pattern before densification
 - `examples/adapter_workload_demo.py`: tiny PyTorch adapter case study with a
   merged dense weight and recovered low-rank factors
-- `examples/conv1d_workload_demo.py`: tiny PyTorch Conv1d case study comparing
-  convolution provenance against dense materialization
+- `examples/conv1d_workload_demo.py`: tiny PyTorch module and functional Conv1d
+  case study comparing convolution provenance against dense materialization
 - `examples/torch_coverage_demo.py`: Torch frontend coverage smoke demo for
   supported fixed-weight patterns
 - `docs/taxonomy.md`: taxonomy of dense lowerings and lost structure

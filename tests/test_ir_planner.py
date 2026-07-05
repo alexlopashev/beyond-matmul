@@ -8,6 +8,7 @@ from beyond_matmul.ir import (
     DenseOperator,
     DiagonalOperator,
     LowRankOperator,
+    MultiChannelConvolution1DOperator,
     SparseCOOOperator,
 )
 from beyond_matmul.planner import PlanningRequest, plan_fixed_weight
@@ -37,6 +38,19 @@ class OperatorTests(unittest.TestCase):
     def test_conv1d_to_dense(self):
         conv = Convolution1DOperator([1.0, -1.0, 2.0], input_length=5)
         inputs = [[1.0, 2.0, 3.0, 4.0, 5.0]]
+        self.assertEqual(conv.apply(inputs), DenseOperator(conv.to_dense()).apply(inputs))
+
+    def test_multi_channel_conv1d_to_dense(self):
+        conv = MultiChannelConvolution1DOperator(
+            [
+                [[1.0, 0.5, -1.0], [0.25, 2.0, -0.5]],
+                [[-1.5, 0.75, 0.25], [1.25, -0.25, 0.5]],
+            ],
+            input_length=5,
+        )
+        inputs = [[1.0, 2.0, 3.0, 4.0, 5.0, -1.0, 0.5, 2.0, -2.0, 1.5]]
+
+        self.assertEqual(conv.shape, (6, 10))
         self.assertEqual(conv.apply(inputs), DenseOperator(conv.to_dense()).apply(inputs))
 
 
@@ -81,6 +95,24 @@ class PlannerTests(unittest.TestCase):
         plan = plan_fixed_weight(weight, request)
 
         self.assertEqual(plan.selected.name, "low_rank_product_bias")
+        self.assertTrue(plan.selected.exact)
+        self.assertEqual(plan.selected.operator.apply(inputs), weight.apply(inputs))
+
+    def test_planner_preserves_affine_multi_channel_conv1d_bias(self):
+        conv = MultiChannelConvolution1DOperator(
+            [
+                [[1.0, 0.5, -1.0], [0.25, 2.0, -0.5]],
+                [[-1.5, 0.75, 0.25], [1.25, -0.25, 0.5]],
+            ],
+            input_length=5,
+        )
+        weight = AffineOperator(conv, [0.1, 0.1, 0.1, -0.2, -0.2, -0.2])
+        inputs = [[1.0, 2.0, 3.0, 4.0, 5.0, -1.0, 0.5, 2.0, -2.0, 1.5]]
+        request = PlanningRequest(batch_size=1, calls=32, sample_inputs=inputs, codebook_sizes=(2,))
+
+        plan = plan_fixed_weight(weight, request)
+
+        self.assertEqual(plan.selected.name, "conv1d_channel_direct_bias")
         self.assertTrue(plan.selected.exact)
         self.assertEqual(plan.selected.operator.apply(inputs), weight.apply(inputs))
 

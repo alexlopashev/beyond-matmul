@@ -19,6 +19,7 @@ from beyond_matmul.ir import (
     DiagonalOperator,
     LinearOperator,
     LowRankOperator,
+    MultiChannelConvolution1DOperator,
     Provenance,
 )
 
@@ -178,7 +179,7 @@ def extract_torch_fx_operators(graph_module: Any) -> Dict[str, CapturedOperator]
     nodes = list(_iter_fx_nodes(graph_module))
     for node in nodes:
         if _is_conv1d_node(graph_module, node):
-            captured_operator = _capture_conv1d_module(graph_module, node)
+            captured_operator = _capture_conv1d(graph_module, node)
             if captured_operator is not None:
                 captured[captured_operator.name] = captured_operator
             continue
@@ -334,15 +335,33 @@ def _captured_low_rank_or_affine(
     return CapturedOperator(name=event.name, operator=operator, event=event)
 
 
+def _capture_conv1d(graph_module: Any, node: Any) -> Optional[CapturedOperator]:
+    op = getattr(node, "op", None)
+    if op == "call_module":
+        return _capture_conv1d_module(graph_module, node)
+    if op == "call_function":
+        return _capture_conv1d_function(graph_module, node)
+    return None
+
+
 def _capture_conv1d_module(graph_module: Any, node: Any) -> Optional[CapturedOperator]:
     module = _maybe_resolve_attr(graph_module, str(getattr(node, "target", "")))
     if module is None or not _is_supported_conv1d_module(module):
         return None
-    kernel = _conv1d_kernel(module)
-    if kernel is None:
+    weight = _conv1d_weight(getattr(module, "weight", None))
+    if weight is None:
         return None
-    input_length = _conv1d_input_length(graph_module, node, module)
-    if input_length is None:
+    module_in_channels = _positive_int(getattr(module, "in_channels", None))
+    module_out_channels = _positive_int(getattr(module, "out_channels", None))
+    if module_in_channels is not None and module_in_channels != len(weight[0]):
+        return None
+    if module_out_channels is not None and module_out_channels != len(weight):
+        return None
+    input_shape = _conv1d_input_shape(graph_module, node, module, weight)
+    if input_shape is None:
+        return None
+    input_channels, input_length = input_shape
+    if input_channels != len(weight[0]):
         return None
     name = str(getattr(node, "name", "torch_fx_conv1d"))
     target = str(getattr(node, "target", name))
@@ -356,22 +375,92 @@ def _capture_conv1d_module(graph_module: Any, node: Any) -> Optional[CapturedOpe
     )
     notes = {
         "module": target,
-        "kernel_size": str(len(kernel)),
-        "input_length": str(input_length),
         "capture": "conv1d_module",
     }
+    return _captured_conv1d_operator(name, weight, getattr(module, "bias", None), input_length, provenance, notes)
+
+
+def _capture_conv1d_function(graph_module: Any, node: Any) -> Optional[CapturedOperator]:
+    args = list(getattr(node, "args", ()) or ())
+    kwargs = dict(getattr(node, "kwargs", {}) or {})
+    if len(args) < 2:
+        return None
+    activation, weight_operand = args[0], args[1]
+    if not _is_runtime_activation_operand(activation):
+        return None
+    bias_operand = args[2] if len(args) >= 3 else kwargs.get("bias")
+    stride = args[3] if len(args) >= 4 else kwargs.get("stride", 1)
+    padding = args[4] if len(args) >= 5 else kwargs.get("padding", 0)
+    dilation = args[5] if len(args) >= 6 else kwargs.get("dilation", 1)
+    groups = args[6] if len(args) >= 7 else kwargs.get("groups", 1)
+    if not _conv1d_parameters_supported(stride, padding, dilation, groups):
+        return None
+    weight = _node_value_as_conv1d_weight(graph_module, weight_operand)
+    if weight is None:
+        return None
+    input_shape = _node_conv1d_input_shape(activation)
+    if input_shape is None:
+        return None
+    input_channels, input_length = input_shape
+    if input_channels != len(weight[0]):
+        return None
+
+    name = str(getattr(node, "name", "torch_fx_conv1d"))
+    weight_source = _source_name(weight_operand) or "fixed_weight"
+    bias_source = _source_name(bias_operand) if bias_operand is not None else "none"
+    provenance = Provenance(
+        source=name,
+        framework="torch.fx",
+        expression="torch.nn.functional.conv1d(x, weight)",
+        inputs=(_source_name(activation) or "activation", weight_source),
+        transform_history=("torch.fx symbolic_trace", "conv1d_function_pattern"),
+        confidence=0.9,
+    )
+    notes = {
+        "capture": "conv1d_function",
+        "weight": weight_source,
+        "bias": bias_source or "none",
+    }
+    return _captured_conv1d_operator(name, weight, _node_value(graph_module, bias_operand), input_length, provenance, notes)
+
+
+def _captured_conv1d_operator(
+    name: str,
+    weight: Sequence[Sequence[Sequence[float]]],
+    bias_value: Any,
+    input_length: int,
+    provenance: Provenance,
+    notes: Dict[str, str],
+) -> Optional[CapturedOperator]:
+    out_channels = len(weight)
+    in_channels = len(weight[0])
+    kernel_size = len(weight[0][0])
+    output_length = input_length - kernel_size + 1
+    if output_length <= 0:
+        return None
+    notes = {
+        **notes,
+        "out_channels": str(out_channels),
+        "in_channels": str(in_channels),
+        "kernel_size": str(kernel_size),
+        "input_length": str(input_length),
+        "output_length": str(output_length),
+    }
     try:
-        linear = Convolution1DOperator(kernel, input_length=input_length, provenance=provenance)
-        bias = _conv1d_bias(module, output_length=linear.out_features)
+        if out_channels == 1 and in_channels == 1:
+            linear: LinearOperator = Convolution1DOperator(weight[0][0], input_length=input_length, provenance=provenance)
+        else:
+            linear = MultiChannelConvolution1DOperator(weight, input_length=input_length, provenance=provenance)
+        bias = _conv1d_bias(bias_value, out_channels=out_channels, output_length=output_length)
         if bias is None:
             return None
         operator: LinearOperator
         if _is_zero_vector(bias):
             operator = linear
-            op_type = "conv1d"
+            op_type = linear.metadata.kind
         else:
             operator = AffineOperator(linear, bias, provenance=provenance)
-            op_type = "affine_conv1d"
+            op_type = f"affine_{linear.metadata.kind}"
             notes = {**notes, "bias": "true"}
     except ValueError:
         return None
@@ -506,6 +595,8 @@ def _is_addmm_node(node: Any) -> bool:
 
 
 def _is_conv1d_node(graph_module: Any, node: Any) -> bool:
+    if getattr(node, "op", None) == "call_function":
+        return _target_has_name(getattr(node, "target", None), {"conv1d"})
     if getattr(node, "op", None) != "call_module":
         return False
     target_text = str(getattr(node, "target", ""))
@@ -518,68 +609,92 @@ def _is_conv1d_node(graph_module: Any, node: Any) -> bool:
 def _is_supported_conv1d_module(module: Any) -> bool:
     if type(module).__name__ != "Conv1d":
         return False
-    if _single_int(getattr(module, "stride", 1)) != 1:
-        return False
-    if _single_int(getattr(module, "padding", 0)) != 0:
-        return False
-    if _single_int(getattr(module, "dilation", 1)) != 1:
-        return False
-    if int(getattr(module, "groups", 1)) != 1:
-        return False
-    in_channels = getattr(module, "in_channels", 1)
-    out_channels = getattr(module, "out_channels", 1)
-    return int(in_channels) == 1 and int(out_channels) == 1
+    return _conv1d_parameters_supported(
+        getattr(module, "stride", 1),
+        getattr(module, "padding", 0),
+        getattr(module, "dilation", 1),
+        getattr(module, "groups", 1),
+    )
 
 
-def _conv1d_kernel(module: Any) -> Optional[List[float]]:
-    weight = _to_python_value(getattr(module, "weight", None))
-    if not isinstance(weight, (list, tuple)) or len(weight) != 1:
-        return None
-    in_channel_weights = weight[0]
-    if not isinstance(in_channel_weights, (list, tuple)) or len(in_channel_weights) != 1:
-        return None
-    kernel = in_channel_weights[0]
-    if not isinstance(kernel, (list, tuple)) or not kernel:
-        return None
-    if any(isinstance(value, (list, tuple)) for value in kernel):
-        return None
-    return [float(value) for value in kernel]
+def _conv1d_parameters_supported(stride: Any, padding: Any, dilation: Any, groups: Any) -> bool:
+    return _single_int(stride) == 1 and _single_int(padding) == 0 and _single_int(dilation) == 1 and _single_int(groups) == 1
 
 
-def _conv1d_bias(module: Any, output_length: int) -> Optional[List[float]]:
-    value = getattr(module, "bias", None)
+def _conv1d_weight(value: Any) -> Optional[List[List[List[float]]]]:
+    value = _to_python_value(value)
+    if not isinstance(value, (list, tuple)) or not value:
+        return None
+    weight: List[List[List[float]]] = []
+    expected_in_channels: Optional[int] = None
+    expected_kernel_size: Optional[int] = None
+    for out_channel in value:
+        if not isinstance(out_channel, (list, tuple)) or not out_channel:
+            return None
+        if expected_in_channels is None:
+            expected_in_channels = len(out_channel)
+        elif len(out_channel) != expected_in_channels:
+            return None
+        checked_out: List[List[float]] = []
+        for kernel in out_channel:
+            if not isinstance(kernel, (list, tuple)) or not kernel:
+                return None
+            if any(isinstance(item, (list, tuple)) for item in kernel):
+                return None
+            if expected_kernel_size is None:
+                expected_kernel_size = len(kernel)
+            elif len(kernel) != expected_kernel_size:
+                return None
+            checked_out.append([float(item) for item in kernel])
+        weight.append(checked_out)
+    return weight
+
+
+def _node_value_as_conv1d_weight(graph_module: Any, value: Any) -> Optional[List[List[List[float]]]]:
+    return _conv1d_weight(_node_value(graph_module, value))
+
+
+def _conv1d_bias(value: Any, out_channels: int, output_length: int) -> Optional[List[float]]:
     if value is None:
-        return [0.0 for _ in range(output_length)]
+        return [0.0 for _ in range(out_channels * output_length)]
     bias = _to_vector(value)
-    if bias is None or len(bias) != 1:
+    if bias is None or len(bias) != out_channels:
         return None
-    return [bias[0] for _ in range(output_length)]
+    return [bias[channel] for channel in range(out_channels) for _ in range(output_length)]
 
 
-def _conv1d_input_length(graph_module: Any, node: Any, module: Any) -> Optional[int]:
+def _conv1d_input_shape(
+    graph_module: Any,
+    node: Any,
+    module: Any,
+    weight: Sequence[Sequence[Sequence[float]]],
+) -> Optional[tuple[int, int]]:
     args = list(getattr(node, "args", ()) or ())
     if args:
-        length = _node_last_sequence_dim(args[0])
-        if length is not None:
-            return length
+        shape = _node_conv1d_input_shape(args[0])
+        if shape is not None:
+            return shape
     for owner in (module, graph_module):
         for attr_name in ("input_length", "sequence_length", "fixed_input_length"):
             length = _positive_int(getattr(owner, attr_name, None))
             if length is not None:
-                return length
+                return len(weight[0]), length
     return None
 
 
-def _node_last_sequence_dim(value: Any) -> Optional[int]:
+def _node_conv1d_input_shape(value: Any) -> Optional[tuple[int, int]]:
     shape = _shape_from_value(value)
     if shape is None:
         return None
     if len(shape) < 2:
         return None
     channel_dim = shape[-2]
-    if channel_dim is not None and channel_dim != 1:
+    sequence_dim = shape[-1]
+    if channel_dim is None or sequence_dim is None:
         return None
-    return shape[-1]
+    if channel_dim <= 0 or sequence_dim <= 0:
+        return None
+    return channel_dim, sequence_dim
 
 
 def _node_last_feature_dim(value: Any) -> Optional[int]:

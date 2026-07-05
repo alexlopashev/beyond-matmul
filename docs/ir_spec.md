@@ -8,7 +8,7 @@ The IR represents fixed-weight linear and affine maps with shape
 
 ```python
 OperatorMetadata(
-    kind="dense | diagonal | sparse_coo | low_rank | affine | conv1d | codebook | bitpacked_binary",
+    kind="dense | diagonal | sparse_coo | low_rank | affine | conv1d | conv1d_channel | codebook | bitpacked_binary",
     shape=(out_features, in_features),
     provenance=Provenance(
         source="framework node, compiler pass, analyzer, or fallback",
@@ -86,8 +86,23 @@ Lowerings: fused bias variants such as `low_rank_product_bias`, plus
 Convolution1DOperator(kernel=[1.0, -1.0, 2.0], input_length=128)
 ```
 
-Structure: Toeplitz dense equivalent, local kernel reuse.
+Structure: single-channel Toeplitz dense equivalent, local kernel reuse.
 Lowerings: `conv1d_direct`, `dense_gemm`.
+
+```python
+MultiChannelConvolution1DOperator(
+    weight=[
+        [[1.0, -1.0, 2.0], [0.5, 0.25, -0.5]],
+        [[-0.25, 0.75, 1.5], [1.0, -0.5, 0.25]],
+    ],
+    input_length=128,
+)
+```
+
+Structure: block-Toeplitz dense equivalent for fixed valid Conv1d. Input rows
+flatten `(in_channels, input_length)` and output rows flatten
+`(out_channels, output_length)` in channel-major order.
+Lowerings: `conv1d_channel_direct`, `dense_gemm`.
 
 ### Sparse
 
