@@ -7,14 +7,16 @@ name = "beyond-matmul"
 version = "0.1.0"
 description = "Provenance-aware linear operator IR and fixed-weight lowering planner."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [{ name = "Beyond Matmul Contributors" }]
 license = { text = "MIT" }
-dependencies = []
+dependencies = [
+    "numpy>=1.24",
+    "torch==2.12.1",
+]
 
 [project.optional-dependencies]
 dev = []
-numpy = ["numpy>=1.24"]
 
 [tool.setuptools.packages.find]
 include = ["beyond_matmul*"]
