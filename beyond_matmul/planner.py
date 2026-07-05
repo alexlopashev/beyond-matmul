@@ -192,6 +192,9 @@ def _estimate_memory_bytes(operator: LinearOperator) -> int:
         return codebook_size * 4 + code_bytes
     if kind == "bitpacked_binary":
         return 4 + ((out_features * in_features) + 7) // 8
+    if kind == "conv1d":
+        kernel_size = int(operator.metadata.structure["kernel_size"])
+        return kernel_size * 4
     return out_features * in_features * 4
 
 

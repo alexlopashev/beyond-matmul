@@ -117,39 +117,56 @@ def capture_torch_fx_patterns(module) -> List[TraceEvent]:
     return events
 
 
-def capture_torch_fx_linear_operators(module) -> Dict[str, CapturedOperator]:
-    """Trace a PyTorch module and capture structured linear operators.
+def capture_torch_fx_linear_operators(module, sample_inputs: Any = None) -> Dict[str, CapturedOperator]:
+    """Backward-compatible alias for Torch FX structured-operator capture."""
+
+    return capture_torch_fx_operators(module, sample_inputs=sample_inputs)
+
+
+def capture_torch_fx_operators(module, sample_inputs: Any = None) -> Dict[str, CapturedOperator]:
+    """Trace a PyTorch module and capture structured fixed-weight operators.
 
     The core pattern is a fixed-weight low-rank or affine low-rank projection:
 
         y = linear(linear(x, right), left)
 
     where `right` has shape `(rank, in_features)` and `left` has shape
-    `(out_features, rank)`. In dense form, this is equivalent to
-    `linear(x, left @ right)`, but preserving the two factors gives the planner
-    an exact low-rank lowering before the computation becomes anonymous dense
-    matrix multiplication.
+    `(out_features, rank)`. The broader helper also captures narrow fixed-weight
+    `nn.Conv1d` modules as `Convolution1DOperator` when an input length is known
+    from FX shape propagation or an explicit module hint.
     """
 
     try:
         import torch.fx as fx  # type: ignore
     except Exception as exc:  # pragma: no cover - depends on optional torch
-        raise RuntimeError("PyTorch is required for capture_torch_fx_linear_operators") from exc
+        raise RuntimeError("PyTorch is required for capture_torch_fx_operators") from exc
 
     graph_module = fx.symbolic_trace(module)
-    captured = extract_torch_fx_linear_operators(graph_module)
+    if sample_inputs is not None:
+        _propagate_torch_fx_shapes(graph_module, sample_inputs)
+    captured = extract_torch_fx_operators(graph_module)
     for name, operator in capture_torch_named_adapter_operators(module).items():
         captured.setdefault(name, operator)
     return captured
 
 
 def extract_torch_fx_low_rank_operators(graph_module: Any) -> Dict[str, CapturedOperator]:
-    """Backward-compatible alias for linear-operator FX extraction."""
+    """Backward-compatible low-rank-only FX extraction helper."""
 
-    return extract_torch_fx_linear_operators(graph_module)
+    return {
+        name: captured
+        for name, captured in extract_torch_fx_operators(graph_module).items()
+        if captured.event.op_type in {"low_rank_linear", "affine_low_rank_linear"}
+    }
 
 
 def extract_torch_fx_linear_operators(graph_module: Any) -> Dict[str, CapturedOperator]:
+    """Backward-compatible alias for Torch FX structured-operator extraction."""
+
+    return extract_torch_fx_operators(graph_module)
+
+
+def extract_torch_fx_operators(graph_module: Any) -> Dict[str, CapturedOperator]:
     """Extract low-rank linear operators from a traced FX graph-like object.
 
     The function accepts real `torch.fx.GraphModule` objects and lightweight
@@ -160,6 +177,11 @@ def extract_torch_fx_linear_operators(graph_module: Any) -> Dict[str, CapturedOp
     captured: Dict[str, CapturedOperator] = {}
     nodes = list(_iter_fx_nodes(graph_module))
     for node in nodes:
+        if _is_conv1d_node(graph_module, node):
+            captured_operator = _capture_conv1d_module(graph_module, node)
+            if captured_operator is not None:
+                captured[captured_operator.name] = captured_operator
+            continue
         if not _is_linear_node(graph_module, node):
             continue
         args = list(getattr(node, "args", ()) or ())
@@ -302,6 +324,63 @@ def _captured_low_rank_or_affine(
     return CapturedOperator(name=event.name, operator=operator, event=event)
 
 
+def _capture_conv1d_module(graph_module: Any, node: Any) -> Optional[CapturedOperator]:
+    module = _maybe_resolve_attr(graph_module, str(getattr(node, "target", "")))
+    if module is None or not _is_supported_conv1d_module(module):
+        return None
+    kernel = _conv1d_kernel(module)
+    if kernel is None:
+        return None
+    input_length = _conv1d_input_length(graph_module, node, module)
+    if input_length is None:
+        return None
+    name = str(getattr(node, "name", "torch_fx_conv1d"))
+    target = str(getattr(node, "target", name))
+    provenance = Provenance(
+        source=name,
+        framework="torch.fx",
+        expression="conv1d(x, weight)",
+        inputs=(target,),
+        transform_history=("torch.fx symbolic_trace", "conv1d_module_pattern"),
+        confidence=0.95,
+    )
+    notes = {
+        "module": target,
+        "kernel_size": str(len(kernel)),
+        "input_length": str(input_length),
+        "capture": "conv1d_module",
+    }
+    try:
+        linear = Convolution1DOperator(kernel, input_length=input_length, provenance=provenance)
+        bias = _conv1d_bias(module, output_length=linear.out_features)
+        if bias is None:
+            return None
+        operator: LinearOperator
+        if _is_zero_vector(bias):
+            operator = linear
+            op_type = "conv1d"
+        else:
+            operator = AffineOperator(linear, bias, provenance=provenance)
+            op_type = "affine_conv1d"
+            notes = {**notes, "bias": "true"}
+    except ValueError:
+        return None
+    event = TraceEvent(name=name, op_type=op_type, provenance=operator.metadata.provenance, notes=notes)
+    return CapturedOperator(name=event.name, operator=operator, event=event)
+
+
+def _propagate_torch_fx_shapes(graph_module: Any, sample_inputs: Any) -> None:
+    try:
+        from torch.fx.passes.shape_prop import ShapeProp  # type: ignore
+    except Exception as exc:  # pragma: no cover - depends on optional torch
+        raise RuntimeError("Torch FX shape propagation is required for sample_inputs") from exc
+    args = sample_inputs if isinstance(sample_inputs, tuple) else (sample_inputs,)
+    try:
+        ShapeProp(graph_module).propagate(*args)
+    except Exception as exc:  # pragma: no cover - depends on optional torch graph execution
+        raise RuntimeError("Torch FX shape propagation failed for sample_inputs") from exc
+
+
 def _iter_fx_nodes(graph_module: Any) -> Iterable[Any]:
     graph = getattr(graph_module, "graph", graph_module)
     return getattr(graph, "nodes", ())
@@ -319,6 +398,146 @@ def _is_linear_node(graph_module: Any, node: Any) -> bool:
             return True
         return "linear" in target_text.lower()
     return False
+
+
+def _is_conv1d_node(graph_module: Any, node: Any) -> bool:
+    if getattr(node, "op", None) != "call_module":
+        return False
+    target_text = str(getattr(node, "target", ""))
+    module = _maybe_resolve_attr(graph_module, target_text)
+    if module is not None and type(module).__name__ == "Conv1d":
+        return True
+    return "conv1d" in target_text.lower()
+
+
+def _is_supported_conv1d_module(module: Any) -> bool:
+    if type(module).__name__ != "Conv1d":
+        return False
+    if _single_int(getattr(module, "stride", 1)) != 1:
+        return False
+    if _single_int(getattr(module, "padding", 0)) != 0:
+        return False
+    if _single_int(getattr(module, "dilation", 1)) != 1:
+        return False
+    if int(getattr(module, "groups", 1)) != 1:
+        return False
+    in_channels = getattr(module, "in_channels", 1)
+    out_channels = getattr(module, "out_channels", 1)
+    return int(in_channels) == 1 and int(out_channels) == 1
+
+
+def _conv1d_kernel(module: Any) -> Optional[List[float]]:
+    weight = _to_python_value(getattr(module, "weight", None))
+    if not isinstance(weight, (list, tuple)) or len(weight) != 1:
+        return None
+    in_channel_weights = weight[0]
+    if not isinstance(in_channel_weights, (list, tuple)) or len(in_channel_weights) != 1:
+        return None
+    kernel = in_channel_weights[0]
+    if not isinstance(kernel, (list, tuple)) or not kernel:
+        return None
+    if any(isinstance(value, (list, tuple)) for value in kernel):
+        return None
+    return [float(value) for value in kernel]
+
+
+def _conv1d_bias(module: Any, output_length: int) -> Optional[List[float]]:
+    value = getattr(module, "bias", None)
+    if value is None:
+        return [0.0 for _ in range(output_length)]
+    bias = _to_vector(value)
+    if bias is None or len(bias) != 1:
+        return None
+    return [bias[0] for _ in range(output_length)]
+
+
+def _conv1d_input_length(graph_module: Any, node: Any, module: Any) -> Optional[int]:
+    args = list(getattr(node, "args", ()) or ())
+    if args:
+        length = _node_last_sequence_dim(args[0])
+        if length is not None:
+            return length
+    for owner in (module, graph_module):
+        for attr_name in ("input_length", "sequence_length", "fixed_input_length"):
+            length = _positive_int(getattr(owner, attr_name, None))
+            if length is not None:
+                return length
+    return None
+
+
+def _node_last_sequence_dim(value: Any) -> Optional[int]:
+    shape = _shape_from_value(value)
+    if shape is None:
+        return None
+    if len(shape) < 2:
+        return None
+    channel_dim = shape[-2]
+    if channel_dim is not None and channel_dim != 1:
+        return None
+    return shape[-1]
+
+
+def _shape_from_value(value: Any) -> Optional[tuple[int | None, ...]]:
+    direct_shape = _shape_tuple(getattr(value, "shape", None))
+    if direct_shape is not None:
+        return direct_shape
+    meta = getattr(value, "meta", None)
+    if not isinstance(meta, dict):
+        return None
+    for key in ("tensor_meta", "val"):
+        candidate = meta.get(key)
+        shape = _shape_tuple(getattr(candidate, "shape", None))
+        if shape is not None:
+            return shape
+    return None
+
+
+def _shape_tuple(shape: Any) -> Optional[tuple[int | None, ...]]:
+    if shape is None:
+        return None
+    try:
+        values = tuple(shape)
+    except TypeError:
+        return None
+    converted: List[int | None] = []
+    for value in values:
+        if value is None:
+            converted.append(None)
+            continue
+        try:
+            converted.append(int(value))
+        except (TypeError, ValueError):
+            converted.append(None)
+    if not converted or converted[-1] is None:
+        return None
+    return tuple(converted)
+
+
+def _single_int(value: Any) -> Optional[int]:
+    if isinstance(value, (list, tuple)):
+        if len(value) != 1:
+            return None
+        value = value[0]
+    return _positive_or_zero_int(value)
+
+
+def _positive_int(value: Any) -> Optional[int]:
+    integer = _positive_or_zero_int(value)
+    if integer is None or integer <= 0:
+        return None
+    return integer
+
+
+def _positive_or_zero_int(value: Any) -> Optional[int]:
+    if isinstance(value, bool):
+        return None
+    try:
+        integer = int(value)
+    except (TypeError, ValueError):
+        return None
+    if integer < 0:
+        return None
+    return integer
 
 
 def _linear_weight(graph_module: Any, node: Any) -> Optional[List[List[float]]]:
@@ -444,12 +663,7 @@ def _resolve_attr(obj: Any, path: str) -> Any:
 def _is_zero_value(value: Any, tolerance: float = 1e-12) -> bool:
     if value is None:
         return True
-    if hasattr(value, "detach"):
-        value = value.detach()
-    if hasattr(value, "cpu"):
-        value = value.cpu()
-    if hasattr(value, "tolist"):
-        value = value.tolist()
+    value = _to_python_value(value)
     flattened = _flatten_numeric(value)
     return flattened is not None and all(abs(item) <= tolerance for item in flattened)
 
@@ -472,15 +686,20 @@ def _flatten_numeric(value: Any) -> Optional[List[float]]:
     return flattened
 
 
-def _to_vector(value: Any) -> Optional[List[float]]:
-    if value is None:
-        return None
+def _to_python_value(value: Any) -> Any:
     if hasattr(value, "detach"):
         value = value.detach()
     if hasattr(value, "cpu"):
         value = value.cpu()
     if hasattr(value, "tolist"):
         value = value.tolist()
+    return value
+
+
+def _to_vector(value: Any) -> Optional[List[float]]:
+    if value is None:
+        return None
+    value = _to_python_value(value)
     if not isinstance(value, (list, tuple)) or not value:
         return None
     if any(isinstance(item, (list, tuple)) for item in value):
@@ -491,12 +710,7 @@ def _to_vector(value: Any) -> Optional[List[float]]:
 def _to_matrix(value: Any) -> Optional[List[List[float]]]:
     if value is None:
         return None
-    if hasattr(value, "detach"):
-        value = value.detach()
-    if hasattr(value, "cpu"):
-        value = value.cpu()
-    if hasattr(value, "tolist"):
-        value = value.tolist()
+    value = _to_python_value(value)
     if not isinstance(value, (list, tuple)) or not value:
         return None
     matrix: List[List[float]] = []
