@@ -349,6 +349,52 @@ evidence artifacts. They support claims about planner behavior, proxies, and
 case coverage; they do not establish hardware-calibrated speedups or production
 backend performance.
 
+\subsection{Recovery and Approximation Evaluation}
+
+The recovery evidence answers a narrower question than frontend preservation:
+when only a dense matrix remains, can the system expose plausible structure
+without pretending that the original computation is known? The current answer
+is yes for selected probes, with explicit uncertainty. Unit tests cover
+ambiguous dense matrices whose diagonal, sparse, codebook, and low-rank
+candidate confidences remain bounded rather than high-confidence by default.
+The fixed-weight demo then exercises the positive path on a materialized
+rank-four adapter matrix. Recovery emits low-rank candidates with confidence
+$1.0$ and output-relative validation errors at numerical-noise scale on the
+provided samples, while a diagonal candidate is rejected by validation with
+\texttt{output\_relative\_l2} near $0.996$ and a validation confidence cap of
+$0$. These numbers are evidence that confidence is now tied to probe details
+and sample validation; they are not calibration data. A different sample set or
+unseen deployment distribution can still invalidate a recovered approximation,
+so dense GEMM remains the exact fallback.
+
+The approximation ablation isolates why matrix reconstruction error is an
+insufficient acceptance rule. On the deterministic
+\texttt{dominant\_unused\_feature} case, the request allows approximate
+lowerings up to relative error $0.25$. A rank-one candidate has matrix-relative
+error $0.0685$ and a sparse top-k candidate has matrix-relative error $0.0688$,
+so a reconstruction-only rule would accept both. On the representative inputs,
+their output-relative errors are about $0.996$ and $1.0$, respectively, so the
+output-aware contract rejects both and selects \texttt{dense\_gemm}. The
+codebook and bitpacked candidates fail both matrix and output thresholds. This
+artifact supports the planner contract choice to score approximate lowerings
+against product or output behavior when samples exist. It does not claim that
+low-rank or sparse approximations are generally poor; it shows a small case
+where the two error notions lead to different qualitative decisions.
+
+The planner-contract ablation connects those error contracts to lowering
+selection. On the same rank-one-plus-noise fixed-weight case, an exact-only
+request selects \texttt{dense\_gemm} with zero relative error and an estimated
+cost proxy of $208$. A bounded-error request with $\epsilon=0.1$ selects
+\texttt{low\_rank\_product} with observed relative error about $0.00235$ and an
+estimated cost proxy of $157$, while keeping dense GEMM valid. Reuse contracts
+change validity before they change semantics: at seven requested calls the
+same preprocessing-heavy low-rank option is rejected because preprocessing does
+not amortize, and at eight calls it becomes valid and selected. Backend
+contracts are similarly explicit: a GPU request rejects an otherwise exact
+\texttt{codebook\_kernel} because the requested backend does not support that
+lowering, then selects the dense fallback. These costs are planner estimates in
+a deterministic artifact, not measured hardware timings.
+
 \section{Development Methodology}
 
 All code work should be test-driven and issue-driven. Each issue should be
