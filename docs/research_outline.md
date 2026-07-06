@@ -19,6 +19,9 @@ lowerings that are cheaper than dense GEMM for fixed-weight inference.
 6. A small approximation-error ablation that compares matrix reconstruction
    error with output-relative error for low-rank, sparse top-k, codebook, and
    bitpacked candidates.
+7. A concise evidence matrix in `docs/evidence_matrix.md` that maps major
+   whitepaper claims to tests, demos, benchmark artifacts, or future-work
+   boundaries.
 
 ## Prototype Modules
 
@@ -65,6 +68,9 @@ input set. In that case, low-rank and sparse top-k candidates pass a
 matrix-relative threshold but fail the same output-relative threshold, while
 codebook and bitpacked candidates fail both. This supports using output-aware
 scoring for planner acceptance, but it is not a broad model-quality study.
+
+For a reviewer-facing map from claims to executable support, see
+`docs/evidence_matrix.md`.
 
 ## Ablations
 
