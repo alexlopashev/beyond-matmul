@@ -21,7 +21,7 @@ current IR or capture rules need more design before claiming coverage.
 | Grouped/depthwise `Conv1d` | Supported | `MultiChannelConvolution1DOperator` or `AffineOperator` | Tested for fixed-weight `nn.Conv1d` modules and functional `conv1d`; preserves explicit `groups`, `group_type`, stride, padding, and dilation metadata. |
 | Stride/padding/dilation `Conv1d` variants | Supported | `Convolution1DOperator`, `MultiChannelConvolution1DOperator`, or `AffineOperator` | Scalar 1D parameters only; invalid output lengths and multi-dimensional parameter shapes are rejected. |
 | `Conv2d` | Unsupported | Not captured | Needs 2D convolution IR and layout decisions before frontend matching. |
-| Quantized linear/conv | Unsupported | Not captured | Needs quantization-aware IR mapping rather than lossy dense recovery. |
+| Quantized linear/conv | Unsupported | Not captured | Contract is defined in `docs/ir_spec.md`, but capture needs the packed payload mapping tracked by #52 for per-tensor affine integer weights and explicit exclusions for per-axis cases. |
 | Exported graph fixed-weight `addmm` and nested linear | Supported | `DenseOperator`, `AffineOperator(DenseOperator)`, `LowRankOperator`, or `AffineOperator(LowRankOperator)` | Recovers fixed parameter/buffer values through graph signature state, with provenance notes marking exported recovery. |
 | Dynamic-weight matmul/addmm | Unsupported | Not captured | Fixed-weight reuse is the scope; runtime weights are ignored cleanly. |
 
@@ -62,3 +62,14 @@ partitions with explicit `groups`, `input_channels_per_group`, and
 grouped/depthwise functional forms against PyTorch outputs. Unsupported
 parameter shapes, invalid output lengths, dynamic weights, and dynamic bias
 values are ignored cleanly rather than captured as structured Conv1d.
+
+Quantized module capture remains unsupported even though the IR now documents a
+fixed-weight quantization contract. `CodebookOperator` and
+`BitpackedBinaryOperator` can preserve codebook and tensor-wide scaled binary
+payloads, and dense dequantization remains a fallback. The Torch frontend does
+not yet recover quantized `nn.Linear` or convolution modules because per-tensor
+affine integer payloads, packed storage layouts, and intentionally unsupported
+per-channel or per-axis quantization cases still need executable capture rules
+and tests. Until then, frontend recovery must not silently dequantize a
+quantized module into `DenseOperator` and call that provenance-preserving
+quantized capture.

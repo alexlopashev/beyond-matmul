@@ -49,5 +49,6 @@ executable IR payloads for:
 `capture_torch_fx_linear_operators` remains as a backward-compatible alias.
 
 See `docs/torch_frontend_coverage.md` for the current support matrix. Open
-frontend targets remain quantized modules, Conv2d, and broader exported graph
+frontend targets remain quantized modules with executable packed-payload rules,
+Conv2d, and broader exported graph
 operator coverage.

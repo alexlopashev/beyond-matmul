@@ -88,8 +88,8 @@ Real workload case studies still future work:
   dynamic sequence behavior are outside the current fixed-weight linear IR
   boundary.
 - Embedding plus projection in a language model.
-- Quantized linear or convolutional modules once the IR can represent their
-  contracts honestly.
+- Quantized linear or convolutional modules once frontend capture has
+  executable packed-payload rules for the documented quantization contracts.
 
 Metrics:
 
