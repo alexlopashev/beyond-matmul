@@ -336,16 +336,63 @@ requested calls. The Conv1d rows select direct Conv1d lowerings with zero
 output-relative error rather than first materializing an equivalent dense
 matrix.
 
-The workload case-study artifact is evidence for provenance preservation, not
-timing performance. It records a merged LoRA-style adapter selecting
-\texttt{low\_rank\_product\_bias}, an \texttt{nn.Conv1d} module selecting
-\texttt{conv1d\_channel\_direct}, and a functional fixed-bias Conv1d selecting
-\texttt{conv1d\_channel\_direct\_bias}. It also records grouped/depthwise
-Conv1d rows and a fixed causal-band mask selecting
-\texttt{fixed\_mask\_sparse}. Each row records output-relative error against
-the reference workload, planner cost and memory proxies, dense fallback fields,
-and an explicit \texttt{measured\_timing: false} boundary. The fixed-mask row
-does not claim full masked attention support.
+\subsection{Workload Case-study Evaluation}
+
+The workload case-study artifact is regenerated with \texttt{mise exec -- uv
+run python examples/case\_study\_artifacts.py --json-output
+docs/results/workload\_case\_studies.json}. It is evidence for provenance
+preservation and planner choice, not timing performance. The artifact records a
+merged LoRA-style adapter, multi-channel \texttt{nn.Conv1d}, functional
+fixed-bias \texttt{conv1d}, grouped \texttt{nn.Conv1d}, depthwise functional
+\texttt{conv1d}, and a fixed causal-band mask represented as a sparse linear
+map. For each row, the public fields include the captured operator kind, shape,
+lowerings, provenance notes, selected lowering, output-relative error against
+the reference workload, dense fallback lowering, planner cost proxy, memory
+proxy, and an explicit \texttt{measured\_timing: false} boundary.
+
+The adapter case shows a provenance-only planner opportunity. The Torch module
+executes with a merged dense adapter weight, but the capture pass can associate
+the nearby \texttt{lora\_A}/\texttt{lora\_B} factors with that merged weight.
+With that provenance preserved, the planner selects
+\texttt{low\_rank\_product\_bias}; after dense materialization, the valid
+fallback is \texttt{dense\_gemm\_bias}. The case-study row checks the selected
+operator against the Torch module with near-zero output-relative error and
+records the same planner proxy fields for the dense fallback. This supports the
+claim that adapter provenance changes the available lowering choices even when
+the numerical dense matrix is still a valid fallback. It does not prove a
+hardware speedup or broad adapter coverage beyond the named-factor pattern
+captured by the frontend.
+
+The Conv1d rows exercise a different form of lost structure. Module,
+functional, grouped, and depthwise cases preserve channel, group, stride,
+padding, dilation, bias, and output-shape provenance before the operation can
+be flattened into an equivalent dense matrix. The planner therefore selects
+\texttt{conv1d\_channel\_direct},
+\texttt{conv1d\_channel\_direct\_bias},
+\texttt{conv1d\_grouped\_direct\_bias}, or
+\texttt{conv1d\_depthwise\_direct} as appropriate, while dense materialization
+keeps \texttt{dense\_gemm} or \texttt{dense\_gemm\_bias} available. These rows
+support the narrower claim that preserved convolution provenance exposes
+direct channel-aware lowerings and exact dense fallbacks for the implemented
+1D cases. They do not establish Conv2d support, non-scalar Conv1d parameter
+coverage, quantized convolution contracts, or measured runtime behavior.
+
+The fixed-mask row is intentionally narrower than full masked attention. It
+applies a fixed causal-band binary mask as a sparse linear map and selects
+\texttt{fixed\_mask\_sparse}, while dense materialization remains the fallback.
+This row supports fixed-mask provenance and fallback comparisons for a
+deterministic linear map. It does not claim score-dependent attention masking,
+softmax behavior, KV-cache layout support, or general mask-aware attention
+coverage.
+
+The case studies and controlled benchmarks should therefore be read together.
+The workload artifact demonstrates where provenance changes the planner's
+choice set on small Torch examples. The fixed-weight benchmark artifact is the
+source for pure-Python timing proxies. The planner-contract and approximation
+artifacts bound the planner and error-contract claims. Future workload
+families, including quantized modules, full attention or score-dependent
+mask-aware cases, and broader CNN-style blocks, remain limitations until their
+frontend, IR, tests, and artifacts land.
 
 The approximation and planner-contract artifacts bound the negative claims. In
 the approximation ablation, low-rank and sparse top-k candidates pass the
