@@ -74,8 +74,10 @@ uv run python examples/torch_fx_frontend_demo.py
   and CI artifact names
 - `docs/evidence_matrix.md`: whitepaper claim-to-evidence map and current
   unsupported-claim boundaries
+- `docs/completion_audit.md`: final first-artifact audit of claims, evidence,
+  limitations, validation commands, and optional follow-ups
 - `docs/handoff_next_layer.md`: current state and next-layer handoff
-- `whitepaper/main.tex`: first-draft whitepaper source and completion criteria
+- `whitepaper/main.tex`: final-draft whitepaper source and completion criteria
 - GitHub wiki: concise north star, operating loop, coverage snapshot, and
   artifact map for humans and agents
 - `AGENTS.md`: operating contract for issue-driven, worktree-based agent loops
