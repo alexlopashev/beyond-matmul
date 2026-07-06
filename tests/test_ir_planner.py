@@ -40,6 +40,52 @@ class OperatorTests(unittest.TestCase):
         inputs = [[1.0, 2.0, 3.0, 4.0, 5.0]]
         self.assertEqual(conv.apply(inputs), DenseOperator(conv.to_dense()).apply(inputs))
 
+    def test_strided_padded_and_dilated_conv1d_to_dense(self):
+        cases = [
+            (
+                Convolution1DOperator([1.0, -1.0], input_length=5, stride=2),
+                [
+                    [1.0, -1.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 1.0, -1.0, 0.0],
+                ],
+            ),
+            (
+                Convolution1DOperator([2.0, 3.0], input_length=3, padding=1),
+                [
+                    [3.0, 0.0, 0.0],
+                    [2.0, 3.0, 0.0],
+                    [0.0, 2.0, 3.0],
+                    [0.0, 0.0, 2.0],
+                ],
+            ),
+            (
+                Convolution1DOperator([1.0, -1.0, 2.0], input_length=7, dilation=2),
+                [
+                    [1.0, 0.0, -1.0, 0.0, 2.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0, -1.0, 0.0, 2.0, 0.0],
+                    [0.0, 0.0, 1.0, 0.0, -1.0, 0.0, 2.0],
+                ],
+            ),
+            (
+                Convolution1DOperator([1.0, -1.0, 2.0], input_length=7, stride=2, padding=1, dilation=2),
+                [
+                    [0.0, -1.0, 0.0, 2.0, 0.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0, -1.0, 0.0, 2.0, 0.0],
+                    [0.0, 0.0, 0.0, 1.0, 0.0, -1.0, 0.0],
+                ],
+            ),
+        ]
+        inputs = [[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]]
+
+        for conv, expected_dense in cases:
+            with self.subTest(structure=conv.metadata.structure):
+                expected_outputs = DenseOperator(expected_dense).apply([inputs[0][: conv.in_features]])
+                self.assertEqual(conv.to_dense(), expected_dense)
+                self.assertEqual(conv.apply([inputs[0][: conv.in_features]]), expected_outputs)
+                self.assertEqual(conv.metadata.structure["stride"], conv.stride)
+                self.assertEqual(conv.metadata.structure["padding"], conv.padding)
+                self.assertEqual(conv.metadata.structure["dilation"], conv.dilation)
+
     def test_multi_channel_conv1d_to_dense(self):
         conv = MultiChannelConvolution1DOperator(
             [
@@ -100,6 +146,38 @@ class OperatorTests(unittest.TestCase):
         self.assertEqual(conv.metadata.structure["group_type"], "depthwise")
         self.assertEqual(conv.apply(inputs), DenseOperator(conv.to_dense()).apply(inputs))
 
+    def test_strided_padded_dilated_grouped_conv1d_to_dense(self):
+        conv = MultiChannelConvolution1DOperator(
+            [
+                [[1.0, -1.0], [0.5, 0.25]],
+                [[0.5, 2.0], [-1.0, 1.25]],
+                [[-0.25, 0.75], [1.0, -0.5]],
+                [[1.5, -0.5], [0.25, 0.5]],
+            ],
+            input_length=5,
+            groups=2,
+            stride=2,
+            padding=1,
+            dilation=2,
+        )
+        inputs = [[
+            1.0, 2.0, 3.0, 4.0, 5.0,
+            -1.0, 0.5, 2.0, -2.0, 1.5,
+            0.0, -1.0, 1.5, 2.5, -0.5,
+            2.0, -0.5, 1.0, 0.25, -1.5,
+        ]]
+
+        self.assertEqual(conv.shape, (12, 20))
+        self.assertEqual(conv.output_length, 3)
+        self.assertEqual(conv.metadata.structure["stride"], 2)
+        self.assertEqual(conv.metadata.structure["padding"], 1)
+        self.assertEqual(conv.metadata.structure["dilation"], 2)
+        self.assertEqual(conv.metadata.lowerings[0], "conv1d_grouped_direct")
+        self.assertEqual(conv.apply(inputs), DenseOperator(conv.to_dense()).apply(inputs))
+        dense = conv.to_dense()
+        self.assertEqual(dense[6][:10], [0.0 for _ in range(10)])
+        self.assertNotEqual(dense[6][10:], [0.0 for _ in range(10)])
+
     def test_grouped_conv1d_validation(self):
         with self.assertRaisesRegex(ValueError, "groups must be a positive integer"):
             MultiChannelConvolution1DOperator([[[1.0, 2.0, 3.0]]], input_length=5, groups=0)
@@ -112,6 +190,24 @@ class OperatorTests(unittest.TestCase):
                 input_length=5,
                 groups=3,
             )
+
+    def test_conv1d_parameter_validation(self):
+        with self.assertRaisesRegex(ValueError, "conv1d stride must be a positive integer"):
+            Convolution1DOperator([1.0, 2.0], input_length=4, stride=0)
+        with self.assertRaisesRegex(ValueError, "conv1d padding must be a non-negative integer"):
+            Convolution1DOperator([1.0, 2.0], input_length=4, padding=-1)
+        with self.assertRaisesRegex(ValueError, "conv1d dilation must be a positive integer"):
+            MultiChannelConvolution1DOperator([[[1.0, 2.0]]], input_length=4, dilation=0)
+        with self.assertRaisesRegex(ValueError, "conv1d output length must be positive"):
+            Convolution1DOperator([1.0, 2.0, 3.0], input_length=2, dilation=2)
+        with self.assertRaisesRegex(ValueError, "conv1d stride must be a positive integer"):
+            MultiChannelConvolution1DOperator([[[1.0, 2.0]]], input_length=4, stride=(1, 1))
+
+    def test_conv1d_apply_rejects_mismatched_input_width_after_padding(self):
+        conv = Convolution1DOperator([1.0, -1.0], input_length=4, padding=2)
+
+        with self.assertRaisesRegex(ValueError, "input width does not match convolution operator"):
+            conv.apply([[1.0, 2.0, 3.0]])
 
 
 class PlannerTests(unittest.TestCase):
@@ -205,6 +301,27 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("dense_gemm", {option.name for option in grouped_plan.options})
         self.assertEqual(depthwise_plan.selected.name, "conv1d_depthwise_direct")
         self.assertEqual(depthwise_plan.selected.cost.apply_ops, 54)
+
+    def test_planner_costs_strided_grouped_conv1d_from_explicit_metadata(self):
+        conv = MultiChannelConvolution1DOperator(
+            [
+                [[1.0, -1.0], [0.5, 0.25]],
+                [[0.5, 2.0], [-1.0, 1.25]],
+                [[-0.25, 0.75], [1.0, -0.5]],
+                [[1.5, -0.5], [0.25, 0.5]],
+            ],
+            input_length=5,
+            groups=2,
+            stride=2,
+            padding=1,
+            dilation=2,
+        )
+
+        plan = plan_fixed_weight(conv, PlanningRequest(batch_size=2, calls=16, codebook_sizes=(2,)))
+
+        self.assertEqual(plan.selected.name, "conv1d_grouped_direct")
+        self.assertEqual(plan.selected.cost.apply_ops, 96)
+        self.assertIn("dense_gemm", {option.name for option in plan.options})
 
     def test_plan_option_exposes_cost_breakdown(self):
         weight = DiagonalOperator([1.0, 2.0, 3.0, 4.0])

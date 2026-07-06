@@ -381,6 +381,11 @@ def _capture_conv1d_module(graph_module: Any, node: Any) -> Optional[CapturedOpe
         return None
     if module_out_channels is not None and module_out_channels != len(weight):
         return None
+    stride = _positive_single_int(getattr(module, "stride", 1))
+    padding = _single_int(getattr(module, "padding", 0))
+    dilation = _positive_single_int(getattr(module, "dilation", 1))
+    if stride is None or padding is None or dilation is None:
+        return None
     input_shape = _conv1d_input_shape(graph_module, node, module, weight, groups)
     if input_shape is None:
         return None
@@ -401,7 +406,18 @@ def _capture_conv1d_module(graph_module: Any, node: Any) -> Optional[CapturedOpe
         "module": target,
         "capture": "conv1d_module",
     }
-    return _captured_conv1d_operator(name, weight, getattr(module, "bias", None), input_length, provenance, notes, groups=groups)
+    return _captured_conv1d_operator(
+        name,
+        weight,
+        getattr(module, "bias", None),
+        input_length,
+        provenance,
+        notes,
+        groups=groups,
+        stride=stride,
+        padding=padding,
+        dilation=dilation,
+    )
 
 
 def _capture_conv1d_function(graph_module: Any, node: Any) -> Optional[CapturedOperator]:
@@ -419,8 +435,11 @@ def _capture_conv1d_function(graph_module: Any, node: Any) -> Optional[CapturedO
     groups = args[6] if len(args) >= 7 else kwargs.get("groups", 1)
     if not _conv1d_parameters_supported(stride, padding, dilation, groups):
         return None
+    stride = _positive_single_int(stride)
+    padding = _single_int(padding)
+    dilation = _positive_single_int(dilation)
     groups = _single_int(groups)
-    if groups is None or groups < 1:
+    if stride is None or padding is None or dilation is None or groups is None or groups < 1:
         return None
     weight = _node_value_as_conv1d_weight(graph_module, weight_operand)
     if weight is None:
@@ -448,7 +467,18 @@ def _capture_conv1d_function(graph_module: Any, node: Any) -> Optional[CapturedO
         "weight": weight_source,
         "bias": bias_source or "none",
     }
-    return _captured_conv1d_operator(name, weight, _node_value(graph_module, bias_operand), input_length, provenance, notes, groups=groups)
+    return _captured_conv1d_operator(
+        name,
+        weight,
+        _node_value(graph_module, bias_operand),
+        input_length,
+        provenance,
+        notes,
+        groups=groups,
+        stride=stride,
+        padding=padding,
+        dilation=dilation,
+    )
 
 
 def _captured_conv1d_operator(
@@ -459,27 +489,46 @@ def _captured_conv1d_operator(
     provenance: Provenance,
     notes: Dict[str, str],
     groups: int = 1,
+    stride: int = 1,
+    padding: int = 0,
+    dilation: int = 1,
 ) -> Optional[CapturedOperator]:
     out_channels = len(weight)
     in_channels = len(weight[0]) * groups
     kernel_size = len(weight[0][0])
-    output_length = input_length - kernel_size + 1
-    if output_length <= 0:
-        return None
-    notes = {
-        **notes,
-        "out_channels": str(out_channels),
-        "in_channels": str(in_channels),
-        "groups": str(groups),
-        "kernel_size": str(kernel_size),
-        "input_length": str(input_length),
-        "output_length": str(output_length),
-    }
     try:
         if out_channels == 1 and in_channels == 1 and groups == 1:
-            linear: LinearOperator = Convolution1DOperator(weight[0][0], input_length=input_length, provenance=provenance)
+            linear: LinearOperator = Convolution1DOperator(
+                weight[0][0],
+                input_length=input_length,
+                stride=stride,
+                padding=padding,
+                dilation=dilation,
+                provenance=provenance,
+            )
         else:
-            linear = MultiChannelConvolution1DOperator(weight, input_length=input_length, groups=groups, provenance=provenance)
+            linear = MultiChannelConvolution1DOperator(
+                weight,
+                input_length=input_length,
+                groups=groups,
+                stride=stride,
+                padding=padding,
+                dilation=dilation,
+                provenance=provenance,
+            )
+        output_length = int(linear.metadata.structure["output_length"])
+        notes = {
+            **notes,
+            "out_channels": str(out_channels),
+            "in_channels": str(in_channels),
+            "groups": str(groups),
+            "kernel_size": str(kernel_size),
+            "input_length": str(input_length),
+            "output_length": str(output_length),
+            "stride": str(stride),
+            "padding": str(padding),
+            "dilation": str(dilation),
+        }
         if isinstance(linear, MultiChannelConvolution1DOperator):
             notes = {**notes, "group_type": linear.group_type}
         bias = _conv1d_bias(bias_value, out_channels=out_channels, output_length=output_length)
@@ -671,9 +720,9 @@ def _is_supported_conv1d_module(module: Any) -> bool:
 def _conv1d_parameters_supported(stride: Any, padding: Any, dilation: Any, groups: Any) -> bool:
     groups_int = _single_int(groups)
     return (
-        _single_int(stride) == 1
-        and _single_int(padding) == 0
-        and _single_int(dilation) == 1
+        _positive_single_int(stride) is not None
+        and _single_int(padding) is not None
+        and _positive_single_int(dilation) is not None
         and groups_int is not None
         and groups_int >= 1
     )
@@ -805,6 +854,13 @@ def _single_int(value: Any) -> Optional[int]:
             return None
         value = value[0]
     return _positive_or_zero_int(value)
+
+
+def _positive_single_int(value: Any) -> Optional[int]:
+    integer = _single_int(value)
+    if integer is None or integer <= 0:
+        return None
+    return integer
 
 
 def _positive_int(value: Any) -> Optional[int]:
