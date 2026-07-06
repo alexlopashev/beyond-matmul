@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
@@ -481,6 +482,76 @@ class BitpackedBinaryOperator(LinearOperator):
 
 
 @dataclass
+class PackedAffineQuantizedOperator(LinearOperator):
+    integers: Sequence[Sequence[int]]
+    scale: float
+    zero_point: int
+    bits: int = 8
+    integer_range: Optional[Tuple[int, int]] = None
+    provenance: Optional[Provenance] = None
+    metadata: Optional[OperatorMetadata] = None
+
+    def __post_init__(self) -> None:
+        bits = _checked_quantized_bits(self.bits)
+        integer_min, integer_max = _checked_integer_range(self.integer_range, bits=bits)
+        scale = float(self.scale)
+        if not math.isfinite(scale) or scale <= 0.0:
+            raise ValueError("scale must be positive")
+        zero_point = _checked_integer(self.zero_point, name="zero point")
+        if not integer_min <= zero_point <= integer_max:
+            raise ValueError("zero point out of integer range")
+        integers = _checked_integer_matrix(self.integers, integer_min=integer_min, integer_max=integer_max)
+        width = len(integers[0])
+        self.integers = integers
+        self.scale = scale
+        self.zero_point = zero_point
+        self.bits = bits
+        self.integer_range = (integer_min, integer_max)
+        self.metadata = _metadata(
+            kind="packed_affine_quantized",
+            shape=(len(integers), width),
+            metadata=self.metadata,
+            provenance=self.provenance or Provenance(source="packed_affine_quantized"),
+            structure={
+                "integer_shape": (len(integers), width),
+                "integer_range": (integer_min, integer_max),
+                "bits": bits,
+                "scale": scale,
+                "zero_point": zero_point,
+                "storage": "integer_matrix",
+            },
+            quantization=QuantizationSpec(
+                scheme="per_tensor_affine",
+                bits=bits,
+                scale=scale,
+                zero_point=zero_point,
+            ),
+            reuse=ReuseBudget(
+                preprocessing_cost=len(integers) * width,
+                amortize_over_calls=1,
+                cache_bytes=((len(integers) * width * bits) + 7) // 8 + 8,
+            ),
+            lowerings=("packed_affine_kernel", "dense_gemm"),
+        )
+
+    def to_dense(self) -> la.Matrix:
+        return [[(value - self.zero_point) * self.scale for value in row] for row in self.integers]
+
+    def apply(self, inputs: Sequence[Sequence[float]] | Sequence[float]) -> la.Matrix:
+        batch = la.ensure_batch(inputs)
+        if any(len(row) != self.in_features for row in batch):
+            raise ValueError("input width does not match packed affine quantized operator")
+        outputs = la.zeros(len(batch), self.out_features)
+        for batch_index, input_row in enumerate(batch):
+            for out_index, integer_row in enumerate(self.integers):
+                outputs[batch_index][out_index] = sum(
+                    (integer - self.zero_point) * self.scale * value
+                    for integer, value in zip(integer_row, input_row)
+                )
+        return outputs
+
+
+@dataclass
 class Convolution1DOperator(LinearOperator):
     kernel: Sequence[float]
     input_length: int
@@ -733,3 +804,51 @@ def _conv1d_output_length(*, input_length: int, kernel_size: int, stride: int, p
     if output_length <= 0:
         raise ValueError("conv1d output length must be positive")
     return output_length
+
+
+def _checked_quantized_bits(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ValueError("bits must be a positive integer")
+    return value
+
+
+def _checked_integer(value: Any, *, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{name} must be an integer")
+    return value
+
+
+def _checked_integer_range(value: Optional[Tuple[int, int]], *, bits: int) -> Tuple[int, int]:
+    if value is None:
+        return 0, (1 << bits) - 1
+    if len(value) != 2:
+        raise ValueError("integer range must have two bounds")
+    integer_min = _checked_integer(value[0], name="integer range minimum")
+    integer_max = _checked_integer(value[1], name="integer range maximum")
+    if integer_min > integer_max:
+        raise ValueError("integer range minimum must be less than or equal to maximum")
+    if integer_max - integer_min + 1 > (1 << bits):
+        raise ValueError("integer range exceeds bit width")
+    return integer_min, integer_max
+
+
+def _checked_integer_matrix(values: Sequence[Sequence[int]], *, integer_min: int, integer_max: int) -> List[List[int]]:
+    if not values:
+        raise ValueError("integer payload must not be empty")
+    integers: List[List[int]] = []
+    width: Optional[int] = None
+    for row in values:
+        if width is None:
+            width = len(row)
+            if width == 0:
+                raise ValueError("integer payload must have at least one column")
+        elif len(row) != width:
+            raise ValueError("integer rows must all have the same length")
+        checked_row: List[int] = []
+        for value in row:
+            integer = _checked_integer(value, name="integer payload value")
+            if not integer_min <= integer <= integer_max:
+                raise ValueError("integer payload value out of range")
+            checked_row.append(integer)
+        integers.append(checked_row)
+    return integers

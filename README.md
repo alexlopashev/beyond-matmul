@@ -8,7 +8,7 @@ The current artifact is scoped to fixed-weight inference:
 
 - a provenance-aware linear and affine operator IR
 - exact operators for dense, diagonal, sparse COO, fixed-mask, low-rank,
-  convolutional, codebook, and bitpacked weights
+  convolutional, codebook, bitpacked, and packed affine quantized weights
 - cheap structure recovery from dense matrices
 - product-aware approximation scoring
 - a planner that chooses a valid lowering under exactness, error, reuse, and
