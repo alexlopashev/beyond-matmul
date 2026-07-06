@@ -8,7 +8,7 @@ The IR represents fixed-weight linear and affine maps with shape
 
 ```python
 OperatorMetadata(
-    kind="dense | diagonal | sparse_coo | fixed_mask | low_rank | affine | conv1d | conv1d_channel | codebook | bitpacked_binary",
+    kind="dense | diagonal | sparse_coo | fixed_mask | low_rank | affine | conv1d | conv1d_channel | codebook | bitpacked_binary | packed_affine_quantized",
     shape=(out_features, in_features),
     provenance=Provenance(
         source="framework node, compiler pass, analyzer, or fallback",
@@ -72,10 +72,9 @@ Exact quantized contracts:
   `QuantizationSpec(scheme="symmetric_binary", bits=1, scale=...)`.
 - Per-tensor affine integer weights are exact only when the IR carries the
   integer payload plus one tensor-wide `scale` and `zero_point`, interpreted as
-  `(integer - zero_point) * scale`. `QuantizationSpec` can name that metadata,
-  but there is not yet a dedicated packed affine-integer operator, so the Torch
-  frontend must not claim this capture today. The missing payload operator is
-  tracked as follow-up issue #52.
+  `(integer - zero_point) * scale`. `PackedAffineQuantizedOperator` preserves
+  the integer payload, bit width, integer range, scale, and zero point while
+  keeping dense dequantization available through `to_dense()`.
 
 Approximate quantized contracts:
 
@@ -106,6 +105,7 @@ Current IR mapping:
 | `QuantizationSpec` | Metadata descriptor | Scheme, bits, optional codebook size, scale, zero point, and descriptive per-axis tag | Does not by itself prove packed provenance; an operator payload must carry the codes or integers. |
 | `CodebookOperator` | Exact or approximate depending on `ApproximationContract` and provenance | Integer `codes`, floating `codebook`, codebook size, bit width | `to_dense()` dequantizes by table lookup and loses lookup provenance if lowered to `DenseOperator`. |
 | `BitpackedBinaryOperator` | Exact for tensor-wide scaled binary sources; approximate for binary approximation candidates | Sign matrix, tensor-wide scale, one-bit symmetric quantization metadata | `to_dense()` expands signs to floats and loses bitpacked storage provenance if lowered to `DenseOperator`. |
+| `PackedAffineQuantizedOperator` | Exact for per-tensor affine integer fixed weights | Integer matrix, bit width, integer range, tensor-wide scale, zero point | `to_dense()` applies `(integer - zero_point) * scale` and loses packed affine provenance if lowered to `DenseOperator`. |
 
 ## Examples
 

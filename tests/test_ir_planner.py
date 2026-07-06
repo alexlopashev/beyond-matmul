@@ -10,6 +10,7 @@ from beyond_matmul.ir import (
     FixedMaskOperator,
     LowRankOperator,
     MultiChannelConvolution1DOperator,
+    PackedAffineQuantizedOperator,
     SparseCOOOperator,
 )
 from beyond_matmul.planner import PlanningRequest, plan_fixed_weight
@@ -35,6 +36,49 @@ class OperatorTests(unittest.TestCase):
 
         codebook = CodebookOperator([[0, 1, 0], [1, 0, 1], [0, 0, 1]], [0.0, 2.0])
         self.assertEqual(codebook.apply(inputs), DenseOperator(codebook.to_dense()).apply(inputs))
+
+    def test_packed_affine_quantized_operator_matches_dense_dequantization(self):
+        quantized = PackedAffineQuantizedOperator(
+            [[0, 3, 5], [10, 8, 4]],
+            scale=0.25,
+            zero_point=4,
+            bits=4,
+        )
+        inputs = [[2.0, -1.0, 3.0], [0.5, 1.5, -2.0]]
+        dense = [
+            [-1.0, -0.25, 0.25],
+            [1.5, 1.0, 0.0],
+        ]
+
+        self.assertEqual(quantized.to_dense(), dense)
+        self.assertEqual(quantized.apply(inputs), DenseOperator(dense).apply(inputs))
+        self.assertEqual(quantized.metadata.kind, "packed_affine_quantized")
+        self.assertEqual(quantized.metadata.structure["integer_range"], (0, 15))
+        self.assertEqual(quantized.metadata.quantization.scheme, "per_tensor_affine")
+        self.assertEqual(quantized.metadata.quantization.bits, 4)
+        self.assertEqual(quantized.metadata.quantization.scale, 0.25)
+        self.assertEqual(quantized.metadata.quantization.zero_point, 4)
+        self.assertEqual(quantized.metadata.lowerings, ("packed_affine_kernel", "dense_gemm"))
+
+    def test_packed_affine_quantized_operator_validates_payload_metadata(self):
+        invalid_cases = [
+            {"integers": [], "scale": 0.25, "zero_point": 0, "bits": 8, "match": "integer payload must not be empty"},
+            {"integers": [[1], [1, 2]], "scale": 0.25, "zero_point": 0, "bits": 8, "match": "integer rows must all have the same length"},
+            {"integers": [[1]], "scale": 0.0, "zero_point": 0, "bits": 8, "match": "scale must be positive"},
+            {"integers": [[1]], "scale": 0.25, "zero_point": 0, "bits": 0, "match": "bits must be a positive integer"},
+            {"integers": [[256]], "scale": 0.25, "zero_point": 0, "bits": 8, "match": "integer payload value out of range"},
+            {"integers": [[1]], "scale": 0.25, "zero_point": 256, "bits": 8, "match": "zero point out of integer range"},
+        ]
+
+        for case in invalid_cases:
+            with self.subTest(case=case):
+                with self.assertRaisesRegex(ValueError, case["match"]):
+                    PackedAffineQuantizedOperator(
+                        case["integers"],
+                        scale=case["scale"],
+                        zero_point=case["zero_point"],
+                        bits=case["bits"],
+                    )
 
     def test_fixed_mask_operator_matches_dense_application(self):
         mask = FixedMaskOperator(
@@ -337,6 +381,21 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(plan.selected.name, "fixed_mask_sparse")
         self.assertTrue(plan.selected.exact)
         self.assertEqual(plan.selected.cost.apply_ops, 14)
+        self.assertIn("dense_gemm", {option.name for option in plan.options})
+
+    def test_planner_keeps_packed_affine_quantized_lowering_and_dense_fallback(self):
+        weight = PackedAffineQuantizedOperator(
+            [[0, 3, 5], [10, 8, 4]],
+            scale=0.25,
+            zero_point=4,
+            bits=4,
+        )
+
+        plan = plan_fixed_weight(weight, PlanningRequest(batch_size=2, calls=16, codebook_sizes=(2,)))
+
+        self.assertEqual(plan.selected.name, "packed_affine_kernel")
+        self.assertTrue(plan.selected.exact)
+        self.assertEqual(plan.selected.operator.to_dense(), weight.to_dense())
         self.assertIn("dense_gemm", {option.name for option in plan.options})
 
     def test_planner_costs_strided_grouped_conv1d_from_explicit_metadata(self):

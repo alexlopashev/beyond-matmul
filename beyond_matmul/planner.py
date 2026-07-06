@@ -24,6 +24,7 @@ from beyond_matmul.ir import (
     LinearOperator,
     LowRankOperator,
     OperatorMetadata,
+    PackedAffineQuantizedOperator,
     Provenance,
     ReuseBudget,
     SparseCOOOperator,
@@ -38,6 +39,7 @@ BACKEND_SUPPORT = {
         "low_rank_product",
         "codebook_kernel",
         "bitpacked_kernel",
+        "packed_affine_kernel",
         "conv1d_direct",
         "conv1d_channel_direct",
         "conv1d_grouped_direct",
@@ -49,6 +51,7 @@ BACKEND_SUPPORT = {
         "low_rank_product_bias",
         "codebook_kernel_bias",
         "bitpacked_kernel_bias",
+        "packed_affine_kernel_bias",
         "conv1d_direct_bias",
         "conv1d_channel_direct_bias",
         "conv1d_grouped_direct_bias",
@@ -62,6 +65,7 @@ BACKEND_SUPPORT = {
         "low_rank_product",
         "codebook_kernel",
         "bitpacked_kernel",
+        "packed_affine_kernel",
         "conv1d_direct",
         "conv1d_channel_direct",
         "conv1d_grouped_direct",
@@ -73,6 +77,7 @@ BACKEND_SUPPORT = {
         "low_rank_product_bias",
         "codebook_kernel_bias",
         "bitpacked_kernel_bias",
+        "packed_affine_kernel_bias",
         "conv1d_direct_bias",
         "conv1d_channel_direct_bias",
         "conv1d_grouped_direct_bias",
@@ -84,6 +89,7 @@ BACKEND_SUPPORT = {
         "sparse_kernel",
         "low_rank_product",
         "bitpacked_kernel",
+        "packed_affine_kernel",
         "conv1d_direct",
         "conv1d_channel_direct",
         "conv1d_grouped_direct",
@@ -93,6 +99,7 @@ BACKEND_SUPPORT = {
         "sparse_kernel_bias",
         "low_rank_product_bias",
         "bitpacked_kernel_bias",
+        "packed_affine_kernel_bias",
         "conv1d_direct_bias",
         "conv1d_channel_direct_bias",
         "conv1d_grouped_direct_bias",
@@ -194,6 +201,8 @@ def _estimate_apply_cost(operator: LinearOperator, batch_size: int, word_bits: i
         return batch_size * out_features * in_features * 0.75
     if kind == "bitpacked_binary":
         return batch_size * ((out_features * in_features) / word_bits + out_features)
+    if kind == "packed_affine_quantized":
+        return batch_size * out_features * in_features
     if kind == "conv1d":
         kernel_size = int(operator.metadata.structure["kernel_size"])
         return batch_size * out_features * kernel_size
@@ -225,6 +234,9 @@ def _estimate_memory_bytes(operator: LinearOperator) -> int:
         return codebook_size * 4 + code_bytes
     if kind == "bitpacked_binary":
         return 4 + ((out_features * in_features) + 7) // 8
+    if kind == "packed_affine_quantized":
+        bits = operator.metadata.quantization.bits if operator.metadata.quantization else 8
+        return 8 + ((out_features * in_features * bits) + 7) // 8
     if kind == "conv1d":
         kernel_size = int(operator.metadata.structure["kernel_size"])
         return kernel_size * 4
@@ -309,6 +321,15 @@ def _with_contract(operator: LinearOperator, relative_error: float, metric: str,
         return AffineOperator(operator.linear, operator.bias, metadata=updated)
     if isinstance(operator, CodebookOperator):
         return CodebookOperator(operator.codes, operator.codebook, metadata=updated)
+    if isinstance(operator, PackedAffineQuantizedOperator):
+        return PackedAffineQuantizedOperator(
+            operator.integers,
+            scale=operator.scale,
+            zero_point=operator.zero_point,
+            bits=operator.bits,
+            integer_range=operator.integer_range,
+            metadata=updated,
+        )
     # Bitpacked and convolution operators already expose accurate metadata for planning.
     operator.metadata = updated
     return operator
