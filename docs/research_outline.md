@@ -43,8 +43,9 @@ lowerings that are cheaper than dense GEMM for fixed-weight inference.
   the current matrix-error versus output-error ablation.
 - `benchmarks/planner_contract_ablation.py`: deterministic table source for
   exactness, bounded-error, reuse, backend, and dense fallback planner checks.
-- `examples/case_study_artifacts.py`: machine-readable adapter, Conv1d, and
-  fixed-mask workload case-study evidence with dense fallback comparisons.
+- `examples/case_study_artifacts.py`: machine-readable adapter, Conv1d,
+  fixed-mask, and quantized-linear workload case-study evidence with dense
+  fallback comparisons.
 
 ## Recovery Confidence Semantics
 
@@ -84,6 +85,8 @@ Current workload case-study artifacts:
   recovered by provenance capture.
 - A fixed causal-band mask applied as a sparse linear map over features,
   independent of attention scores.
+- A fixed per-tensor affine quantized linear module preserving packed integer
+  payload, scale, and zero point before dense dequantized fallback.
 
 Future workload case studies still outside the current artifact:
 
@@ -94,8 +97,8 @@ Future workload case studies still outside the current artifact:
 - A fuller language-model-like embedding plus projection workload artifact;
   the current frontend coverage already includes embedding followed by
   projection over one-hot token inputs.
-- Quantized linear or convolutional modules once frontend capture has
-  executable packed-payload rules for the documented quantization contracts.
+- Quantized convolutional modules once frontend capture has executable
+  packed-payload rules for convolution-specific quantization contracts.
 
 Metrics:
 

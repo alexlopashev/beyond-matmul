@@ -259,12 +259,12 @@ anchor is the \texttt{Planner exactness and fallback} row in
 \subsection{Evidence Surface}
 
 The codebase must produce evidence that the paper can cite: tests for semantics
-and negative capture cases, workload case-study artifacts for adapter and
-Conv1d narratives, benchmark artifacts for cost comparisons, an
-approximation-error ablation artifact, and docs/wiki pages that describe the
-current boundary of truth. The support material includes a concise evidence
-matrix in \texttt{docs/evidence\_matrix.md} that maps major claims to tests,
-demos, benchmark artifacts, or future-work boundaries.
+and negative capture cases, workload case-study artifacts for adapter, Conv1d,
+fixed-mask, and quantized-linear narratives, benchmark artifacts for cost
+comparisons, an approximation-error ablation artifact, and docs/wiki pages that
+describe the current boundary of truth. The support material includes a concise
+evidence matrix in \texttt{docs/evidence\_matrix.md} that maps major claims to
+tests, demos, benchmark artifacts, or future-work boundaries.
 
 \section{Research Questions}
 
@@ -362,11 +362,12 @@ docs/results/workload\_case\_studies.json}. It is evidence for provenance
 preservation and planner choice, not timing performance. The artifact records a
 merged LoRA-style adapter, multi-channel \texttt{nn.Conv1d}, functional
 fixed-bias \texttt{conv1d}, grouped \texttt{nn.Conv1d}, depthwise functional
-\texttt{conv1d}, and a fixed causal-band mask represented as a sparse linear
-map. For each row, the public fields include the captured operator kind, shape,
-lowerings, provenance notes, selected lowering, output-relative error against
-the reference workload, dense fallback lowering, planner cost proxy, memory
-proxy, and an explicit \texttt{measured\_timing: false} boundary.
+\texttt{conv1d}, a fixed causal-band mask represented as a sparse linear map,
+and a fixed per-tensor affine quantized linear module. For each row, the public
+fields include the captured operator kind, shape, lowerings, provenance notes,
+selected lowering, output-relative error against the reference workload, dense
+fallback lowering, planner cost proxy, memory proxy, and an explicit
+\texttt{measured\_timing: false} boundary.
 
 The adapter case shows a provenance-only planner opportunity. The Torch module
 executes with a merged dense adapter weight, but the capture pass can associate
@@ -402,6 +403,15 @@ This row supports fixed-mask provenance and fallback comparisons for a
 deterministic linear map. It does not claim score-dependent attention masking,
 softmax behavior, KV-cache layout support, or general mask-aware attention
 coverage.
+
+The quantized-linear row is similarly bounded. A deterministic FX-style capture
+preserves the packed integer payload, bit width, integer range, scale, zero
+point, and fixed bias for the tested per-tensor affine module pattern. The
+planner selects \texttt{packed\_affine\_kernel\_bias}, while dense dequantized
+materialization remains available through \texttt{dense\_gemm\_bias}. This row
+supports the provenance and fallback claim for the fixed quantized contract; it
+does not measure production integer kernels, hardware-specific packing, or
+runtime speedup.
 
 The case studies and controlled benchmarks should therefore be read together.
 The workload artifact demonstrates where provenance changes the planner's
@@ -592,7 +602,10 @@ affine integer payloads, and dense dequantization remains a semantic fallback.
 Torch frontend capture is limited to the tested fixed per-tensor affine
 quantized \texttt{nn.Linear} case. Quantized convolution, per-axis,
 per-channel, activation-dependent, mixed-precision, and blockwise quantization
-remain outside the current contract. Similarly, fixed-mask support covers explicit
+remain outside the current contract. The quantized workload row records
+preserved packed-affine provenance, planner proxies, exact output comparison,
+and dense dequantized fallback; it is not evidence for production integer
+kernels or backend-specific speedup. Similarly, fixed-mask support covers explicit
 binary masks applied as sparse linear maps over values or features; it does
 not claim score-dependent masked attention, softmax semantics, KV-cache
 layout, broadcast mask contracts, or dynamic sequence behavior.

@@ -33,6 +33,7 @@ class CaseStudyArtifactTests(unittest.TestCase):
                 "conv1d_grouped_module",
                 "conv1d_depthwise_functional",
                 "fixed_band_mask",
+                "quantized_linear_module",
             },
         )
         self.assertEqual(artifact["metadata"]["timing_unit"], "not_measured")
@@ -87,6 +88,19 @@ class CaseStudyArtifactTests(unittest.TestCase):
         self.assertEqual(rows["fixed_band_mask"]["captured_operator"]["linear_kind"], "fixed_mask")
         self.assertEqual(rows["fixed_band_mask"]["provenance_notes"]["mask_pattern"], "causal_band")
         self.assertEqual(rows["fixed_band_mask"]["dense_fallback"]["selected_lowering"], "dense_gemm")
+        self.assertEqual(rows["quantized_linear_module"]["selected_lowering"], "packed_affine_kernel_bias")
+        self.assertEqual(rows["quantized_linear_module"]["captured_operator"]["kind"], "affine")
+        self.assertEqual(
+            rows["quantized_linear_module"]["captured_operator"]["linear_kind"],
+            "packed_affine_quantized",
+        )
+        self.assertEqual(
+            rows["quantized_linear_module"]["provenance_notes"]["capture"],
+            "quantized_linear_module",
+        )
+        self.assertEqual(rows["quantized_linear_module"]["provenance_notes"]["bits"], "8")
+        self.assertEqual(rows["quantized_linear_module"]["dense_fallback"]["selected_lowering"], "dense_gemm_bias")
+        self.assertEqual(rows["quantized_linear_module"]["timing_proxy_boundary"]["measured_timing"], False)
 
     def test_writes_json_artifact(self):
         artifacts = _load_case_study_module()
