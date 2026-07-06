@@ -42,9 +42,10 @@ executable IR payloads for:
   signature and state dictionary rather than module nesting
 - fixed-weight `nn.Conv1d` modules and functional `conv1d`, represented
   as `Convolution1DOperator`, `MultiChannelConvolution1DOperator`, or affine
-  convolution when an input length is known from `sample_inputs` shape
-  propagation or a module input-length hint, including scalar stride, padding,
-  dilation, and grouped/depthwise channel partitions
+  convolution when the convolution input is a runtime activation and its length
+  is known from `sample_inputs` shape propagation or a module input-length
+  hint, including scalar stride, padding, dilation, and grouped/depthwise
+  channel partitions
 
 `capture_torch_fx_linear_operators` remains as a backward-compatible alias.
 

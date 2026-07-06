@@ -863,6 +863,21 @@ class FrontendTests(unittest.TestCase):
         self.assertTrue(plan.selected.exact)
 
     @unittest.skipIf(torch is None, "PyTorch is not installed")
+    def test_ignores_real_torch_conv1d_module_without_runtime_activation(self):
+        class ConstantInputConv(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.conv = nn.Conv1d(1, 1, kernel_size=3, stride=2, padding=1, dilation=2, bias=False)
+                self.register_buffer("fixed_x", torch.ones(1, 1, 7))
+
+            def forward(self):
+                return self.conv(self.fixed_x)
+
+        captured = capture_torch_fx_operators(ConstantInputConv().eval(), sample_inputs=())
+
+        self.assertEqual(captured, {})
+
+    @unittest.skipIf(torch is None, "PyTorch is not installed")
     def test_captures_real_multi_channel_torch_conv1d_module(self):
         class MultiChannelConv(nn.Module):
             def __init__(self):
@@ -934,6 +949,37 @@ class FrontendTests(unittest.TestCase):
         )
         self.assertEqual(plan.selected.name, "conv1d_direct")
         self.assertTrue(plan.selected.exact)
+
+    @unittest.skipIf(torch is None, "PyTorch is not installed")
+    def test_captures_real_functional_strided_padded_dilated_torch_conv1d(self):
+        class FunctionalConv(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.register_buffer("weight", torch.tensor([[[1.0, -1.0, 2.0]]]))
+                self.register_buffer("bias", torch.tensor([0.25]))
+
+            def forward(self, x):
+                return F.conv1d(x, self.weight, self.bias, stride=2, padding=1, dilation=2)
+
+        module = FunctionalConv().eval()
+        torch_input = torch.tensor([
+            [[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]],
+            [[-1.0, 0.5, 2.0, -2.0, 1.5, 0.0, 3.0]],
+        ])
+        input_rows = torch_input.squeeze(1).tolist()
+
+        captured = capture_torch_fx_operators(module, sample_inputs=torch_input)
+        functional = next((item for item in captured.values() if item.event.notes.get("capture") == "conv1d_function"), None)
+
+        self.assertIsNotNone(functional)
+        operator = functional.operator
+        self.assertIsInstance(operator, AffineOperator)
+        self.assertIsInstance(operator.linear, Convolution1DOperator)
+        self.assertEqual(operator.shape, (3, 7))
+        self.assertEqual(operator.linear.metadata.structure["stride"], 2)
+        self.assertEqual(operator.linear.metadata.structure["padding"], 1)
+        self.assertEqual(operator.linear.metadata.structure["dilation"], 2)
+        self.assertMatrixAlmostEqual(operator.apply(input_rows), module(torch_input).detach().squeeze(1).tolist())
 
     @unittest.skipIf(torch is None, "PyTorch is not installed")
     def test_captures_real_functional_torch_conv1d_as_affine(self):
