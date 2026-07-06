@@ -75,7 +75,8 @@ Synthetic controlled cases:
 
 Current workload case-study artifacts:
 
-- Conv1d module and functional Conv1d capture before dense materialization.
+- Conv1d module, functional, grouped, and depthwise capture before dense
+  materialization.
 - LoRA/adapters merged into a dense weight, with nearby adapter factors
   recovered by provenance capture.
 - A fixed causal-band mask applied as a sparse linear map over features,
