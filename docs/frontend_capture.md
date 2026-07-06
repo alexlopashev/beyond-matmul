@@ -46,10 +46,12 @@ executable IR payloads for:
   is known from `sample_inputs` shape propagation or a module input-length
   hint, including scalar stride, padding, dilation, and grouped/depthwise
   channel partitions
+- fixed per-tensor affine quantized `nn.Linear` modules, represented as
+  `PackedAffineQuantizedOperator` or an affine wrapper while preserving integer
+  payload, scale, zero point, bit width, and integer range
 
 `capture_torch_fx_linear_operators` remains as a backward-compatible alias.
 
 See `docs/torch_frontend_coverage.md` for the current support matrix. Open
-frontend targets remain quantized modules with executable packed-payload rules,
-Conv2d, and broader exported graph
-operator coverage.
+frontend targets remain quantized convolution modules, per-axis or dynamic
+quantized cases, Conv2d, and broader exported graph operator coverage.

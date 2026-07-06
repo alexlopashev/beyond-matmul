@@ -20,6 +20,7 @@ from beyond_matmul.ir import (
     LinearOperator,
     LowRankOperator,
     MultiChannelConvolution1DOperator,
+    PackedAffineQuantizedOperator,
     Provenance,
 )
 
@@ -189,6 +190,11 @@ def extract_torch_fx_operators(graph_module: Any) -> Dict[str, CapturedOperator]
     captured: Dict[str, CapturedOperator] = {}
     nodes = list(_iter_fx_nodes(graph_module))
     for node in nodes:
+        if _is_quantized_linear_node(graph_module, node):
+            captured_operator = _capture_quantized_linear_module(graph_module, node)
+            if captured_operator is not None:
+                captured[captured_operator.name] = captured_operator
+            continue
         if _is_conv1d_node(graph_module, node):
             captured_operator = _capture_conv1d(graph_module, node)
             if captured_operator is not None:
@@ -549,6 +555,185 @@ def _captured_conv1d_operator(
         return None
     event = TraceEvent(name=name, op_type=op_type, provenance=operator.metadata.provenance, notes=notes)
     return CapturedOperator(name=event.name, operator=operator, event=event)
+
+
+def _is_quantized_linear_node(graph_module: Any, node: Any) -> bool:
+    if getattr(node, "op", None) != "call_module":
+        return False
+    module = _maybe_resolve_attr(graph_module, str(getattr(node, "target", "")))
+    if module is None:
+        return False
+    if _is_dynamic_quantized_module(module):
+        return False
+    return _is_quantized_linear_module(module)
+
+
+def _is_quantized_linear_module(module: Any) -> bool:
+    type_name = type(module).__name__.lower()
+    module_name = type(module).__module__.lower()
+    if "quantized" not in type_name and "quantized" not in module_name:
+        return False
+    return "linear" in type_name or "linear" in module_name
+
+
+def _is_dynamic_quantized_module(module: Any) -> bool:
+    if bool(getattr(module, "is_dynamic_quantized", False)):
+        return True
+    type_name = type(module).__name__.lower()
+    module_name = type(module).__module__.lower()
+    return "dynamic" in type_name or ".dynamic" in module_name or "dynamic." in module_name
+
+
+def _capture_quantized_linear_module(graph_module: Any, node: Any) -> Optional[CapturedOperator]:
+    module = _maybe_resolve_attr(graph_module, str(getattr(node, "target", "")))
+    if module is None:
+        return None
+    args = list(getattr(node, "args", ()) or ())
+    if not args or not _is_runtime_activation_operand(args[0]):
+        return None
+    payload = _quantized_tensor_payload(_quantized_linear_weight(module))
+    if payload is None:
+        return None
+    integers, scale, zero_point, bits, integer_range = payload
+    if not _matmul_shapes_compatible(args[0], integers):
+        return None
+
+    name = str(getattr(node, "name", "torch_fx_quantized_linear"))
+    target = str(getattr(node, "target", name))
+    provenance = Provenance(
+        source=name,
+        framework="torch.fx",
+        expression="quantized_linear(x, packed_weight)",
+        inputs=(_source_name(args[0]) or "activation", target),
+        transform_history=("torch.fx symbolic_trace", "quantized_linear_module_pattern"),
+        confidence=0.95,
+    )
+    notes = {
+        "capture": "quantized_linear_module",
+        "module": target,
+        "quantization": "per_tensor_affine",
+        "bits": str(bits),
+        "scale": str(scale),
+        "zero_point": str(zero_point),
+        "integer_range": str(integer_range),
+        "weight_layout": "out_in",
+    }
+    try:
+        linear = PackedAffineQuantizedOperator(
+            integers,
+            scale=scale,
+            zero_point=zero_point,
+            bits=bits,
+            integer_range=integer_range,
+            provenance=provenance,
+        )
+        bias = _quantized_linear_bias(module, expected_length=len(integers))
+        if bias is None:
+            return None
+        operator: LinearOperator
+        if _is_zero_vector(bias):
+            operator = linear
+            op_type = linear.metadata.kind
+        else:
+            operator = AffineOperator(linear, bias, provenance=provenance)
+            op_type = f"affine_{linear.metadata.kind}"
+            notes = {**notes, "bias": "true"}
+    except ValueError:
+        return None
+    event = TraceEvent(name=name, op_type=op_type, provenance=operator.metadata.provenance, notes=notes)
+    return CapturedOperator(name=event.name, operator=operator, event=event)
+
+
+def _quantized_linear_weight(module: Any) -> Any:
+    weight = getattr(module, "weight", None)
+    if callable(weight):
+        try:
+            return weight()
+        except TypeError:
+            return None
+    return weight
+
+
+def _quantized_linear_bias(module: Any, expected_length: int) -> Optional[List[float]]:
+    bias = getattr(module, "bias", None)
+    if callable(bias):
+        try:
+            bias = bias()
+        except TypeError:
+            return None
+    return _bias_value(bias, expected_length)
+
+
+def _quantized_tensor_payload(value: Any) -> Optional[tuple[List[List[int]], float, int, int, tuple[int, int]]]:
+    if value is None or not _is_per_tensor_affine_quantized(value):
+        return None
+    integers = _quantized_integer_matrix(value)
+    if integers is None:
+        return None
+    scale = _call_or_attr(value, "q_scale")
+    zero_point = _call_or_attr(value, "q_zero_point")
+    if scale is None or zero_point is None:
+        return None
+    dtype_bits_range = _quantized_dtype_bits_and_range(getattr(value, "dtype", None), integers)
+    if dtype_bits_range is None:
+        return None
+    bits, integer_range = dtype_bits_range
+    return integers, float(scale), int(zero_point), bits, integer_range
+
+
+def _is_per_tensor_affine_quantized(value: Any) -> bool:
+    qscheme = _call_or_attr(value, "qscheme")
+    qscheme_text = str(qscheme).lower()
+    return "per_tensor_affine" in qscheme_text and "per_channel" not in qscheme_text and "per_axis" not in qscheme_text
+
+
+def _quantized_integer_matrix(value: Any) -> Optional[List[List[int]]]:
+    integers = _call_or_attr(value, "int_repr")
+    integers = _to_python_value(integers)
+    if not isinstance(integers, (list, tuple)) or not integers:
+        return None
+    matrix: List[List[int]] = []
+    width: Optional[int] = None
+    for row in integers:
+        if not isinstance(row, (list, tuple)) or not row:
+            return None
+        if width is None:
+            width = len(row)
+        elif len(row) != width:
+            return None
+        try:
+            matrix.append([int(item) for item in row])
+        except (TypeError, ValueError):
+            return None
+    return matrix
+
+
+def _quantized_dtype_bits_and_range(dtype: Any, integers: Sequence[Sequence[int]]) -> Optional[tuple[int, tuple[int, int]]]:
+    dtype_text = str(dtype).lower()
+    if "quint8" in dtype_text or "uint8" in dtype_text:
+        return 8, (0, 255)
+    if "qint8" in dtype_text or "int8" in dtype_text:
+        return 8, (-128, 127)
+    if "quint4" in dtype_text or "uint4" in dtype_text:
+        return 4, (0, 15)
+    if "qint4" in dtype_text or "int4" in dtype_text:
+        return 4, (-8, 7)
+    flattened = [item for row in integers for item in row]
+    if flattened and min(flattened) >= 0 and max(flattened) <= 255:
+        return 8, (0, 255)
+    if flattened and min(flattened) >= -128 and max(flattened) <= 127:
+        return 8, (-128, 127)
+    return None
+
+
+def _call_or_attr(value: Any, name: str) -> Any:
+    attr = getattr(value, name, None)
+    if callable(attr):
+        try:
+            return attr()
+        except TypeError:
+            return None
+    return attr
 
 
 def _capture_dense_matmul(graph_module: Any, node: Any) -> Optional[CapturedOperator]:

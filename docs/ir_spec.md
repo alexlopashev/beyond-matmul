@@ -74,7 +74,10 @@ Exact quantized contracts:
   integer payload plus one tensor-wide `scale` and `zero_point`, interpreted as
   `(integer - zero_point) * scale`. `PackedAffineQuantizedOperator` preserves
   the integer payload, bit width, integer range, scale, and zero point while
-  keeping dense dequantization available through `to_dense()`.
+  keeping dense dequantization available through `to_dense()`. The Torch
+  frontend maps the tested fixed per-tensor affine quantized `nn.Linear` module
+  case to this operator rather than claiming provenance from a dequantized dense
+  fallback.
 
 Approximate quantized contracts:
 

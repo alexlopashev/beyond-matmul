@@ -21,7 +21,8 @@ current IR or capture rules need more design before claiming coverage.
 | Grouped/depthwise `Conv1d` | Supported | `MultiChannelConvolution1DOperator` or `AffineOperator` | Tested for fixed-weight `nn.Conv1d` modules and functional `conv1d`; preserves explicit `groups`, `group_type`, stride, padding, and dilation metadata. |
 | Stride/padding/dilation `Conv1d` variants | Supported | `Convolution1DOperator`, `MultiChannelConvolution1DOperator`, or `AffineOperator` | Scalar 1D parameters only; invalid output lengths and multi-dimensional parameter shapes are rejected. |
 | `Conv2d` | Unsupported | Not captured | Needs 2D convolution IR and layout decisions before frontend matching. |
-| Quantized linear/conv | Unsupported | Not captured | `PackedAffineQuantizedOperator` now covers per-tensor affine integer fixed weights in the IR, but Torch capture still needs module mapping rules and explicit exclusions for per-axis cases. |
+| Quantized `nn.Linear` | Supported | `PackedAffineQuantizedOperator` or `AffineOperator(PackedAffineQuantizedOperator)` | Captures fixed per-tensor affine integer module weights with optional fixed bias, preserving integer payload, scale, zero point, bit width, and integer range. Per-channel/per-axis and dynamic quantized modules are ignored cleanly. |
+| Quantized `Conv1d`/`Conv2d` | Unsupported | Not captured | Needs convolution-specific packed payload and layout rules before frontend matching can claim quantized convolution provenance. |
 | Exported graph fixed-weight `addmm` and nested linear | Supported | `DenseOperator`, `AffineOperator(DenseOperator)`, `LowRankOperator`, or `AffineOperator(LowRankOperator)` | Recovers fixed parameter/buffer values through graph signature state, with provenance notes marking exported recovery. |
 | Dynamic-weight matmul/addmm | Unsupported | Not captured | Fixed-weight reuse is the scope; runtime weights are ignored cleanly. |
 
@@ -65,13 +66,14 @@ parameter shapes, invalid output lengths, dynamic weights, dynamic bias values,
 and fixed-buffer inputs are ignored cleanly rather than captured as structured
 Conv1d.
 
-Quantized module capture remains unsupported even though the IR now documents a
-fixed-weight quantization contract. `CodebookOperator` and
-`BitpackedBinaryOperator` can preserve codebook and tensor-wide scaled binary
-payloads, `PackedAffineQuantizedOperator` can preserve per-tensor affine integer
-payloads, and dense dequantization remains a fallback. The Torch frontend does
-not yet recover quantized `nn.Linear` or convolution modules because packed
-storage layouts and intentionally unsupported per-channel or per-axis
-quantization cases still need executable capture rules and tests. Until then,
-frontend recovery must not silently dequantize a quantized module into
-`DenseOperator` and call that provenance-preserving quantized capture.
+Quantized module capture is intentionally limited to fixed per-tensor affine
+`nn.Linear` weights. `CodebookOperator` and `BitpackedBinaryOperator` can
+preserve codebook and tensor-wide scaled binary payloads,
+`PackedAffineQuantizedOperator` can preserve per-tensor affine integer payloads,
+and dense dequantization remains a fallback. The Torch frontend maps supported
+quantized linear modules to the packed affine IR without first materializing an
+anonymous dense weight. Per-channel, per-axis, dynamic quantized, and quantized
+convolution modules remain unsupported until executable payload and layout rules
+exist for those contracts. Frontend recovery must not silently dequantize an
+unsupported quantized module into `DenseOperator` and call that
+provenance-preserving quantized capture.
