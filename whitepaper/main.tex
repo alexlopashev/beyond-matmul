@@ -238,6 +238,51 @@ workload case studies.
   \item coverage matrix rows connected to executable tests.
 \end{itemize}
 
+\subsection{Current Benchmark Results}
+
+The current results are generated artifacts rather than hand-curated tables.
+The main fixed-weight benchmark is regenerated with
+\texttt{mise exec -- uv run python benchmarks/fixed\_weight.py --json-output
+docs/results/fixed\_weight.json}; local CI also regenerates the workload
+case-study, approximation-error, and planner-contract JSON artifacts documented
+in \texttt{docs/benchmark\_artifacts.md}.
+
+In the fixed-weight benchmark, the planner request allows approximate
+lowerings with a maximum relative error of $0.05$ over a batch of $32$ and
+$32$ requested calls. The current artifact selects exact specialized lowerings
+for diagonal, sparse, low-rank, small-codebook, single-channel Conv1d, and
+multi-channel Conv1d cases, and selects dense GEMM for the random dense
+fallback case. All rows are valid and exact in this controlled benchmark. The
+recorded fields include selected lowering, relative error, estimated apply
+cost, estimated memory bytes, preprocessing cost, amortized preprocessing, and
+pure-Python seconds per apply for dense and selected lowerings. For example,
+the diagonal and sparse cases select \texttt{diagonal\_kernel} and
+\texttt{sparse\_kernel} with zero output-relative error and no preprocessing,
+while the codebook case records preprocessing work that is amortized over the
+requested calls. The Conv1d rows select direct Conv1d lowerings with zero
+output-relative error rather than first materializing an equivalent dense
+matrix.
+
+The workload case-study artifact is evidence for provenance preservation, not
+timing performance. It records a merged LoRA-style adapter selecting
+\texttt{low\_rank\_product\_bias}, an \texttt{nn.Conv1d} module selecting
+\texttt{conv1d\_channel\_direct}, and a functional fixed-bias Conv1d selecting
+\texttt{conv1d\_channel\_direct\_bias}. Each row records output-relative error
+against the Torch workload, planner cost and memory proxies, dense fallback
+fields, and an explicit \texttt{measured\_timing: false} boundary.
+
+The approximation and planner-contract artifacts bound the negative claims. In
+the approximation ablation, low-rank and sparse top-k candidates pass the
+matrix-relative threshold but fail the output-relative threshold on the sampled
+inputs, so the output-aware planner keeps dense GEMM for that case. In the
+planner-contract ablation, exact-only planning keeps dense GEMM, bounded-error
+planning can choose low-rank under the stated error contract, reuse sensitivity
+changes whether preprocessing-heavy options are valid, and unsupported GPU
+specialization falls back to dense GEMM. These are deterministic Python
+evidence artifacts. They support claims about planner behavior, proxies, and
+case coverage; they do not establish hardware-calibrated speedups or production
+backend performance.
+
 \section{Development Methodology}
 
 All code work should be test-driven and issue-driven. Each issue should be
