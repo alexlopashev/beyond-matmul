@@ -50,6 +50,63 @@ A lowering is valid when all required contracts hold:
 - Backend: the target must advertise support for the lowering family.
 - Layout: physical layout must be compatible or cheaply convertible.
 
+## Quantized Fixed-Weight Contract
+
+Quantized operators are fixed-weight operators whose packed representation is
+part of the contract. Dense dequantization is always a semantic fallback for
+equivalence checks and portability, but it is not provenance preservation by
+itself. A lowering preserves quantized provenance only when the operator keeps
+the integer codes, binary signs, codebook, scale, zero point, and packing
+metadata needed to apply the weight without first materializing an anonymous
+dense matrix.
+
+Exact quantized contracts:
+
+- Codebook weights are exact when every stored code indexes an explicit
+  codebook value and those values are the source weight values. The payload is
+  `codes` plus `codebook`, with `QuantizationSpec(scheme="codebook", bits=...,
+  codebook_size=...)`.
+- Bitpacked binary weights are exact when every source weight is representable
+  as `scale * sign` for a single tensor-wide scale and `sign in {-1, 1}`. The
+  payload is `signs` plus `scale`, with
+  `QuantizationSpec(scheme="symmetric_binary", bits=1, scale=...)`.
+- Per-tensor affine integer weights are exact only when the IR carries the
+  integer payload plus one tensor-wide `scale` and `zero_point`, interpreted as
+  `(integer - zero_point) * scale`. `QuantizationSpec` can name that metadata,
+  but there is not yet a dedicated packed affine-integer operator, so the Torch
+  frontend must not claim this capture today. The missing payload operator is
+  tracked as follow-up issue #52.
+
+Approximate quantized contracts:
+
+- A codebook or bitpacked binary operator is approximate when it is produced by
+  quantizing an arbitrary dense matrix into a smaller value set. The operator
+  must carry an `ApproximationContract` and planner acceptance depends on the
+  requested error metric, observed error, and epsilon.
+- Dense fallback for an approximate quantized operator applies the dequantized
+  dense equivalent of the candidate. It preserves output semantics for the
+  candidate, not the original source weights unless the approximation contract
+  says the candidate is exact under the requested metric.
+
+Intentionally unsupported today:
+
+- Per-channel, per-axis, per-group, and activation-dependent quantization
+  schemes are not captured as quantized fixed-weight operators yet. The
+  existing `QuantizationSpec.per_axis` field is descriptive metadata only until
+  an operator payload, layout rule, and tests define axis semantics.
+- Asymmetric binary, ternary, mixed-precision, and blockwise quantization need
+  their own payload and lowering contracts before frontend support can be
+  claimed. Ternary weights may be represented as a codebook only when the exact
+  codebook contract above holds.
+
+Current IR mapping:
+
+| IR object | Contract status | Preserved payload | Dense fallback boundary |
+| --- | --- | --- | --- |
+| `QuantizationSpec` | Metadata descriptor | Scheme, bits, optional codebook size, scale, zero point, and descriptive per-axis tag | Does not by itself prove packed provenance; an operator payload must carry the codes or integers. |
+| `CodebookOperator` | Exact or approximate depending on `ApproximationContract` and provenance | Integer `codes`, floating `codebook`, codebook size, bit width | `to_dense()` dequantizes by table lookup and loses lookup provenance if lowered to `DenseOperator`. |
+| `BitpackedBinaryOperator` | Exact for tensor-wide scaled binary sources; approximate for binary approximation candidates | Sign matrix, tensor-wide scale, one-bit symmetric quantization metadata | `to_dense()` expands signs to floats and loses bitpacked storage provenance if lowered to `DenseOperator`. |
+
 ## Examples
 
 ### Diagonal
@@ -148,7 +205,9 @@ Lowerings: `fixed_mask_sparse`, `dense_gemm`.
 CodebookOperator(codes, codebook=[-1.0, 0.0, 0.5, 1.0])
 ```
 
-Structure: weight values are looked up from a small table.
+Structure: weight values are looked up from a small table. Exact when the
+codes and codebook are the source representation; approximate when produced by
+quantizing a denser source under an `ApproximationContract`.
 Lowerings: `codebook_kernel`, `dense_gemm`.
 
 ### Bitpacked
@@ -157,7 +216,9 @@ Lowerings: `codebook_kernel`, `dense_gemm`.
 BitpackedBinaryOperator(signs, scale=0.125)
 ```
 
-Structure: one bit per sign plus a scale.
+Structure: one bit per sign plus one tensor-wide scale. Exact only for
+tensor-wide scaled binary source weights; approximate when produced as a binary
+candidate for denser weights.
 Lowerings: `bitpacked_kernel`, `dense_gemm`.
 
 ### Dense Fallback
