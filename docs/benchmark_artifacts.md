@@ -1,5 +1,15 @@
 # Benchmark Artifacts
 
+## Evidence Matrix
+
+| Artifact | Regeneration command | Meaning | Boundary |
+| --- | --- | --- | --- |
+| `docs/results/workload_case_studies.json` | `mise exec -- uv run python examples/case_study_artifacts.py --json-output docs/results/workload_case_studies.json` | Captured adapter and Conv1d workload provenance, dense fallback comparison, selected lowering, output error, cost proxy, memory proxy, and timing/proxy boundary. | Case-study evidence only; planner cost and memory proxies are recorded, but no benchmark timings are measured. |
+| `docs/results/fixed_weight.json` | `mise exec -- uv run python benchmarks/fixed_weight.py --json-output docs/results/fixed_weight.json` | Synthetic fixed-weight benchmark rows for structured lowerings versus dense fallback. | Pure-Python latency proxies, not hardware-calibrated production performance. |
+| `docs/results/approximation_error_ablation.json` | `mise exec -- uv run python benchmarks/approximation_error_ablation.py --json-output docs/results/approximation_error_ablation.json` | Deterministic matrix-reconstruction-error versus output-error candidate table. | One bounded synthetic case, not a broad approximation-quality benchmark. |
+
+## Fixed-Weight Benchmark
+
 `benchmarks/fixed_weight.py` can emit a machine-readable JSON artifact while
 preserving the human-readable smoke table used by local CI. CI uploads
 `docs/results/fixed_weight.json` as the workflow artifact
@@ -26,6 +36,34 @@ request and backend contract allow them.
 
 The timings are pure-Python latency proxies for research triage and figure
 generation. They are not hardware-calibrated production performance claims.
+
+## Workload Case Studies
+
+`examples/case_study_artifacts.py` reuses the adapter and Conv1d demo logic to
+emit a machine-readable artifact while the demo scripts keep their
+human-readable local output. CI uploads `docs/results/workload_case_studies.json`
+as the workflow artifact `workload-case-studies-json`.
+
+Regenerate the workload case-study artifact with:
+
+```bash
+mise exec -- uv run python examples/case_study_artifacts.py --json-output docs/results/workload_case_studies.json
+```
+
+The JSON schema is versioned with `schema_version: 1`. Each case records:
+
+- captured operator name, kind, linear kind, shape, lowerings, and provenance
+- provenance notes from the capture pass
+- selected lowering with output-relative error against the Torch module
+- dense fallback selected lowering and the same planner proxy fields
+- cost and memory proxies from the planner
+- an explicit timing/proxy boundary stating that the case-study artifact does
+  not measure timings
+
+The controlled case set currently includes a merged LoRA-style adapter, an
+`nn.Conv1d` module, and a functional `F.conv1d` with fixed bias. These rows are
+case-study evidence for provenance preservation and dense fallback comparison;
+they are not benchmark timing evidence.
 
 ## Approximation Error Ablation
 

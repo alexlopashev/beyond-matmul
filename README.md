@@ -34,6 +34,7 @@ mise exec -- uv run python examples/torch_fx_frontend_demo.py
 mise exec -- uv run python examples/adapter_workload_demo.py
 mise exec -- uv run python examples/conv1d_workload_demo.py
 mise exec -- uv run python examples/torch_coverage_demo.py
+mise exec -- uv run python examples/case_study_artifacts.py --json-output docs/results/workload_case_studies.json
 mise exec -- uv run python benchmarks/fixed_weight.py
 ```
 
@@ -61,6 +62,8 @@ uv run python examples/torch_fx_frontend_demo.py
   merged dense weight and recovered low-rank factors
 - `examples/conv1d_workload_demo.py`: tiny PyTorch module and functional Conv1d
   case study comparing convolution provenance against dense materialization
+- `examples/case_study_artifacts.py`: machine-readable adapter and Conv1d
+  case-study evidence while preserving the human-readable demo paths
 - `examples/torch_coverage_demo.py`: Torch frontend coverage smoke demo for
   supported fixed-weight patterns
 - `docs/taxonomy.md`: taxonomy of dense lowerings and lost structure
