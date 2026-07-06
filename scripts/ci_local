@@ -30,6 +30,7 @@ fi
 cd "$PROJECT_DIR"
 
 "$MISE_BIN" exec -- uv sync --locked
+"$MISE_BIN" exec -- uv run python scripts/check_torch_frontend_coverage.py
 "$MISE_BIN" exec -- uv run python -m unittest discover -s tests
 "$MISE_BIN" exec -- uv run python -m py_compile beyond_matmul/*.py examples/*.py tests/*.py
 "$MISE_BIN" exec -- uv run python examples/fixed_weight_inference_demo.py

@@ -105,6 +105,17 @@ def main() -> int:
         [[1.0, 0.5, -1.0], [0.25, 2.0, -0.5]],
         [[-1.5, 0.75, 0.25], [1.25, -0.25, 0.5]],
     ])
+    grouped_weight = torch.tensor([
+        [[1.0, 0.5, -1.0], [0.25, 2.0, -0.5]],
+        [[-1.5, 0.75, 0.25], [1.25, -0.25, 0.5]],
+        [[0.5, -0.5, 1.5], [1.0, 0.0, -1.0]],
+        [[-0.25, 0.5, 0.75], [2.0, -1.0, 0.25]],
+    ])
+    depthwise_weight = torch.tensor([
+        [[1.0, 0.0, -1.0]],
+        [[0.5, -0.5, 1.5]],
+        [[2.0, 1.0, 0.25]],
+    ])
 
     class MultiChannelConv1d(nn.Module):
         def __init__(self) -> None:
@@ -124,6 +135,25 @@ def main() -> int:
 
         def forward(self, x):
             return F.conv1d(x, self.weight, self.bias)
+
+    class GroupedConv1d(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.conv = nn.Conv1d(4, 4, kernel_size=3, groups=2, bias=True)
+            with torch.no_grad():
+                self.conv.weight.copy_(grouped_weight)
+                self.conv.bias.copy_(torch.tensor([0.1, -0.2, 0.3, -0.4]))
+
+        def forward(self, x):
+            return self.conv(x)
+
+    class DepthwiseFunctionalConv1d(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.register_buffer("weight", depthwise_weight)
+
+        def forward(self, x):
+            return F.conv1d(x, self.weight, groups=3)
 
     print("Torch frontend coverage demo")
     print()
@@ -164,8 +194,23 @@ def main() -> int:
     functional_outputs = functional_conv(channel_input).detach().flatten(1).tolist()
     _report_case("functional Conv1d", functional_capture.name, functional_capture.operator, channel_rows, functional_outputs)
 
+    grouped_input = torch.randn(4, 4, 5, generator=torch.Generator().manual_seed(37))
+    grouped_conv = GroupedConv1d().eval()
+    grouped_capture = capture_torch_fx_operators(grouped_conv, sample_inputs=grouped_input)["conv"]
+    grouped_rows = grouped_input.flatten(1).tolist()
+    grouped_outputs = grouped_conv(grouped_input).detach().flatten(1).tolist()
+    _report_case("grouped Conv1d", grouped_capture.name, grouped_capture.operator, grouped_rows, grouped_outputs)
+
+    depthwise_input = torch.randn(4, 3, 5, generator=torch.Generator().manual_seed(41))
+    depthwise_conv = DepthwiseFunctionalConv1d().eval()
+    depthwise_captures = capture_torch_fx_operators(depthwise_conv, sample_inputs=depthwise_input)
+    depthwise_capture = next(item for item in depthwise_captures.values() if item.event.notes.get("capture") == "conv1d_function")
+    depthwise_rows = depthwise_input.flatten(1).tolist()
+    depthwise_outputs = depthwise_conv(depthwise_input).detach().flatten(1).tolist()
+    _report_case("depthwise Conv1d", depthwise_capture.name, depthwise_capture.operator, depthwise_rows, depthwise_outputs)
+
     print()
-    print("Takeaway: coverage is explicit across dense matmul/addmm, low-rank, and valid Conv1d module/function rows.")
+    print("Takeaway: coverage is explicit across dense matmul/addmm, low-rank, and tested Conv1d module/function rows.")
     return 0
 
 

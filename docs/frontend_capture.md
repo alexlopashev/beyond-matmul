@@ -40,15 +40,15 @@ executable IR payloads for:
 - Torch exported-program graphs for the tested fixed-weight `addmm` and nested
   linear forms, where parameter names are recovered through the export graph
   signature and state dictionary rather than module nesting
-- valid `nn.Conv1d` modules and fixed-weight functional `conv1d`, represented
+- fixed-weight `nn.Conv1d` modules and functional `conv1d`, represented
   as `Convolution1DOperator`, `MultiChannelConvolution1DOperator`, or affine
   convolution when an input length is known from `sample_inputs` shape
-  propagation or a module input-length hint, including valid grouped/depthwise
-  channel partitions
+  propagation or a module input-length hint, including scalar stride, padding,
+  dilation, and tested grouped/depthwise channel partitions
 
 `capture_torch_fx_linear_operators` remains as a backward-compatible alias.
 
 See `docs/torch_frontend_coverage.md` for the current support matrix. Open
-frontend targets remain stride/padding/dilation Conv1d variants, quantized
-modules with executable packed-payload rules, and broader exported graph
+frontend targets remain quantized modules with executable packed-payload rules,
+Conv2d, and broader exported graph
 operator coverage.

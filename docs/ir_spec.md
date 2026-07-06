@@ -8,7 +8,7 @@ The IR represents fixed-weight linear and affine maps with shape
 
 ```python
 OperatorMetadata(
-    kind="dense | diagonal | sparse_coo | low_rank | affine | conv1d | conv1d_channel | codebook | bitpacked_binary",
+    kind="dense | diagonal | sparse_coo | fixed_mask | low_rank | affine | conv1d | conv1d_channel | codebook | bitpacked_binary",
     shape=(out_features, in_features),
     provenance=Provenance(
         source="framework node, compiler pass, analyzer, or fallback",
@@ -140,10 +140,19 @@ Lowerings: fused bias variants such as `low_rank_product_bias`, plus
 ### Convolutional
 
 ```python
-Convolution1DOperator(kernel=[1.0, -1.0, 2.0], input_length=128)
+Convolution1DOperator(
+    kernel=[1.0, -1.0, 2.0],
+    input_length=128,
+    stride=2,
+    padding=1,
+    dilation=1,
+)
 ```
 
-Structure: single-channel Toeplitz dense equivalent, local kernel reuse.
+Structure: single-channel Toeplitz dense equivalent, local kernel reuse, and
+explicit PyTorch-style `stride`, `padding`, and `dilation` metadata. Padded
+positions are implicit zeros in both direct application and dense
+materialization.
 Lowerings: `conv1d_direct`, `dense_gemm`.
 
 ```python
@@ -154,16 +163,20 @@ MultiChannelConvolution1DOperator(
     ],
     input_length=128,
     groups=1,
+    stride=1,
+    padding=0,
+    dilation=1,
 )
 ```
 
-Structure: block-Toeplitz dense equivalent for fixed valid Conv1d. Input rows
-flatten `(in_channels, input_length)` and output rows flatten
-`(out_channels, output_length)` in channel-major order. `groups` partitions
-input and output channels with PyTorch-style weight shape
+Structure: block-Toeplitz dense equivalent for fixed Conv1d with explicit
+`stride`, `padding`, and `dilation`. Input rows flatten
+`(in_channels, input_length)` and output rows flatten `(out_channels,
+output_length)` in channel-major order. `groups` partitions input and output
+channels with PyTorch-style weight shape
 `(out_channels, in_channels / groups, kernel_size)`. Ungrouped, grouped, and
 depthwise forms keep explicit metadata for `groups`,
-`input_channels_per_group`, and `group_type`.
+`input_channels_per_group`, `group_type`, and the derived `output_length`.
 Lowerings: `conv1d_channel_direct`, `conv1d_grouped_direct`,
 `conv1d_depthwise_direct`, `dense_gemm`.
 
@@ -175,6 +188,16 @@ SparseCOOOperator(rows, cols, values, operator_shape=(out, in))
 
 Structure: only nonzero entries.
 Lowerings: `sparse_kernel`, `dense_gemm`.
+
+### Fixed Mask
+
+```python
+FixedMaskOperator(mask, pattern="causal_band")
+```
+
+Structure: a binary, fixed mask applied as an exact sparse linear map over
+values or features, independent of input-dependent attention scores.
+Lowerings: `fixed_mask_sparse`, `dense_gemm`.
 
 ### Codebook
 
