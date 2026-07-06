@@ -50,4 +50,5 @@ executable IR payloads for:
 
 See `docs/torch_frontend_coverage.md` for the current support matrix. Open
 frontend targets remain stride/padding/dilation Conv1d variants, quantized
-modules, and broader exported graph operator coverage.
+modules with executable packed-payload rules, and broader exported graph
+operator coverage.

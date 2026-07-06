@@ -21,7 +21,7 @@ current IR or capture rules need more design before claiming coverage.
 | Grouped/depthwise `Conv1d` | Supported | `MultiChannelConvolution1DOperator` or `AffineOperator` | Valid convolution only, with explicit `groups` and `group_type` metadata. |
 | Stride/padding/dilation `Conv1d` variants | Next | Not captured | Current Conv1d IR is valid-mode only. |
 | `Conv2d` | Unsupported | Not captured | Needs 2D convolution IR and layout decisions before frontend matching. |
-| Quantized linear/conv | Unsupported | Not captured | Needs quantization-aware IR mapping rather than lossy dense recovery. |
+| Quantized linear/conv | Unsupported | Not captured | Contract is defined in `docs/ir_spec.md`, but capture needs the packed payload mapping tracked by #52 for per-tensor affine integer weights and explicit exclusions for per-axis cases. |
 | Exported graph fixed-weight `addmm` and nested linear | Supported | `DenseOperator`, `AffineOperator(DenseOperator)`, `LowRankOperator`, or `AffineOperator(LowRankOperator)` | Recovers fixed parameter/buffer values through graph signature state, with provenance notes marking exported recovery. |
 | Dynamic-weight matmul/addmm | Unsupported | Not captured | Fixed-weight reuse is the scope; runtime weights are ignored cleanly. |
 
@@ -50,3 +50,14 @@ are supported when weights and optional bias are fixed, stride is 1, padding is
 channel-major order. Grouped and depthwise rows preserve PyTorch-style group
 partitions with explicit `groups`, `input_channels_per_group`, and
 `group_type` metadata.
+
+Quantized module capture remains unsupported even though the IR now documents a
+fixed-weight quantization contract. `CodebookOperator` and
+`BitpackedBinaryOperator` can preserve codebook and tensor-wide scaled binary
+payloads, and dense dequantization remains a fallback. The Torch frontend does
+not yet recover quantized `nn.Linear` or convolution modules because per-tensor
+affine integer payloads, packed storage layouts, and intentionally unsupported
+per-channel or per-axis quantization cases still need executable capture rules
+and tests. Until then, frontend recovery must not silently dequantize a
+quantized module into `DenseOperator` and call that provenance-preserving
+quantized capture.

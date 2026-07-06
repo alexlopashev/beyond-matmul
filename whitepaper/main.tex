@@ -92,6 +92,8 @@ Out of scope for the first complete artifact:
   \item training-time weight mutation and gradient semantics;
   \item production GPU kernels;
   \item claims of hardware-calibrated speedup without benchmark evidence;
+  \item frontend capture of quantized Torch modules beyond the explicitly
+  documented fixed-weight quantization contract;
   \item universal Torch operation support in a single pass.
 \end{itemize}
 
@@ -135,6 +137,17 @@ operator plus bias. Implemented operator families include dense, diagonal,
 sparse COO, low-rank, convolutional, codebook, and bitpacked binary weights.
 Each operator exposes executable semantics and a dense fallback for equivalence
 testing.
+
+The quantized fixed-weight contract is deliberately narrow. Codebook operators
+preserve integer codes plus an explicit value table; bitpacked binary operators
+preserve one sign bit per weight plus a tensor-wide scale. These operators may
+be exact source representations or approximate candidates depending on their
+approximation contract. Dense dequantization remains a valid fallback, but it
+is not by itself evidence that packed or codebook provenance survived. The IR
+metadata can describe per-tensor scale and zero point, but per-tensor affine
+integer payloads, per-channel or per-axis quantization, mixed precision, and
+activation-dependent quantization remain future work until payload, layout, and
+frontend tests exist.
 
 \subsection{Recovery Analyzer}
 
@@ -220,8 +233,8 @@ workload case studies.
   \item Conv/linear lowering from a broader CNN-style block;
   \item attention projection or masked attention block;
   \item embedding plus projection in a language-model-like block;
-  \item quantized linear or convolutional modules once the IR can represent
-  their contracts honestly.
+  \item quantized linear or convolutional modules once frontend capture has
+  executable packed-payload rules for the documented contracts.
 \end{itemize}
 
 \subsection{Metrics}
