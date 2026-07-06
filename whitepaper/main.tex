@@ -552,20 +552,54 @@ parity, minimality, and north-star alignment before merging. Retrospective
 agents periodically trim duplication, detect stuck PRs, and create corrective
 issues.
 
-\section{Current Risks}
+\section{Limitations and Threats to Validity}
 
-\begin{itemize}
-  \item Coverage drift: docs may claim support that tests do not prove.
-  \item Benchmark overclaiming: pure-Python proxies may be mistaken for
-  production performance evidence.
-  \item Abstraction inflation: operator families may grow before their contracts
-  are stable.
-  \item Agent drift: autonomous workers may optimize for local issue completion
-  instead of paper-quality evidence.
-  \item Recovery ambiguity: dense structure probes may look convincing; current
-  confidence is heuristic, and output-error validation covers only supplied
-  representative samples.
-\end{itemize}
+The current evidence is intentionally bounded. Benchmark and workload artifacts
+exercise small fixed-weight cases, record planner cost and memory proxies, and
+include pure-Python timing fields where the benchmark script measures them.
+These artifacts are useful for comparing planner choices and generating paper
+figures, but they are not hardware-calibrated speedup evidence and do not
+stand in for production kernels. Claims about GPU kernels, production runtime
+speedups, or backend-specific scheduling are deliberately out of scope until a
+future backend study adds measured runtime evidence.
+
+Recovery after provenance is lost is weaker than preserving provenance before
+dense lowering. The analyzer confidence values are probe-specific heuristic
+scores, not statistically calibrated probabilities, and output-relative
+validation only covers the representative samples supplied to the analyzer. A
+recovered low-rank, sparse, diagonal, or codebook candidate can be useful
+planner evidence, but it does not prove the original computation reason and it
+does not replace the dense fallback. Broader recovery-quality benchmarks and
+calibrated confidence models remain future work.
+
+Approximation and planner results should be read as contract evidence rather
+than broad model-quality or performance evidence. The approximation ablation is
+one deterministic synthetic case showing that matrix reconstruction error and
+output-relative error can lead to different accept/reject decisions. The
+planner-contract ablation checks exactness, bounded error, reuse
+amortization, backend support rejection, and dense fallback preservation on
+small deterministic scenarios. These results support the need for explicit
+error and planning contracts; they do not show that any approximation family is
+generally good or bad, nor that the current cost model is globally optimal.
+
+Quantized and mask-aware claims are also narrow by design. The IR can express
+exact codebook payloads and tensor-wide scaled binary payloads, and dense
+dequantization remains a semantic fallback, but Torch quantized linear or
+convolutional module capture is not claimed until packed per-tensor affine
+payloads, layout rules, and tests exist. Per-axis, per-channel,
+activation-dependent, mixed-precision, and blockwise quantization remain
+outside the current contract. Similarly, fixed-mask support covers explicit
+binary masks applied as sparse linear maps over values or features; it does
+not claim score-dependent masked attention, softmax semantics, KV-cache
+layout, broadcast mask contracts, or dynamic sequence behavior.
+
+A final threat is claim drift across the paper, docs, wiki, and executable
+artifacts. The project mitigates this by treating
+\texttt{docs/evidence\_matrix.md} as the claim-to-evidence map and by keeping
+unsupported claims labeled as future work or out of scope. During this pass,
+the unsupported high-priority claims found in the matrix were already bounded
+by existing prose or tracked follow-up work, so this section does not create a
+new follow-up issue by itself.
 
 \section{Completion Criteria}
 
