@@ -125,11 +125,9 @@ class FrontendTests(unittest.TestCase):
 
         self.assertEqual(extract_torch_fx_low_rank_operators(graph_module), {})
 
-    def test_ignores_unsupported_fake_conv1d_variants(self):
+    def test_ignores_invalid_fake_conv1d_variants(self):
         unsupported_modules = [
-            Conv1d([[[1.0, 2.0, 3.0]]], stride=2),
-            Conv1d([[[1.0, 2.0, 3.0]]], padding=1),
-            Conv1d([[[1.0, 2.0, 3.0]]], dilation=2),
+            Conv1d([[[1.0, 2.0, 3.0]]], stride=(1, 1)),
             Conv1d([[[1.0, 2.0, 3.0]]], groups=2, in_channels=1, out_channels=1),
         ]
         for module in unsupported_modules:
@@ -142,6 +140,34 @@ class FrontendTests(unittest.TestCase):
                 graph_module.graph.nodes = [x, conv]
 
                 self.assertEqual(extract_torch_fx_operators(graph_module), {})
+
+    def test_extracts_fake_strided_padded_dilated_conv1d_module(self):
+        graph_module = FakeGraphModule([])
+        graph_module.conv = Conv1d(
+            [[[1.0, -1.0, 2.0]]],
+            stride=2,
+            padding=1,
+            dilation=2,
+            in_channels=1,
+            out_channels=1,
+        )
+        x = FakeNode("x", "placeholder", "x")
+        x.meta["tensor_meta"] = FakeTensorMeta((1, 1, 7))
+        conv = FakeNode("conv", "call_module", "conv", args=(x,))
+        graph_module.graph.nodes = [x, conv]
+
+        captured = extract_torch_fx_operators(graph_module)
+
+        self.assertIn("conv", captured)
+        operator = captured["conv"].operator
+        self.assertIsInstance(operator, Convolution1DOperator)
+        self.assertEqual(operator.shape, (3, 7))
+        self.assertEqual(operator.metadata.structure["stride"], 2)
+        self.assertEqual(operator.metadata.structure["padding"], 1)
+        self.assertEqual(operator.metadata.structure["dilation"], 2)
+        self.assertEqual(captured["conv"].event.notes["stride"], "2")
+        self.assertEqual(captured["conv"].event.notes["padding"], "1")
+        self.assertEqual(captured["conv"].event.notes["dilation"], "2")
 
     def test_extracts_fake_multi_channel_conv1d_module(self):
         graph_module = FakeGraphModule([])
@@ -259,13 +285,19 @@ class FrontendTests(unittest.TestCase):
         bias = FakeNode("bias", "get_attr", "bias")
         dynamic_weight_conv = FakeNode("conv1d", "call_function", "torch.nn.functional.conv1d", args=(x, dynamic_weight, bias))
         dynamic_bias_conv = FakeNode("conv1d_1", "call_function", "torch.nn.functional.conv1d", args=(x, weight, dynamic_bias))
-        strided_conv = FakeNode("conv1d_2", "call_function", "torch.nn.functional.conv1d", args=(x, weight, bias), kwargs={"stride": 2})
         invalid_grouped_conv = FakeNode(
             "conv1d_3",
             "call_function",
             "torch.nn.functional.conv1d",
             args=(x, weight, bias),
             kwargs={"groups": 2},
+        )
+        invalid_stride_conv = FakeNode(
+            "conv1d_4",
+            "call_function",
+            "torch.nn.functional.conv1d",
+            args=(x, weight, bias),
+            kwargs={"stride": (1, 1)},
         )
         graph_module.graph.nodes = [
             x,
@@ -275,11 +307,44 @@ class FrontendTests(unittest.TestCase):
             bias,
             dynamic_weight_conv,
             dynamic_bias_conv,
-            strided_conv,
             invalid_grouped_conv,
+            invalid_stride_conv,
         ]
 
         self.assertEqual(extract_torch_fx_operators(graph_module), {})
+
+    def test_extracts_fake_functional_strided_padded_dilated_conv1d(self):
+        graph_module = FakeGraphModule([])
+        graph_module.weight = [
+            [[1.0, -1.0, 2.0]],
+        ]
+        graph_module.bias = [0.25]
+
+        x = FakeNode("x", "placeholder", "x")
+        x.meta["tensor_meta"] = FakeTensorMeta((1, 1, 7))
+        weight = FakeNode("weight", "get_attr", "weight")
+        bias = FakeNode("bias", "get_attr", "bias")
+        conv = FakeNode(
+            "conv1d",
+            "call_function",
+            "torch.nn.functional.conv1d",
+            args=(x, weight, bias),
+            kwargs={"stride": 2, "padding": 1, "dilation": 2},
+        )
+        graph_module.graph.nodes = [x, weight, bias, conv]
+
+        captured = extract_torch_fx_operators(graph_module)
+
+        self.assertIn("conv1d", captured)
+        operator = captured["conv1d"].operator
+        self.assertIsInstance(operator, AffineOperator)
+        self.assertIsInstance(operator.linear, Convolution1DOperator)
+        self.assertEqual(operator.shape, (3, 7))
+        self.assertEqual(operator.bias, [0.25, 0.25, 0.25])
+        self.assertEqual(operator.linear.metadata.structure["stride"], 2)
+        self.assertEqual(operator.linear.metadata.structure["padding"], 1)
+        self.assertEqual(operator.linear.metadata.structure["dilation"], 2)
+        self.assertEqual(captured["conv1d"].event.notes["stride"], "2")
 
     def test_extracts_fixed_weight_matmul_pattern_as_dense(self):
         graph_module = FakeGraphModule([])
@@ -757,6 +822,44 @@ class FrontendTests(unittest.TestCase):
             PlanningRequest(batch_size=len(input_rows), calls=32, sample_inputs=input_rows, codebook_sizes=(2,)),
         )
         self.assertEqual(plan.selected.name, "conv1d_direct_bias")
+        self.assertTrue(plan.selected.exact)
+
+    @unittest.skipIf(torch is None, "PyTorch is not installed")
+    def test_captures_real_strided_padded_dilated_torch_conv1d_module(self):
+        class StridedPaddedDilatedConv(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.conv = nn.Conv1d(1, 1, kernel_size=3, stride=2, padding=1, dilation=2, bias=False)
+                with torch.no_grad():
+                    self.conv.weight.copy_(torch.tensor([[[1.0, -1.0, 2.0]]]))
+
+            def forward(self, x):
+                return self.conv(x)
+
+        module = StridedPaddedDilatedConv().eval()
+        torch_input = torch.tensor([
+            [[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]],
+            [[-1.0, 0.5, 2.0, -2.0, 1.5, 0.0, 3.0]],
+        ])
+        input_rows = torch_input.squeeze(1).tolist()
+
+        captured = capture_torch_fx_operators(module, sample_inputs=torch_input)
+
+        self.assertIn("conv", captured)
+        operator = captured["conv"].operator
+        self.assertIsInstance(operator, Convolution1DOperator)
+        self.assertEqual(operator.shape, (3, 7))
+        self.assertEqual(operator.metadata.structure["stride"], 2)
+        self.assertEqual(operator.metadata.structure["padding"], 1)
+        self.assertEqual(operator.metadata.structure["dilation"], 2)
+        self.assertMatrixAlmostEqual(operator.apply(input_rows), DenseOperator(operator.to_dense()).apply(input_rows))
+        self.assertMatrixAlmostEqual(operator.apply(input_rows), module(torch_input).detach().squeeze(1).tolist())
+
+        plan = plan_fixed_weight(
+            operator,
+            PlanningRequest(batch_size=len(input_rows), calls=32, sample_inputs=input_rows, codebook_sizes=(2,)),
+        )
+        self.assertEqual(plan.selected.name, "conv1d_direct")
         self.assertTrue(plan.selected.exact)
 
     @unittest.skipIf(torch is None, "PyTorch is not installed")

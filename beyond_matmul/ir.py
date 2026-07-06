@@ -416,23 +416,45 @@ class Convolution1DOperator(LinearOperator):
     kernel: Sequence[float]
     input_length: int
     mode: str = "valid"
+    stride: int = 1
+    padding: int = 0
+    dilation: int = 1
     provenance: Optional[Provenance] = None
     metadata: Optional[OperatorMetadata] = None
 
     def __post_init__(self) -> None:
         kernel = la.as_vector(self.kernel)
         if self.mode != "valid":
-            raise ValueError("only valid 1D convolution is implemented in the prototype")
-        if self.input_length < len(kernel):
-            raise ValueError("input length must be at least kernel length")
+            raise ValueError("only explicit valid-mode 1D convolution metadata is implemented")
+        stride = _checked_conv1d_parameter(self.stride, name="stride", allow_zero=False)
+        padding = _checked_conv1d_parameter(self.padding, name="padding", allow_zero=True)
+        dilation = _checked_conv1d_parameter(self.dilation, name="dilation", allow_zero=False)
+        output_length = _conv1d_output_length(
+            input_length=self.input_length,
+            kernel_size=len(kernel),
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+        )
         self.kernel = kernel
-        output_length = self.input_length - len(kernel) + 1
+        self.stride = stride
+        self.padding = padding
+        self.dilation = dilation
         self.metadata = _metadata(
             kind="conv1d",
             shape=(output_length, self.input_length),
             metadata=self.metadata,
             provenance=self.provenance,
-            structure={"kernel_size": len(kernel), "mode": self.mode, "lowering": "toeplitz"},
+            structure={
+                "kernel_size": len(kernel),
+                "input_length": self.input_length,
+                "output_length": output_length,
+                "stride": stride,
+                "padding": padding,
+                "dilation": dilation,
+                "mode": self.mode,
+                "lowering": "toeplitz",
+            },
             lowerings=("conv1d_direct", "dense_gemm"),
         )
 
@@ -440,7 +462,9 @@ class Convolution1DOperator(LinearOperator):
         dense = la.zeros(self.out_features, self.in_features)
         for out_index in range(self.out_features):
             for kernel_index, value in enumerate(self.kernel):
-                dense[out_index][out_index + kernel_index] = value
+                input_position = out_index * self.stride + kernel_index * self.dilation - self.padding
+                if 0 <= input_position < self.input_length:
+                    dense[out_index][input_position] = value
         return dense
 
     def apply(self, inputs: Sequence[Sequence[float]] | Sequence[float]) -> la.Matrix:
@@ -452,7 +476,9 @@ class Convolution1DOperator(LinearOperator):
             for out_index in range(self.out_features):
                 total = 0.0
                 for kernel_index, value in enumerate(self.kernel):
-                    total += value * input_row[out_index + kernel_index]
+                    input_position = out_index * self.stride + kernel_index * self.dilation - self.padding
+                    if 0 <= input_position < self.input_length:
+                        total += value * input_row[input_position]
                 outputs[batch_index][out_index] = total
         return outputs
 
@@ -463,6 +489,9 @@ class MultiChannelConvolution1DOperator(LinearOperator):
     input_length: int
     mode: str = "valid"
     groups: int = 1
+    stride: int = 1
+    padding: int = 0
+    dilation: int = 1
     provenance: Optional[Provenance] = None
     metadata: Optional[OperatorMetadata] = None
 
@@ -471,11 +500,22 @@ class MultiChannelConvolution1DOperator(LinearOperator):
         if not isinstance(self.groups, int) or self.groups < 1:
             raise ValueError("conv1d groups must be a positive integer")
         if self.mode != "valid":
-            raise ValueError("only valid multi-channel 1D convolution is implemented in the prototype")
+            raise ValueError("only explicit valid-mode multi-channel 1D convolution metadata is implemented")
         kernel_size = len(weight[0][0])
-        if self.input_length < kernel_size:
-            raise ValueError("input length must be at least kernel length")
+        stride = _checked_conv1d_parameter(self.stride, name="stride", allow_zero=False)
+        padding = _checked_conv1d_parameter(self.padding, name="padding", allow_zero=True)
+        dilation = _checked_conv1d_parameter(self.dilation, name="dilation", allow_zero=False)
+        output_length = _conv1d_output_length(
+            input_length=self.input_length,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+        )
         self.weight = weight
+        self.stride = stride
+        self.padding = padding
+        self.dilation = dilation
         groups = self.groups
         out_channels = len(weight)
         if out_channels % groups != 0:
@@ -483,7 +523,6 @@ class MultiChannelConvolution1DOperator(LinearOperator):
         input_channels_per_group = len(weight[0])
         output_channels_per_group = out_channels // groups
         in_channels = input_channels_per_group * groups
-        output_length = self.input_length - kernel_size + 1
         if groups == 1:
             group_type = "standard"
             primary_lowering = "conv1d_channel_direct"
@@ -508,6 +547,9 @@ class MultiChannelConvolution1DOperator(LinearOperator):
                 "kernel_size": kernel_size,
                 "input_length": self.input_length,
                 "output_length": output_length,
+                "stride": stride,
+                "padding": padding,
+                "dilation": dilation,
                 "mode": self.mode,
                 "lowering": "block_toeplitz",
             },
@@ -577,7 +619,9 @@ class MultiChannelConvolution1DOperator(LinearOperator):
                 for in_channel, kernel in enumerate(channel_weight):
                     input_offset = (input_group_offset + in_channel) * self.input_length
                     for kernel_index, value in enumerate(kernel):
-                        dense[out_index][input_offset + out_position + kernel_index] = value
+                        input_position = out_position * self.stride + kernel_index * self.dilation - self.padding
+                        if 0 <= input_position < self.input_length:
+                            dense[out_index][input_offset + input_position] = value
         return dense
 
     def apply(self, inputs: Sequence[Sequence[float]] | Sequence[float]) -> la.Matrix:
@@ -594,6 +638,29 @@ class MultiChannelConvolution1DOperator(LinearOperator):
                     for in_channel, kernel in enumerate(channel_weight):
                         input_offset = (input_group_offset + in_channel) * self.input_length
                         for kernel_index, value in enumerate(kernel):
-                            total += value * input_row[input_offset + out_position + kernel_index]
+                            input_position = out_position * self.stride + kernel_index * self.dilation - self.padding
+                            if 0 <= input_position < self.input_length:
+                                total += value * input_row[input_offset + input_position]
                     outputs[batch_index][out_channel * self.output_length + out_position] = total
         return outputs
+
+
+def _checked_conv1d_parameter(value: Any, *, name: str, allow_zero: bool) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"conv1d {name} must be a {'non-negative' if allow_zero else 'positive'} integer")
+    if allow_zero:
+        if value < 0:
+            raise ValueError(f"conv1d {name} must be a non-negative integer")
+    elif value <= 0:
+        raise ValueError(f"conv1d {name} must be a positive integer")
+    return value
+
+
+def _conv1d_output_length(*, input_length: int, kernel_size: int, stride: int, padding: int, dilation: int) -> int:
+    if not isinstance(input_length, int) or input_length <= 0:
+        raise ValueError("conv1d input length must be a positive integer")
+    effective_kernel = dilation * (kernel_size - 1) + 1
+    output_length = ((input_length + 2 * padding - effective_kernel) // stride) + 1
+    if output_length <= 0:
+        raise ValueError("conv1d output length must be positive")
+    return output_length
