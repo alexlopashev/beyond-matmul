@@ -24,13 +24,13 @@ curation is paper-polish work that does not change the executable evidence.
 | Claim area | Evidence anchor | Audit result |
 | --- | --- | --- |
 | Fixed-weight scope and dense fallback | `README.md`, `whitepaper/main.tex`, `docs/research_outline.md`, `docs/evidence_matrix.md` | Supported; training-time mutation, production kernels, and hardware speedups remain out of scope. |
-| Torch frontend coverage | `docs/torch_frontend_coverage.md`, `tests/test_frontend.py`, Torch demos, `docs/evidence_matrix.md` | Supported for listed fixed-weight linear, adapter, embedding-projection, Conv1d, matmul/mm, addmm, and exported graph rows; unsupported rows are explicit. |
+| Torch frontend coverage | `docs/torch_frontend_coverage.md`, `tests/test_frontend.py`, Torch demos, `docs/evidence_matrix.md` | Supported for listed fixed-weight linear, adapter, embedding-projection, Conv1d, matmul/mm, addmm, fixed per-tensor affine quantized `nn.Linear`, and exported graph rows; unsupported rows are explicit. |
 | IR operator families | `docs/ir_spec.md`, `beyond_matmul/ir.py`, `tests/test_ir_planner.py`, `docs/evidence_matrix.md` | Supported for implemented exact and approximate operator families with dense fallback preserved. |
 | Recovery after lost provenance | `beyond_matmul/analyzer.py`, `tests/test_analyzer.py`, `examples/fixed_weight_inference_demo.py`, `docs/evidence_matrix.md` | Supported as heuristic recovery plus sample validation; not calibrated provenance proof. |
 | Planner exactness and fallback | `beyond_matmul/planner.py`, `tests/test_ir_planner.py`, `benchmarks/planner_contract_ablation.py`, `docs/benchmark_artifacts.md` | Supported as deterministic contract evidence; planner costs are estimates unless separately benchmarked. |
 | Approximation and error contracts | `beyond_matmul/approximations.py`, `tests/test_ir_planner.py`, `benchmarks/approximation_error_ablation.py`, `docs/benchmark_artifacts.md` | Supported for the bounded output-aware acceptance claim, not broad model-quality conclusions. |
 | Benchmark and cost claims | `benchmarks/fixed_weight.py`, `docs/results/fixed_weight.json`, `tests/test_benchmark_artifacts.py`, `scripts/ci_local`, `docs/benchmark_artifacts.md` | Supported as generated research artifacts and pure-Python proxies; not production performance evidence. |
-| Workload narratives | Torch examples, `examples/case_study_artifacts.py`, `docs/results/workload_case_studies.json`, `tests/test_case_study_artifacts.py` | Supported for adapter, Conv1d, grouped/depthwise Conv1d, and fixed-mask rows; broader workloads remain future work. |
+| Workload narratives | Torch examples, `examples/case_study_artifacts.py`, `docs/results/workload_case_studies.json`, `tests/test_case_study_artifacts.py` | Supported for adapter, Conv1d, grouped/depthwise Conv1d, fixed-mask, and per-tensor affine quantized-linear rows; broader workloads remain future work. |
 
 ## Open Blocker Audit
 
@@ -40,11 +40,12 @@ priority-one blocker against the first-artifact thesis:
 - #40 is this final-draft issue.
 - #41 is a roadmap tracker blocked by #40 and should close or be replaced after
   this final-draft PR is reviewed and merged.
-- #30 is priority:p1 but blocked by #52 and explicitly out of scope for the
-  first artifact because quantized module capture needs packed affine payload
-  support before frontend claims can be made.
-- #52 and #31 are optional quantized follow-ups, not blockers for the first
-  public artifact.
+- #30, #31, and #52 are completed: the current artifact includes fixed
+  per-tensor affine quantized `nn.Linear` frontend capture, packed affine
+  quantized IR evidence, and a quantized-linear workload row.
+- Quantized convolution, per-axis/per-channel or dynamic quantization,
+  production integer kernels, and hardware-calibrated speedups remain outside
+  the first public artifact unless separate issues add executable evidence.
 
 ## Reader Pointers
 
@@ -74,7 +75,7 @@ scripts/ci_local
   bibliography.
 - Benchmark timings remain pure-Python proxies.
 - Recovery confidence remains heuristic and sample-limited.
-- Quantized Torch module capture, quantized workload evidence, full masked
-  attention, Conv2d, broader CNN blocks, production kernels, and
+- Quantized convolution, per-axis/per-channel or dynamic quantization, full
+  masked attention, Conv2d, broader CNN blocks, production integer kernels, and
   hardware-calibrated speedups remain future work unless separate issues add
   executable evidence.
