@@ -19,7 +19,10 @@ lowerings that are cheaper than dense GEMM for fixed-weight inference.
 6. A small approximation-error ablation that compares matrix reconstruction
    error with output-relative error for low-rank, sparse top-k, codebook, and
    bitpacked candidates.
-7. A concise evidence matrix in `docs/evidence_matrix.md` that maps major
+7. A small planner-contract ablation that compares exact-only versus
+   bounded-error planning, reuse amortization, backend support, and dense
+   fallback validity on deterministic fixed-weight cases.
+8. A concise evidence matrix in `docs/evidence_matrix.md` that maps major
    whitepaper claims to tests, demos, benchmark artifacts, or future-work
    boundaries.
 
@@ -34,6 +37,8 @@ lowerings that are cheaper than dense GEMM for fixed-weight inference.
   machine-readable JSON output.
 - `benchmarks/approximation_error_ablation.py`: deterministic table source for
   the current matrix-error versus output-error ablation.
+- `benchmarks/planner_contract_ablation.py`: deterministic table source for
+  exactness, bounded-error, reuse, backend, and dense fallback planner checks.
 - `examples/case_study_artifacts.py`: machine-readable adapter and Conv1d
   workload case-study evidence with dense fallback comparisons.
 
@@ -77,6 +82,14 @@ matrix-relative threshold but fail the same output-relative threshold, while
 codebook and bitpacked candidates fail both. This supports using output-aware
 scoring for planner acceptance, but it is not a broad model-quality study.
 
+Planner contract evidence is similarly bounded:
+`benchmarks/planner_contract_ablation.py` emits a deterministic JSON artifact
+where an exact-only request keeps dense GEMM, a bounded-error request on the
+same fixed-weight case can choose a low-rank product, the same low-rank product
+is rejected before its reuse threshold and accepted at the threshold, and a GPU
+request rejects an unsupported codebook lowering while preserving dense GEMM as
+a valid fallback.
+
 For a reviewer-facing map from claims to executable support, see
 `docs/evidence_matrix.md`.
 
@@ -86,4 +99,5 @@ For a reviewer-facing map from claims to executable support, see
 - recovery analyzer candidates vs dense fallback
 - matrix reconstruction error vs product/output error
 - exact-only planner vs bounded-error planner
+- reuse threshold before vs after amortization
 - backend support constraints enabled vs ignored

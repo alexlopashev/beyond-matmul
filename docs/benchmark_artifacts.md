@@ -7,6 +7,7 @@
 | `docs/results/workload_case_studies.json` | `mise exec -- uv run python examples/case_study_artifacts.py --json-output docs/results/workload_case_studies.json` | Captured adapter and Conv1d workload provenance, dense fallback comparison, selected lowering, output error, cost proxy, memory proxy, and timing/proxy boundary. | Case-study evidence only; planner cost and memory proxies are recorded, but no benchmark timings are measured. |
 | `docs/results/fixed_weight.json` | `mise exec -- uv run python benchmarks/fixed_weight.py --json-output docs/results/fixed_weight.json` | Synthetic fixed-weight benchmark rows for structured lowerings versus dense fallback. | Pure-Python latency proxies, not hardware-calibrated production performance. |
 | `docs/results/approximation_error_ablation.json` | `mise exec -- uv run python benchmarks/approximation_error_ablation.py --json-output docs/results/approximation_error_ablation.json` | Deterministic matrix-reconstruction-error versus output-error candidate table. | One bounded synthetic case, not a broad approximation-quality benchmark. |
+| `docs/results/planner_contract_ablation.json` | `mise exec -- uv run python benchmarks/planner_contract_ablation.py --json-output docs/results/planner_contract_ablation.json` | Deterministic exactness, bounded-error, reuse, backend-support, and dense fallback planner checks. | Contract coverage only; costs are planner estimates, not runtime measurements. |
 
 ## Fixed-Weight Benchmark
 
@@ -94,3 +95,26 @@ sparse top-k candidates pass the matrix-relative threshold but fail the
 output-relative threshold; codebook and bitpacked candidates fail both. This is
 paper-supporting evidence for output-aware acceptance, not a general benchmark
 of approximation quality.
+
+## Planner Contract Ablation
+
+`benchmarks/planner_contract_ablation.py` emits a deterministic JSON table
+source for current planner contract behavior. Regenerate it with:
+
+```bash
+mise exec -- uv run python benchmarks/planner_contract_ablation.py --json-output docs/results/planner_contract_ablation.json
+```
+
+CI uploads `docs/results/planner_contract_ablation.json` as
+`planner-contract-ablation-json`.
+
+The JSON schema is versioned with `schema_version: 1`. The scenario rows record:
+
+- selected lowering, output-relative error, and dense fallback validity
+- exact-only versus bounded-error planning on the same fixed-weight case
+- reuse sensitivity before and at a preprocessing amortization threshold
+- backend support rejection for an unsupported specialized lowering
+
+The controlled cases are small deterministic planner checks. They support
+claims about contract enforcement and dense fallback availability, but they do
+not measure backend runtime or establish broad performance conclusions.
