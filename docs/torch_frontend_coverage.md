@@ -25,6 +25,14 @@ current IR or capture rules need more design before claiming coverage.
 | Exported graph fixed-weight `addmm` and nested linear | Supported | `DenseOperator`, `AffineOperator(DenseOperator)`, `LowRankOperator`, or `AffineOperator(LowRankOperator)` | Recovers fixed parameter/buffer values through graph signature state, with provenance notes marking exported recovery. |
 | Dynamic-weight matmul/addmm | Unsupported | Not captured | Fixed-weight reuse is the scope; runtime weights are ignored cleanly. |
 
+## Updating Supported Rows
+
+When a frontend support issue promotes a row to `Supported`, add or update its
+entry in `scripts/check_torch_frontend_coverage.py` so the row points to at
+least one executable test, demo, or evidence file. The local CI check fails if a
+supported row has no mapping, if a mapping no longer corresponds to a supported
+row, or if a mapped file/test token disappears.
+
 ## Current Capture Rule
 
 Dense matmul capture is intentionally narrow: the frontend accepts only
