@@ -284,7 +284,10 @@ workload case studies.
   materialization;
   \item LoRA or adapter weights merged into a dense projection;
   \item Conv/linear lowering from a broader CNN-style block;
-  \item attention projection or masked attention block;
+  \item attention projection with fixed structured weights, with full masked
+  attention left as future work because score computation, softmax, mask
+  semantics, KV-cache layout, and dynamic sequence behavior sit outside the
+  current fixed-weight linear boundary;
   \item embedding plus projection in a language-model-like block;
   \item quantized linear or convolutional modules once the IR can represent
   their contracts honestly.

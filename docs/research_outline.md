@@ -80,7 +80,10 @@ Current workload case-study artifacts:
 
 Real workload case studies still future work:
 
-- Attention projection or masked attention block.
+- Attention projection with fixed structured weights; full masked attention is
+  future work because score computation, softmax, mask semantics, KV-cache
+  layout, and dynamic sequence behavior are outside the current fixed-weight
+  linear IR boundary.
 - Embedding plus projection in a language model.
 - Quantized linear or convolutional modules once the IR can represent their
   contracts honestly.
