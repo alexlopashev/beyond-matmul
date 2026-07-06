@@ -247,7 +247,7 @@ def _estimate_cost(operator: LinearOperator, batch_size: int, calls: int) -> Cos
 
 def _backend_supported(operator: LinearOperator, backend: str) -> bool:
     supported = BACKEND_SUPPORT.get(backend, BACKEND_SUPPORT["python"])
-    return any(lowering in supported for lowering in operator.metadata.lowerings)
+    return _lowering_name(operator) in supported
 
 
 def _with_contract(operator: LinearOperator, relative_error: float, metric: str, sample_count: int) -> LinearOperator:

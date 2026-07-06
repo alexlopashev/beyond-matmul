@@ -158,6 +158,11 @@ and layout contracts. Examples include direct convolution, low-rank product,
 sparse kernels, codebook kernels, bitpacked kernels, and dense GEMM fallback.
 Planner costs currently estimate operation count, memory movement, cache
 footprint, preprocessing cost, and amortization over repeated calls.
+A deterministic planner-contract ablation compares exact-only and
+bounded-error requests on the same fixed-weight case, shows a low-rank lowering
+rejected before and accepted at its reuse threshold, and shows a GPU request
+rejecting an unsupported codebook lowering while preserving dense GEMM as a
+valid fallback.
 
 \subsection{Evidence Surface}
 

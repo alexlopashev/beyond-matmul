@@ -55,6 +55,9 @@ jobs:
       - name: Run approximation error ablation artifact
         run: mise exec -- uv run python benchmarks/approximation_error_ablation.py --json-output docs/results/approximation_error_ablation.json
 
+      - name: Run planner contract ablation artifact
+        run: mise exec -- uv run python benchmarks/planner_contract_ablation.py --json-output docs/results/planner_contract_ablation.json
+
       - name: Upload fixed-weight benchmark JSON
         uses: actions/upload-artifact@v4
         with:
@@ -72,3 +75,9 @@ jobs:
         with:
           name: approximation-error-ablation-json
           path: docs/results/approximation_error_ablation.json
+
+      - name: Upload planner contract ablation JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: planner-contract-ablation-json
+          path: docs/results/planner_contract_ablation.json
