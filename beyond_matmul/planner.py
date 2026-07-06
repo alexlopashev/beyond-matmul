@@ -20,6 +20,7 @@ from beyond_matmul.ir import (
     CodebookOperator,
     DenseOperator,
     DiagonalOperator,
+    FixedMaskOperator,
     LinearOperator,
     LowRankOperator,
     OperatorMetadata,
@@ -41,6 +42,7 @@ BACKEND_SUPPORT = {
         "conv1d_channel_direct",
         "conv1d_grouped_direct",
         "conv1d_depthwise_direct",
+        "fixed_mask_sparse",
         "dense_gemm_bias",
         "diagonal_kernel_bias",
         "sparse_kernel_bias",
@@ -51,6 +53,7 @@ BACKEND_SUPPORT = {
         "conv1d_channel_direct_bias",
         "conv1d_grouped_direct_bias",
         "conv1d_depthwise_direct_bias",
+        "fixed_mask_sparse_bias",
     },
     "cpu": {
         "dense_gemm",
@@ -63,6 +66,7 @@ BACKEND_SUPPORT = {
         "conv1d_channel_direct",
         "conv1d_grouped_direct",
         "conv1d_depthwise_direct",
+        "fixed_mask_sparse",
         "dense_gemm_bias",
         "diagonal_kernel_bias",
         "sparse_kernel_bias",
@@ -73,6 +77,7 @@ BACKEND_SUPPORT = {
         "conv1d_channel_direct_bias",
         "conv1d_grouped_direct_bias",
         "conv1d_depthwise_direct_bias",
+        "fixed_mask_sparse_bias",
     },
     "gpu": {
         "dense_gemm",
@@ -83,6 +88,7 @@ BACKEND_SUPPORT = {
         "conv1d_channel_direct",
         "conv1d_grouped_direct",
         "conv1d_depthwise_direct",
+        "fixed_mask_sparse",
         "dense_gemm_bias",
         "sparse_kernel_bias",
         "low_rank_product_bias",
@@ -91,6 +97,7 @@ BACKEND_SUPPORT = {
         "conv1d_channel_direct_bias",
         "conv1d_grouped_direct_bias",
         "conv1d_depthwise_direct_bias",
+        "fixed_mask_sparse_bias",
     },
 }
 
@@ -178,6 +185,8 @@ def _estimate_apply_cost(operator: LinearOperator, batch_size: int, word_bits: i
         return batch_size * in_features
     if kind == "sparse_coo":
         return batch_size * getattr(operator, "nnz")
+    if kind == "fixed_mask":
+        return batch_size * getattr(operator, "nnz")
     if kind == "low_rank":
         rank = getattr(operator, "rank")
         return batch_size * (out_features * rank + rank * in_features)
@@ -204,6 +213,8 @@ def _estimate_memory_bytes(operator: LinearOperator) -> int:
         return in_features * 4
     if kind == "sparse_coo":
         return getattr(operator, "nnz") * 12
+    if kind == "fixed_mask":
+        return getattr(operator, "nnz") * 8
     if kind == "low_rank":
         rank = getattr(operator, "rank")
         return (out_features * rank + rank * in_features) * 4
@@ -290,6 +301,8 @@ def _with_contract(operator: LinearOperator, relative_error: float, metric: str,
         return DiagonalOperator(operator.diagonal, metadata=updated)
     if isinstance(operator, SparseCOOOperator):
         return SparseCOOOperator(operator.rows, operator.cols, operator.values, operator.shape, metadata=updated)
+    if isinstance(operator, FixedMaskOperator):
+        return FixedMaskOperator(operator.mask, pattern=str(operator.metadata.structure["pattern"]), metadata=updated)
     if isinstance(operator, LowRankOperator):
         return LowRankOperator(operator.left, operator.right, metadata=updated)
     if isinstance(operator, AffineOperator):

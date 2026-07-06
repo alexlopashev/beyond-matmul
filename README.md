@@ -7,8 +7,8 @@ operators.
 The current artifact is scoped to fixed-weight inference:
 
 - a provenance-aware linear and affine operator IR
-- exact operators for dense, diagonal, sparse COO, low-rank, convolutional,
-  codebook, and bitpacked weights
+- exact operators for dense, diagonal, sparse COO, fixed-mask, low-rank,
+  convolutional, codebook, and bitpacked weights
 - cheap structure recovery from dense matrices
 - product-aware approximation scoring
 - a planner that chooses a valid lowering under exactness, error, reuse, and
@@ -62,19 +62,22 @@ uv run python examples/torch_fx_frontend_demo.py
   merged dense weight and recovered low-rank factors
 - `examples/conv1d_workload_demo.py`: tiny PyTorch module and functional Conv1d
   case study comparing convolution provenance against dense materialization
-- `examples/case_study_artifacts.py`: machine-readable adapter and Conv1d
-  case-study evidence while preserving the human-readable demo paths
+- `examples/case_study_artifacts.py`: machine-readable adapter, Conv1d, and
+  fixed-mask case-study evidence while preserving the human-readable demo paths
 - `examples/torch_coverage_demo.py`: Torch frontend coverage smoke demo for
   supported fixed-weight patterns
 - `docs/taxonomy.md`: taxonomy of dense lowerings and lost structure
 - `docs/ir_spec.md`: IR schema and examples
 - `docs/torch_frontend_coverage.md`: support matrix for Torch FX capture
 - `docs/research_outline.md`: paper-shaped outline and evaluation plan
-- `docs/benchmark_artifacts.md`: benchmark JSON schema and regeneration command
+- `docs/benchmark_artifacts.md`: benchmark JSON schemas, regeneration commands,
+  and CI artifact names
 - `docs/evidence_matrix.md`: whitepaper claim-to-evidence map and current
   unsupported-claim boundaries
 - `docs/handoff_next_layer.md`: current state and next-layer handoff
 - `whitepaper/main.tex`: first-draft whitepaper source and completion criteria
+- GitHub wiki: concise north star, operating loop, coverage snapshot, and
+  artifact map for humans and agents
 - `AGENTS.md`: operating contract for issue-driven, worktree-based agent loops
 
 ## Crisp Contribution

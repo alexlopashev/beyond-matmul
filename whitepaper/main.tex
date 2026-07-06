@@ -121,53 +121,122 @@ The artifact is organized around six components.
 
 \subsection{Frontend Capture}
 
-Framework frontends preserve structure before densification. The current Torch
-FX path captures fixed-weight inference patterns such as nested linear factors,
-adapter pairs, embedding followed by projection, valid Conv1d, fixed-weight
-matmul forms, and narrow addmm forms. A visible coverage matrix distinguishes
-supported, next, and unsupported patterns.
+The first method is to capture fixed-weight computation before the framework
+has lowered it to an anonymous dense product. The current Torch FX frontend
+walks graph nodes, resolves fixed parameters, buffers, constants, and selected
+module attributes, then emits executable IR operators whose provenance records
+the source node, expression, transform history, and captured structure. This is
+a provenance-preserved path: the structured operator is produced from the
+original computation rather than inferred from a dense matrix after the fact.
 
-\subsection{Operator IR}
+The supported surface is intentionally narrow and test-backed. The frontend
+currently captures nested \texttt{nn.Linear} or \texttt{F.linear} factors,
+named adapter pairs, embedding followed by projection, single-channel and
+multi-channel \texttt{Conv1d} including grouped/depthwise and scalar
+stride/padding/dilation variants, functional \texttt{conv1d}, fixed-weight
+\texttt{matmul}/\texttt{mm} forms, fixed-bias \texttt{addmm}, and exported
+graph fixed-weight \texttt{addmm}/nested-linear recovery through graph
+signature state. It does not claim \texttt{Conv2d}, quantized linear or
+convolutional modules, non-scalar Conv1d parameters, invalid Conv1d output
+lengths, non-default \texttt{addmm} scaling, shape-inferred matmul orientation,
+or dynamic-weight matmul/addmm. The coverage matrix currently has supported
+and unsupported rows, with no intermediate \texttt{Next} rows; broader exported
+graph variants and quantized operators remain future work until represented and
+tested. The evidence anchor is the \texttt{Torch frontend coverage} row in
+\texttt{docs/evidence\_matrix.md}, with the detailed boundary maintained in
+\texttt{docs/torch\_frontend\_coverage.md}.
+
+\subsection{Operator IR and Contracts}
 
 The IR represents fixed-weight linear maps with shape
 $(\mathrm{out\_features}, \mathrm{in\_features})$ and affine maps as a linear
-operator plus bias. Implemented operator families include dense, diagonal,
-sparse COO, low-rank, convolutional, codebook, and bitpacked binary weights.
-Each operator exposes executable semantics and a dense fallback for equivalence
-testing.
+operator plus bias. Applying a linear operator to a row-major batch computes
+$xW^T$; applying an affine operator computes $xW^T + b$. Metadata stores
+provenance, structural fields, approximation contract, quantization placeholder
+data, reuse budget, layout, hardware target, and allowed lowerings. The
+contract is part of the operator rather than an external note: exact operators
+require backend and layout support, while approximate operators additionally
+carry metric, epsilon, observed error, and sample-count evidence.
+
+Implemented operator families include dense, diagonal, sparse COO, fixed-mask,
+low-rank, affine, codebook, bitpacked binary, single-channel Conv1d, and
+multi-channel Conv1d operators. Fixed-mask operators cover explicit binary
+masks applied as sparse linear maps over values or features, independent of
+input-dependent attention scores. Conv1d operators keep stride, padding,
+dilation, output length, and grouped/depthwise channel partition metadata so
+the planner can distinguish direct convolution lowerings from dense
+materialization. Every
+implemented exact family exposes executable semantics and a dense fallback,
+which keeps dense GEMM available for equivalence checks and portability. The
+evidence anchor is the \texttt{IR operator families} row in
+\texttt{docs/evidence\_matrix.md}; \texttt{docs/ir\_spec.md} is the compact
+schema reference.
 
 \subsection{Recovery Analyzer}
 
 When provenance is lost, cheap analyzers probe dense matrices for recoverable
-structure. Recovery is intentionally weaker than preserved provenance: it can
-suggest candidates, but confidence, error, and validation must be explicit.
-Current confidence values are heuristic probe scores rather than calibrated
-probabilities. When representative sample inputs are available, recovered
-executable candidates record output-relative error on those samples and cap
-confidence by that validation evidence, while dense GEMM remains the exact
-fallback.
+structure. This is the dense-recovery path, and it is intentionally weaker
+than frontend preservation. A recovered candidate may explain a matrix, but it
+cannot prove the original computation reason unless separate provenance is
+available. For that reason, analyzer output carries bounded heuristic
+confidence, explicit probe details, and, when sample inputs are supplied,
+output-relative validation evidence.
+
+The current probes cover diagonal residuals, sparsity, block sparsity,
+permutation-like structure, small codebooks, low-rank approximation, repeated
+blocks, and repeated fixed-weight sightings. Confidence values are
+probe-specific ranking scores, not calibrated probabilities. If a recovered
+candidate is executable, validation on representative inputs records
+\texttt{output\_relative\_l2}, sample count, sample exactness, and a
+validation-derived confidence cap. Dense GEMM remains the exact fallback
+whenever recovery is ambiguous or unsupported. The evidence anchor is the
+\texttt{Recovery after lost provenance} row in
+\texttt{docs/evidence\_matrix.md}.
 
 \subsection{Approximation Builders}
 
 Approximation builders produce candidate low-rank, sparse, codebook, or binary
-operators. They are scored by product-aware metrics so that output error on
-representative inputs can matter more than raw matrix reconstruction error. A
-small deterministic ablation now covers one synthetic dense case where low-rank
-and sparse top-k candidates pass a matrix-relative threshold but fail the same
-output-relative threshold; codebook and bitpacked candidates fail both.
+operators from a dense reference. The method is deliberately candidate-based:
+builders create possible structured operators, attach approximate contracts,
+and leave acceptance to validation and planning rather than treating matrix
+compression as sufficient evidence. Supported builders currently include
+low-rank approximation, sparse top-k selection, codebook quantization, and
+bitpacked binary approximation.
 
-\subsection{Planner}
+Approximate candidates are scored with product-aware metrics when
+representative inputs are available. Matrix-relative Frobenius error remains
+useful for reconstruction, but output-relative error can reject a candidate
+that looks good as a matrix approximation and behaves poorly on the inference
+inputs of interest. The current deterministic ablation is intentionally small:
+one synthetic dense case shows low-rank and sparse top-k candidates passing a
+matrix-relative threshold but failing the same output-relative threshold, while
+codebook and bitpacked candidates fail both. This supports the need for
+output-aware acceptance; it is not broad model-quality evidence. The evidence
+anchor is the \texttt{Approximation and error contracts} row in
+\texttt{docs/evidence\_matrix.md}.
+
+\subsection{Planner Selection}
 
 The planner selects a valid lowering under exactness, error, reuse, backend,
-and layout contracts. Examples include direct convolution, low-rank product,
-sparse kernels, codebook kernels, bitpacked kernels, and dense GEMM fallback.
-Planner costs currently estimate operation count, memory movement, cache
-footprint, preprocessing cost, and amortization over repeated calls.
-A deterministic planner-contract ablation compares exact-only and
-bounded-error requests on the same fixed-weight case, shows a low-rank lowering
-rejected before and accepted at its reuse threshold, and shows a GPU request
-rejecting an unsupported codebook lowering while preserving dense GEMM as a
-valid fallback.
+and layout contracts. It enumerates the original operator, valid structured or
+approximate candidates, and a dense fallback, rejects options whose contracts
+do not satisfy the request, estimates cost proxies for the remaining options,
+and selects the lowest-cost valid plan. Lowering names include direct Conv1d
+variants, low-rank product, sparse kernel, codebook kernel, bitpacked kernel,
+and dense GEMM or dense GEMM with bias.
+
+The request specifies exact-only or bounded-error behavior, epsilon and error
+metric, representative sample inputs for product-aware scoring, expected call
+count for reuse amortization, and backend/layout constraints. Planner costs are
+currently estimates: operation count, memory movement, cache footprint,
+preprocessing cost, and amortized preprocessing over repeated calls. The
+planner-contract ablation is therefore contract evidence rather than hardware
+performance evidence. It compares exact-only and bounded-error requests on the
+same fixed-weight case, rejects and then accepts a preprocessing-heavy
+low-rank lowering across its reuse threshold, and rejects an unsupported GPU
+codebook lowering while preserving dense GEMM as a valid fallback. The evidence
+anchor is the \texttt{Planner exactness and fallback} row in
+\texttt{docs/evidence\_matrix.md}.
 
 \subsection{Evidence Surface}
 
@@ -218,7 +287,11 @@ workload case studies.
   materialization;
   \item LoRA or adapter weights merged into a dense projection;
   \item Conv/linear lowering from a broader CNN-style block;
-  \item attention projection or masked attention block;
+  \item fixed binary masks applied as sparse linear maps, with full masked
+  attention left as future work because score computation, softmax, broadcast
+  mask contracts, KV-cache layout, and dynamic sequence behavior sit outside
+  the current fixed-weight linear boundary;
+  \item attention projection with fixed structured weights;
   \item embedding plus projection in a language-model-like block;
   \item quantized linear or convolutional modules once the IR can represent
   their contracts honestly.
@@ -267,9 +340,12 @@ The workload case-study artifact is evidence for provenance preservation, not
 timing performance. It records a merged LoRA-style adapter selecting
 \texttt{low\_rank\_product\_bias}, an \texttt{nn.Conv1d} module selecting
 \texttt{conv1d\_channel\_direct}, and a functional fixed-bias Conv1d selecting
-\texttt{conv1d\_channel\_direct\_bias}. Each row records output-relative error
-against the Torch workload, planner cost and memory proxies, dense fallback
-fields, and an explicit \texttt{measured\_timing: false} boundary.
+\texttt{conv1d\_channel\_direct\_bias}. It also records grouped/depthwise
+Conv1d rows and a fixed causal-band mask selecting
+\texttt{fixed\_mask\_sparse}. Each row records output-relative error against
+the reference workload, planner cost and memory proxies, dense fallback fields,
+and an explicit \texttt{measured\_timing: false} boundary. The fixed-mask row
+does not claim full masked attention support.
 
 The approximation and planner-contract artifacts bound the negative claims. In
 the approximation ablation, low-rank and sparse top-k candidates pass the
@@ -282,6 +358,129 @@ specialization falls back to dense GEMM. These are deterministic Python
 evidence artifacts. They support claims about planner behavior, proxies, and
 case coverage; they do not establish hardware-calibrated speedups or production
 backend performance.
+
+\subsection{Recovery and Approximation Evaluation}
+
+The recovery evidence answers a narrower question than frontend preservation:
+when only a dense matrix remains, can the system expose plausible structure
+without pretending that the original computation is known? The current answer
+is yes for selected probes, with explicit uncertainty. Unit tests cover
+ambiguous dense matrices whose diagonal, sparse, codebook, and low-rank
+candidate confidences remain bounded rather than high-confidence by default.
+The fixed-weight demo then exercises the positive path on a materialized
+rank-four adapter matrix. Recovery emits low-rank candidates with confidence
+$1.0$ and output-relative validation errors at numerical-noise scale on the
+provided samples, while a diagonal candidate is rejected by validation with
+\texttt{output\_relative\_l2} near $0.996$ and a validation confidence cap of
+$0$. These numbers are evidence that confidence is now tied to probe details
+and sample validation; they are not calibration data. A different sample set or
+unseen deployment distribution can still invalidate a recovered approximation,
+so dense GEMM remains the exact fallback.
+
+The approximation ablation isolates why matrix reconstruction error is an
+insufficient acceptance rule. On the deterministic
+\texttt{dominant\_unused\_feature} case, the request allows approximate
+lowerings up to relative error $0.25$. A rank-one candidate has matrix-relative
+error $0.0685$ and a sparse top-k candidate has matrix-relative error $0.0688$,
+so a reconstruction-only rule would accept both. On the representative inputs,
+their output-relative errors are about $0.996$ and $1.0$, respectively, so the
+output-aware contract rejects both and selects \texttt{dense\_gemm}. The
+codebook and bitpacked candidates fail both matrix and output thresholds. This
+artifact supports the planner contract choice to score approximate lowerings
+against product or output behavior when samples exist. It does not claim that
+low-rank or sparse approximations are generally poor; it shows a small case
+where the two error notions lead to different qualitative decisions.
+
+The planner-contract ablation connects those error contracts to lowering
+selection. On the same rank-one-plus-noise fixed-weight case, an exact-only
+request selects \texttt{dense\_gemm} with zero relative error and an estimated
+cost proxy of $208$. A bounded-error request with $\epsilon=0.1$ selects
+\texttt{low\_rank\_product} with observed relative error about $0.00235$ and an
+estimated cost proxy of $157$, while keeping dense GEMM valid. Reuse contracts
+change validity before they change semantics: at seven requested calls the
+same preprocessing-heavy low-rank option is rejected because preprocessing does
+not amortize, and at eight calls it becomes valid and selected. Backend
+contracts are similarly explicit: a GPU request rejects an otherwise exact
+\texttt{codebook\_kernel} because the requested backend does not support that
+lowering, then selects the dense fallback. These costs are planner estimates in
+a deterministic artifact, not measured hardware timings.
+
+\section{Related Work}
+
+Beyond Matmul is closest to work that keeps linear structure visible long
+enough to choose a better representation, but it is not claiming that
+structured operators, compression, quantization, or compiler metadata are new.
+The narrower claim is that a fixed-weight inference system can benefit from
+making the reason for a matrix multiplication explicit until planning time.
+
+\subsection{Structured Linear Operators}
+
+Structured linear operators are a long-running alternative to treating every
+linear map as an arbitrary dense matrix. Convolutions, Toeplitz and circulant
+maps, diagonal scalings, Kronecker-like factorizations, fast transforms, and
+graph or stencil operators all expose algebraic constraints that can reduce
+storage or work when the backend supports the corresponding kernel.
+\textbf{TODO citation: structured matrices, fast transforms, convolution
+lowering, graph and stencil linear operators.} This project uses that lineage
+as motivation, but its current evidence is smaller: executable dense
+equivalence and planner behavior for the operator families listed in the IR
+section. It does not claim that every structured family is supported or that a
+specialized kernel is always faster.
+
+\subsection{Sparse and Low-Rank Inference}
+
+Sparse inference systems and low-rank adaptation methods show that many
+inference workloads can use fewer degrees of freedom than a dense matrix
+exposes. Sparse kernels exploit zeros or block patterns, while low-rank
+methods preserve a factorized product instead of materializing the merged
+dense weight. \textbf{TODO citation: sparse neural inference, block sparse
+kernels, low-rank approximation, LoRA and adapter inference.} Beyond Matmul
+borrows these representations as planner candidates. The distinction is the
+contract around provenance and fallback: a low-rank adapter captured before
+densification carries different evidence than a low-rank approximation
+recovered from a dense matrix, and dense GEMM remains valid when sparsity or
+rank evidence is weak.
+
+\subsection{Quantized and Packed Weights}
+
+Quantization, codebook methods, and packed binary or low-bit weights already
+separate storage format from mathematical dense multiplication. Their practical
+benefit depends on scale and zero-point semantics, packing layout, calibration
+or error bounds, and backend support. \textbf{TODO citation: post-training
+quantization, weight-only quantization, vector quantization/codebooks, binary
+and ternary neural networks.} The current artifact only models a small part of
+that space through codebook and bitpacked operators plus placeholder
+quantization metadata. Quantized Torch modules are therefore described as
+future work until the IR, frontend, planner, and evidence artifacts can
+represent their contracts without silently dequantizing away the relevant
+structure.
+
+\subsection{Compiler IR and Lowering}
+
+ML compilers routinely preserve information across lowering levels through
+operator dialects, layout attributes, shape constraints, buffer metadata, and
+target-specific scheduling decisions. \textbf{TODO citation: MLIR, XLA, TVM,
+Torch FX/export, tensor compiler lowering and scheduling systems.} Beyond
+Matmul is compatible with that tradition rather than a replacement for it. Its
+prototype IR is intentionally small and research-facing: it records enough
+source, structure, exactness, approximation, reuse, layout, and backend
+metadata to test whether fixed-weight planner decisions improve over immediate
+dense lowering. Production compiler concerns such as full graph optimization,
+autograd, memory planning, and GPU code generation remain outside the current
+scope.
+
+\subsection{Provenance and Metadata}
+
+Database systems, compilers, and ML tooling all use provenance or metadata to
+explain where values came from, whether transformations are legal, and how
+artifacts should be interpreted. \textbf{TODO citation: data provenance,
+compiler debug/provenance metadata, model cards or dataset documentation where
+relevant.} This paper uses a narrower phrase, computation reason provenance,
+for why a fixed linear operator exists and what lowerings remain valid. That
+choice connects related work back to the project's main limitation: provenance
+that is preserved by a frontend is stronger than structure guessed from a
+dense matrix, and recovered candidates need explicit uncertainty and
+output-level validation before a planner should prefer them over dense GEMM.
 
 \section{Development Methodology}
 

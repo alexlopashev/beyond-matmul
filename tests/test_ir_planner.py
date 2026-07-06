@@ -7,6 +7,7 @@ from beyond_matmul.ir import (
     Convolution1DOperator,
     DenseOperator,
     DiagonalOperator,
+    FixedMaskOperator,
     LowRankOperator,
     MultiChannelConvolution1DOperator,
     SparseCOOOperator,
@@ -34,6 +35,24 @@ class OperatorTests(unittest.TestCase):
 
         codebook = CodebookOperator([[0, 1, 0], [1, 0, 1], [0, 0, 1]], [0.0, 2.0])
         self.assertEqual(codebook.apply(inputs), DenseOperator(codebook.to_dense()).apply(inputs))
+
+    def test_fixed_mask_operator_matches_dense_application(self):
+        mask = FixedMaskOperator(
+            [
+                [1, 0, 0, 0],
+                [1, 1, 0, 0],
+                [0, 1, 1, 0],
+                [0, 0, 1, 1],
+            ],
+            pattern="causal_band",
+        )
+        inputs = [[2.0, -1.0, 3.0, 4.0], [0.5, 1.5, -2.0, 0.25]]
+
+        self.assertEqual(mask.apply(inputs), DenseOperator(mask.to_dense()).apply(inputs))
+        self.assertEqual(mask.metadata.kind, "fixed_mask")
+        self.assertEqual(mask.metadata.structure["pattern"], "causal_band")
+        self.assertEqual(mask.metadata.structure["nnz"], 7)
+        self.assertEqual(mask.metadata.lowerings, ("fixed_mask_sparse", "dense_gemm"))
 
     def test_conv1d_to_dense(self):
         conv = Convolution1DOperator([1.0, -1.0, 2.0], input_length=5)
@@ -301,6 +320,24 @@ class PlannerTests(unittest.TestCase):
         self.assertIn("dense_gemm", {option.name for option in grouped_plan.options})
         self.assertEqual(depthwise_plan.selected.name, "conv1d_depthwise_direct")
         self.assertEqual(depthwise_plan.selected.cost.apply_ops, 54)
+
+    def test_planner_selects_fixed_mask_sparse_lowering(self):
+        mask = FixedMaskOperator(
+            [
+                [1, 0, 0, 0],
+                [1, 1, 0, 0],
+                [0, 1, 1, 0],
+                [0, 0, 1, 1],
+            ],
+            pattern="causal_band",
+        )
+
+        plan = plan_fixed_weight(mask, PlanningRequest(batch_size=2, calls=16, codebook_sizes=(2,)))
+
+        self.assertEqual(plan.selected.name, "fixed_mask_sparse")
+        self.assertTrue(plan.selected.exact)
+        self.assertEqual(plan.selected.cost.apply_ops, 14)
+        self.assertIn("dense_gemm", {option.name for option in plan.options})
 
     def test_planner_costs_strided_grouped_conv1d_from_explicit_metadata(self):
         conv = MultiChannelConvolution1DOperator(

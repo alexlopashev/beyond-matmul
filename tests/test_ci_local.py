@@ -13,6 +13,7 @@ class LocalCiScriptTests(unittest.TestCase):
         repo_root = Path(__file__).resolve().parents[1]
         workflow = (repo_root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
 
+        coverage_check = "mise exec -- uv run python scripts/check_torch_frontend_coverage.py"
         coverage_demo = "mise exec -- uv run python examples/torch_coverage_demo.py"
         benchmark_json = (
             "mise exec -- uv run python benchmarks/fixed_weight.py "
@@ -40,6 +41,7 @@ class LocalCiScriptTests(unittest.TestCase):
         planner_contract_artifact_name = "name: planner-contract-ablation-json"
         planner_contract_artifact_path = "path: docs/results/planner_contract_ablation.json"
 
+        self.assertLess(workflow.index(coverage_check), workflow.index(coverage_demo))
         self.assertLess(workflow.index(coverage_demo), workflow.index(case_study_json))
         self.assertLess(workflow.index(case_study_json), workflow.index(benchmark_json))
         self.assertLess(workflow.index(benchmark_json), workflow.index(ablation_json))
@@ -58,6 +60,10 @@ class LocalCiScriptTests(unittest.TestCase):
         repo_root = Path(__file__).resolve().parents[1]
         ci_local = (repo_root / "scripts" / "ci_local").read_text(encoding="utf-8")
 
+        self.assertIn(
+            '"$MISE_BIN" exec -- uv run python scripts/check_torch_frontend_coverage.py',
+            ci_local,
+        )
         self.assertIn(
             '"$MISE_BIN" exec -- uv run python benchmarks/fixed_weight.py '
             "--json-output docs/results/fixed_weight.json",
@@ -124,6 +130,7 @@ class LocalCiScriptTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, msg=result.stderr)
             mise_calls = (home_dir / "mise.log").read_text(encoding="utf-8").splitlines()
             self.assertIn("exec -- uv sync --locked", mise_calls)
+            self.assertIn("exec -- uv run python scripts/check_torch_frontend_coverage.py", mise_calls)
             self.assertIn(
                 "exec -- uv run python benchmarks/fixed_weight.py --json-output docs/results/fixed_weight.json",
                 mise_calls,

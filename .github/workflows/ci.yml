@@ -28,6 +28,9 @@ jobs:
       - name: Sync dependencies
         run: mise exec -- uv sync --locked
 
+      - name: Check Torch frontend coverage matrix
+        run: mise exec -- uv run python scripts/check_torch_frontend_coverage.py
+
       - name: Run unit tests
         run: mise exec -- uv run python -m unittest discover -s tests
 
