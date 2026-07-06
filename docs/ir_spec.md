@@ -8,7 +8,7 @@ The IR represents fixed-weight linear and affine maps with shape
 
 ```python
 OperatorMetadata(
-    kind="dense | diagonal | sparse_coo | low_rank | affine | conv1d | conv1d_channel | codebook | bitpacked_binary",
+    kind="dense | diagonal | sparse_coo | fixed_mask | low_rank | affine | conv1d | conv1d_channel | codebook | bitpacked_binary",
     shape=(out_features, in_features),
     provenance=Provenance(
         source="framework node, compiler pass, analyzer, or fallback",
@@ -131,6 +131,16 @@ SparseCOOOperator(rows, cols, values, operator_shape=(out, in))
 
 Structure: only nonzero entries.
 Lowerings: `sparse_kernel`, `dense_gemm`.
+
+### Fixed Mask
+
+```python
+FixedMaskOperator(mask, pattern="causal_band")
+```
+
+Structure: a binary, fixed mask applied as an exact sparse linear map over
+values or features, independent of input-dependent attention scores.
+Lowerings: `fixed_mask_sparse`, `dense_gemm`.
 
 ### Codebook
 

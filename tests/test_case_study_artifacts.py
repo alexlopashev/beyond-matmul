@@ -32,6 +32,7 @@ class CaseStudyArtifactTests(unittest.TestCase):
                 "conv1d_functional_bias",
                 "conv1d_grouped_module",
                 "conv1d_depthwise_functional",
+                "fixed_band_mask",
             },
         )
         self.assertEqual(artifact["metadata"]["timing_unit"], "not_measured")
@@ -82,6 +83,10 @@ class CaseStudyArtifactTests(unittest.TestCase):
         self.assertEqual(rows["conv1d_depthwise_functional"]["captured_operator"]["linear_kind"], "conv1d_channel")
         self.assertEqual(rows["conv1d_depthwise_functional"]["provenance_notes"]["group_type"], "depthwise")
         self.assertEqual(rows["conv1d_depthwise_functional"]["dense_fallback"]["selected_lowering"], "dense_gemm")
+        self.assertEqual(rows["fixed_band_mask"]["selected_lowering"], "fixed_mask_sparse")
+        self.assertEqual(rows["fixed_band_mask"]["captured_operator"]["linear_kind"], "fixed_mask")
+        self.assertEqual(rows["fixed_band_mask"]["provenance_notes"]["mask_pattern"], "causal_band")
+        self.assertEqual(rows["fixed_band_mask"]["dense_fallback"]["selected_lowering"], "dense_gemm")
 
     def test_writes_json_artifact(self):
         artifacts = _load_case_study_module()

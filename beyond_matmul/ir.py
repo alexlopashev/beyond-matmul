@@ -328,6 +328,75 @@ class SparseCOOOperator(LinearOperator):
 
 
 @dataclass
+class FixedMaskOperator(LinearOperator):
+    mask: Sequence[Sequence[bool | int]]
+    pattern: str = "fixed"
+    provenance: Optional[Provenance] = None
+    metadata: Optional[OperatorMetadata] = None
+    rows: Sequence[int] = field(init=False)
+    cols: Sequence[int] = field(init=False)
+
+    def __post_init__(self) -> None:
+        checked_mask: List[List[bool]] = []
+        active_rows: List[int] = []
+        active_cols: List[int] = []
+        if not self.mask:
+            raise ValueError("fixed mask must have at least one row")
+        width: Optional[int] = None
+        for row_index, row in enumerate(self.mask):
+            if width is None:
+                width = len(row)
+                if width == 0:
+                    raise ValueError("fixed mask must have at least one column")
+            elif len(row) != width:
+                raise ValueError("fixed mask rows must all have the same length")
+            checked_row: List[bool] = []
+            for col_index, value in enumerate(row):
+                if value not in (0, 1, False, True):
+                    raise ValueError("fixed mask entries must be boolean or 0/1")
+                enabled = bool(value)
+                checked_row.append(enabled)
+                if enabled:
+                    active_rows.append(row_index)
+                    active_cols.append(col_index)
+            checked_mask.append(checked_row)
+        self.mask = checked_mask
+        self.rows = active_rows
+        self.cols = active_cols
+        self.pattern = str(self.pattern)
+        self.metadata = _metadata(
+            kind="fixed_mask",
+            shape=(len(checked_mask), width or 0),
+            metadata=self.metadata,
+            provenance=self.provenance or Provenance(source="fixed_mask"),
+            structure={
+                "nnz": len(active_rows),
+                "format": "binary_coo",
+                "pattern": self.pattern,
+                "mask_shape": (len(checked_mask), width or 0),
+            },
+            lowerings=("fixed_mask_sparse", "dense_gemm"),
+        )
+
+    @property
+    def nnz(self) -> int:
+        return len(self.rows)
+
+    def to_dense(self) -> la.Matrix:
+        return [[1.0 if enabled else 0.0 for enabled in row] for row in self.mask]
+
+    def apply(self, inputs: Sequence[Sequence[float]] | Sequence[float]) -> la.Matrix:
+        batch = la.ensure_batch(inputs)
+        if any(len(row) != self.in_features for row in batch):
+            raise ValueError("input width does not match fixed mask operator")
+        outputs = la.zeros(len(batch), self.out_features)
+        for batch_index, input_row in enumerate(batch):
+            for out_index, in_index in zip(self.rows, self.cols):
+                outputs[batch_index][out_index] += input_row[in_index]
+        return outputs
+
+
+@dataclass
 class CodebookOperator(LinearOperator):
     codes: Sequence[Sequence[int]]
     codebook: Sequence[float]

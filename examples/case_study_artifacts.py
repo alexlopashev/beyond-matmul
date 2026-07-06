@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Machine-readable workload case-study artifacts for adapter and Conv1d demos."""
+"""Machine-readable workload case-study artifacts for adapter, Conv1d, and fixed-mask demos."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import argparse
 import json
 import os
 import sys
+from types import SimpleNamespace
 from typing import Any, Dict, Iterable, List, Sequence
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -15,7 +16,7 @@ if ROOT not in sys.path:
 
 from beyond_matmul import _linalg as la
 from beyond_matmul.frontend import capture_torch_fx_linear_operators, capture_torch_fx_operators
-from beyond_matmul.ir import AffineOperator, DenseOperator
+from beyond_matmul.ir import AffineOperator, DenseOperator, FixedMaskOperator, Provenance
 from beyond_matmul.planner import PlanOption, PlanningRequest, plan_fixed_weight
 
 
@@ -294,6 +295,45 @@ def collect_conv1d_cases() -> List[Dict[str, Any]]:
     return list(_conv1d_cases())
 
 
+def collect_fixed_mask_case() -> Dict[str, Any]:
+    operator = FixedMaskOperator(
+        [
+            [1, 0, 0, 0],
+            [1, 1, 0, 0],
+            [0, 1, 1, 0],
+            [0, 0, 1, 1],
+        ],
+        pattern="causal_band",
+        provenance=Provenance(
+            source="fixed_mask_case_study",
+            expression="constant band mask applied as a sparse linear map over values/features",
+            inputs=("features",),
+            transform_history=("mask_preserved_as_linear_operator",),
+        ),
+    )
+    inputs = la.random_batch(8, operator.in_features, seed=31)
+    captured_operator = SimpleNamespace(
+        name="fixed_band_mask",
+        operator=operator,
+        event=SimpleNamespace(
+            notes={
+                "capture": "fixed_mask_literal",
+                "mask_pattern": "causal_band",
+                "scope": "fixed mask applied independent of attention scores",
+            }
+        ),
+    )
+    return _case_record(
+        case="fixed_band_mask",
+        workload="fixed_mask",
+        title="Fixed band mask linear demo",
+        captured_operator=captured_operator,
+        input_rows=inputs,
+        torch_outputs=operator.apply(inputs),
+        provenance_label="fixed mask provenance preserves sparse linear structure before dense fallback materialization",
+    )
+
+
 def collect_results() -> Dict[str, Any]:
     return {
         "schema_version": 1,
@@ -302,7 +342,7 @@ def collect_results() -> Dict[str, Any]:
             "timing_unit": "not_measured",
             "timing_proxy_boundary": TIMING_PROXY_BOUNDARY,
         },
-        "cases": [collect_adapter_case(), *collect_conv1d_cases()],
+        "cases": [collect_adapter_case(), *collect_conv1d_cases(), collect_fixed_mask_case()],
     }
 
 
