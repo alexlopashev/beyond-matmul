@@ -46,6 +46,9 @@ jobs:
       - name: Run Torch coverage demo
         run: mise exec -- uv run python examples/torch_coverage_demo.py
 
+      - name: Run workload case-study JSON artifact
+        run: mise exec -- uv run python examples/case_study_artifacts.py --json-output docs/results/workload_case_studies.json
+
       - name: Run benchmark smoke test and JSON artifact
         run: mise exec -- uv run python benchmarks/fixed_weight.py --json-output docs/results/fixed_weight.json
 
@@ -57,6 +60,12 @@ jobs:
         with:
           name: fixed-weight-benchmark-json
           path: docs/results/fixed_weight.json
+
+      - name: Upload workload case-study JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: workload-case-studies-json
+          path: docs/results/workload_case_studies.json
 
       - name: Upload approximation error ablation JSON
         uses: actions/upload-artifact@v4

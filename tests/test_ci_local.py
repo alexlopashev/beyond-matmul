@@ -22,15 +22,24 @@ class LocalCiScriptTests(unittest.TestCase):
             "mise exec -- uv run python benchmarks/approximation_error_ablation.py "
             "--json-output docs/results/approximation_error_ablation.json"
         )
+        case_study_json = (
+            "mise exec -- uv run python examples/case_study_artifacts.py "
+            "--json-output docs/results/workload_case_studies.json"
+        )
         upload_action = "uses: actions/upload-artifact@v4"
+        case_study_artifact_name = "name: workload-case-studies-json"
+        case_study_artifact_path = "path: docs/results/workload_case_studies.json"
         artifact_name = "name: fixed-weight-benchmark-json"
         artifact_path = "path: docs/results/fixed_weight.json"
         ablation_artifact_name = "name: approximation-error-ablation-json"
         ablation_artifact_path = "path: docs/results/approximation_error_ablation.json"
 
-        self.assertLess(workflow.index(coverage_demo), workflow.index(benchmark_json))
+        self.assertLess(workflow.index(coverage_demo), workflow.index(case_study_json))
+        self.assertLess(workflow.index(case_study_json), workflow.index(benchmark_json))
         self.assertLess(workflow.index(benchmark_json), workflow.index(ablation_json))
         self.assertLess(workflow.index(ablation_json), workflow.index(upload_action))
+        self.assertIn(case_study_artifact_name, workflow)
+        self.assertIn(case_study_artifact_path, workflow)
         self.assertIn(artifact_name, workflow)
         self.assertIn(artifact_path, workflow)
         self.assertIn(ablation_artifact_name, workflow)
@@ -43,6 +52,11 @@ class LocalCiScriptTests(unittest.TestCase):
         self.assertIn(
             '"$MISE_BIN" exec -- uv run python benchmarks/fixed_weight.py '
             "--json-output docs/results/fixed_weight.json",
+            ci_local,
+        )
+        self.assertIn(
+            '"$MISE_BIN" exec -- uv run python examples/case_study_artifacts.py '
+            "--json-output docs/results/workload_case_studies.json",
             ci_local,
         )
         self.assertIn(
@@ -98,6 +112,11 @@ class LocalCiScriptTests(unittest.TestCase):
             self.assertIn("exec -- uv sync --locked", mise_calls)
             self.assertIn(
                 "exec -- uv run python benchmarks/fixed_weight.py --json-output docs/results/fixed_weight.json",
+                mise_calls,
+            )
+            self.assertIn(
+                "exec -- uv run python examples/case_study_artifacts.py "
+                "--json-output docs/results/workload_case_studies.json",
                 mise_calls,
             )
             self.assertIn(

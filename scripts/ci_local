@@ -37,5 +37,6 @@ cd "$PROJECT_DIR"
 "$MISE_BIN" exec -- uv run python examples/adapter_workload_demo.py
 "$MISE_BIN" exec -- uv run python examples/conv1d_workload_demo.py
 "$MISE_BIN" exec -- uv run python examples/torch_coverage_demo.py
+"$MISE_BIN" exec -- uv run python examples/case_study_artifacts.py --json-output docs/results/workload_case_studies.json
 "$MISE_BIN" exec -- uv run python benchmarks/fixed_weight.py --json-output docs/results/fixed_weight.json
 "$MISE_BIN" exec -- uv run python benchmarks/approximation_error_ablation.py --json-output docs/results/approximation_error_ablation.json

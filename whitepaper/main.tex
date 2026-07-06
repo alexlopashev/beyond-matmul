@@ -162,11 +162,12 @@ footprint, preprocessing cost, and amortization over repeated calls.
 \subsection{Evidence Surface}
 
 The codebase must produce evidence that the paper can cite: tests for semantics
-and negative capture cases, demos for workload narratives, benchmark artifacts
-for cost comparisons, an approximation-error ablation artifact, and docs/wiki
-pages that describe the current boundary of truth. The support material includes
-a concise evidence matrix in \texttt{docs/evidence\_matrix.md} that maps major
-claims to tests, demos, benchmark artifacts, or future-work boundaries.
+and negative capture cases, workload case-study artifacts for adapter and
+Conv1d narratives, benchmark artifacts for cost comparisons, an
+approximation-error ablation artifact, and docs/wiki pages that describe the
+current boundary of truth. The support material includes a concise evidence
+matrix in \texttt{docs/evidence\_matrix.md} that maps major claims to tests,
+demos, benchmark artifacts, or future-work boundaries.
 
 \section{Research Questions}
 
@@ -203,10 +204,12 @@ workload case studies.
 \subsection{Workload Case Studies}
 
 \begin{itemize}
-  \item Conv/linear lowering from a CNN-style block;
+  \item Conv1d module and functional Conv1d capture before dense
+  materialization;
+  \item LoRA or adapter weights merged into a dense projection;
+  \item Conv/linear lowering from a broader CNN-style block;
   \item attention projection or masked attention block;
   \item embedding plus projection in a language-model-like block;
-  \item LoRA or adapter weights merged into a dense projection;
   \item quantized linear or convolutional modules once the IR can represent
   their contracts honestly.
 \end{itemize}

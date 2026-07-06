@@ -34,6 +34,8 @@ lowerings that are cheaper than dense GEMM for fixed-weight inference.
   machine-readable JSON output.
 - `benchmarks/approximation_error_ablation.py`: deterministic table source for
   the current matrix-error versus output-error ablation.
+- `examples/case_study_artifacts.py`: machine-readable adapter and Conv1d
+  workload case-study evidence with dense fallback comparisons.
 
 ## Evaluation Plan
 
@@ -45,12 +47,18 @@ Synthetic controlled cases:
 - exact small-codebook
 - random dense fallback
 
-Real workload case studies to add next:
+Current workload case-study artifacts:
 
-- Conv/linear lowering from a CNN block.
+- Conv1d module and functional Conv1d capture before dense materialization.
+- LoRA/adapters merged into a dense weight, with nearby adapter factors
+  recovered by provenance capture.
+
+Real workload case studies still future work:
+
 - Attention projection or masked attention block.
 - Embedding plus projection in a language model.
-- LoRA/adapters merged into a dense weight.
+- Quantized linear or convolutional modules once the IR can represent their
+  contracts honestly.
 
 Metrics:
 
