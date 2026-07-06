@@ -198,6 +198,17 @@ def _conv1d_cases() -> Iterable[Dict[str, Any]]:
         [[0.75, -0.5, 1.25], [0.1, -1.0, 0.6]],
         [[1.5, -0.2, 0.35], [-0.8, 0.95, -0.4]],
     ])
+    grouped_weight = torch.tensor([
+        [[1.0, 0.5, -1.0], [0.25, 2.0, -0.5]],
+        [[-1.5, 0.75, 0.25], [1.25, -0.25, 0.5]],
+        [[0.5, -0.5, 1.5], [1.0, 0.0, -1.0]],
+        [[-0.25, 0.5, 0.75], [2.0, -1.0, 0.25]],
+    ])
+    depthwise_weight = torch.tensor([
+        [[1.0, 0.0, -1.0]],
+        [[0.5, -0.5, 1.5]],
+        [[2.0, 1.0, 0.25]],
+    ])
 
     class ModuleConv1d(nn.Module):
         def __init__(self) -> None:
@@ -217,6 +228,25 @@ def _conv1d_cases() -> Iterable[Dict[str, Any]]:
 
         def forward(self, x):
             return F.conv1d(x, self.weight, self.bias)
+
+    class GroupedModuleConv1d(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.conv = nn.Conv1d(4, 4, kernel_size=3, groups=2, bias=True)
+            with torch.no_grad():
+                self.conv.weight.copy_(grouped_weight)
+                self.conv.bias.copy_(torch.tensor([0.1, -0.2, 0.3, -0.4]))
+
+        def forward(self, x):
+            return self.conv(x)
+
+    class DepthwiseFunctionalConv1d(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.register_buffer("weight", depthwise_weight)
+
+        def forward(self, x):
+            return F.conv1d(x, self.weight, groups=3)
 
     def run_case(case: str, title: str, module: nn.Module, inputs, capture_name: str | None = None) -> Dict[str, Any]:
         captured = capture_torch_fx_operators(module, sample_inputs=inputs)
@@ -241,8 +271,23 @@ def _conv1d_cases() -> Iterable[Dict[str, Any]]:
         )
 
     inputs = torch.randn(8, 2, 12, generator=torch.Generator().manual_seed(19))
+    grouped_inputs = torch.randn(8, 4, 12, generator=torch.Generator().manual_seed(21))
+    depthwise_inputs = torch.randn(8, 3, 12, generator=torch.Generator().manual_seed(23))
     yield run_case("conv1d_module", "Multi-channel nn.Conv1d module", ModuleConv1d().eval(), inputs, capture_name="conv")
     yield run_case("conv1d_functional_bias", "Functional F.conv1d with fixed bias", FunctionalConv1d().eval(), inputs)
+    yield run_case(
+        "conv1d_grouped_module",
+        "Grouped nn.Conv1d module with fixed bias",
+        GroupedModuleConv1d().eval(),
+        grouped_inputs,
+        capture_name="conv",
+    )
+    yield run_case(
+        "conv1d_depthwise_functional",
+        "Depthwise functional F.conv1d",
+        DepthwiseFunctionalConv1d().eval(),
+        depthwise_inputs,
+    )
 
 
 def collect_conv1d_cases() -> List[Dict[str, Any]]:
