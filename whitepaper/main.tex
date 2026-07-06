@@ -92,8 +92,8 @@ Out of scope for the first complete artifact:
   \item training-time weight mutation and gradient semantics;
   \item production GPU kernels;
   \item claims of hardware-calibrated speedup without benchmark evidence;
-  \item frontend capture of quantized Torch modules beyond the explicitly
-  documented fixed-weight quantization contract;
+  \item frontend capture of quantized Torch modules beyond the tested
+  per-tensor affine fixed-weight linear contract;
   \item universal Torch operation support in a single pass.
 \end{itemize}
 
@@ -138,13 +138,15 @@ multi-channel \texttt{Conv1d} including grouped/depthwise and scalar
 stride/padding/dilation variants, functional \texttt{conv1d}, fixed-weight
 \texttt{matmul}/\texttt{mm} forms, fixed-bias \texttt{addmm}, and exported
 graph fixed-weight \texttt{addmm}/nested-linear recovery through graph
-signature state. It does not claim \texttt{Conv2d}, quantized linear or
-convolutional modules, non-scalar Conv1d parameters, invalid Conv1d output
-lengths, non-default \texttt{addmm} scaling, shape-inferred matmul orientation,
-or dynamic-weight matmul/addmm. The coverage matrix currently has supported
-and unsupported rows, with no intermediate \texttt{Next} rows; broader exported
-graph variants and quantized operators remain future work until represented and
-tested. The evidence anchor is the \texttt{Torch frontend coverage} row in
+signature state, and fixed per-tensor affine quantized \texttt{nn.Linear}
+modules. It does not claim \texttt{Conv2d}, quantized convolutional modules,
+per-channel/per-axis or dynamic quantized modules, non-scalar Conv1d
+parameters, invalid Conv1d output lengths, non-default \texttt{addmm} scaling,
+shape-inferred matmul orientation, or dynamic-weight matmul/addmm. The coverage
+matrix currently has supported and unsupported rows, with no intermediate
+\texttt{Next} rows; broader exported graph variants and unsupported quantized
+operators remain future work until represented and tested. The evidence anchor
+is the \texttt{Torch frontend coverage} row in
 \texttt{docs/evidence\_matrix.md}, with the detailed boundary maintained in
 \texttt{docs/torch\_frontend\_coverage.md}.
 
@@ -161,13 +163,13 @@ require backend and layout support, while approximate operators additionally
 carry metric, epsilon, observed error, and sample-count evidence.
 
 Implemented operator families include dense, diagonal, sparse COO, fixed-mask,
-low-rank, affine, codebook, bitpacked binary, single-channel Conv1d, and
-multi-channel Conv1d operators. Fixed-mask operators cover explicit binary
-masks applied as sparse linear maps over values or features, independent of
-input-dependent attention scores. Conv1d operators keep stride, padding,
-dilation, output length, and grouped/depthwise channel partition metadata so
-the planner can distinguish direct convolution lowerings from dense
-materialization. Every
+low-rank, affine, codebook, bitpacked binary, packed affine quantized,
+single-channel Conv1d, and multi-channel Conv1d operators. Fixed-mask operators
+cover explicit binary masks applied as sparse linear maps over values or
+features, independent of input-dependent attention scores. Conv1d operators
+keep stride, padding, dilation, output length, and grouped/depthwise channel
+partition metadata so the planner can distinguish direct convolution lowerings
+from dense materialization. Every
 implemented exact family exposes executable semantics and a dense fallback,
 which keeps dense GEMM available for equivalence checks and portability. The
 evidence anchor is the \texttt{IR operator families} row in
@@ -181,9 +183,12 @@ be exact source representations or approximate candidates depending on their
 approximation contract. Dense dequantization remains a valid fallback, but it
 is not by itself evidence that packed or codebook provenance survived. The IR
 metadata can describe per-tensor scale and zero point, but per-tensor affine
-integer payloads, per-channel or per-axis quantization, mixed precision, and
-activation-dependent quantization remain future work until payload, layout, and
-frontend tests exist.
+integer payloads now preserve integer storage, bit width, integer range, scale,
+and zero point through \texttt{PackedAffineQuantizedOperator}. The frontend only
+claims the tested fixed per-tensor affine quantized \texttt{nn.Linear} module
+case; per-channel or per-axis quantization, mixed precision,
+activation-dependent quantization, and quantized convolution remain future work
+until payload, layout, and frontend tests exist.
 
 \subsection{Recovery Analyzer}
 
@@ -306,8 +311,8 @@ workload case studies.
   the current fixed-weight linear boundary;
   \item attention projection with fixed structured weights;
   \item embedding plus projection in a language-model-like block;
-  \item quantized linear or convolutional modules once frontend capture has
-  executable packed-payload rules for the documented contracts.
+  \item quantized linear modules for the tested per-tensor affine case, with
+  quantized convolution left for future packed-payload rules.
 \end{itemize}
 
 \subsection{Metrics}
@@ -403,9 +408,9 @@ The workload artifact demonstrates where provenance changes the planner's
 choice set on small Torch examples. The fixed-weight benchmark artifact is the
 source for pure-Python timing proxies. The planner-contract and approximation
 artifacts bound the planner and error-contract claims. Future workload
-families, including quantized modules, full attention or score-dependent
-mask-aware cases, and broader CNN-style blocks, remain limitations until their
-frontend, IR, tests, and artifacts land.
+families, including quantized convolutional modules, full attention or
+score-dependent mask-aware cases, and broader CNN-style blocks, remain
+limitations until their frontend, IR, tests, and artifacts land.
 
 The approximation and planner-contract artifacts bound the negative claims. In
 the approximation ablation, low-rank and sparse top-k candidates pass the
@@ -510,11 +515,11 @@ Quantization, codebook methods, and packed binary or low-bit weights already
 separate storage format from mathematical dense multiplication. Their practical
 benefit depends on scale and zero-point semantics, packing layout, calibration
 or error bounds, and backend support. The current artifact only models a small
-part of that space through codebook and bitpacked operators plus placeholder
-quantization metadata. Quantized Torch modules are therefore described as
-future work until the IR, frontend, planner, and evidence artifacts can
-represent their contracts without silently dequantizing away the relevant
-structure.
+part of that space through codebook, bitpacked, and per-tensor affine integer
+operators. The Torch frontend only claims the tested fixed quantized
+\texttt{nn.Linear} case; broader quantized Torch modules remain future work
+until the IR, frontend, planner, and evidence artifacts can represent their
+contracts without silently dequantizing away the relevant structure.
 
 \subsection{Compiler IR and Lowering}
 
@@ -582,12 +587,12 @@ error and planning contracts; they do not show that any approximation family is
 generally good or bad, nor that the current cost model is globally optimal.
 
 Quantized and mask-aware claims are also narrow by design. The IR can express
-exact codebook payloads and tensor-wide scaled binary payloads, and dense
-dequantization remains a semantic fallback, but Torch quantized linear or
-convolutional module capture is not claimed until packed per-tensor affine
-payloads, layout rules, and tests exist. Per-axis, per-channel,
-activation-dependent, mixed-precision, and blockwise quantization remain
-outside the current contract. Similarly, fixed-mask support covers explicit
+exact codebook payloads, tensor-wide scaled binary payloads, and per-tensor
+affine integer payloads, and dense dequantization remains a semantic fallback.
+Torch frontend capture is limited to the tested fixed per-tensor affine
+quantized \texttt{nn.Linear} case. Quantized convolution, per-axis,
+per-channel, activation-dependent, mixed-precision, and blockwise quantization
+remain outside the current contract. Similarly, fixed-mask support covers explicit
 binary masks applied as sparse linear maps over values or features; it does
 not claim score-dependent masked attention, softmax semantics, KV-cache
 layout, broadcast mask contracts, or dynamic sequence behavior.
@@ -634,10 +639,9 @@ follow-up issues.
 
 The live issue audit found no unresolved priority-zero or priority-one blocker
 that changes the paper thesis. The roadmap tracker remains blocked by this
-final-draft issue, and quantized frontend capture remains explicitly out of
-scope for the first artifact: packed affine quantized IR is tracked as optional
-follow-up work, while quantized capture and quantized workload evidence remain
-blocked behind it. These boundaries are already reflected in the scope,
+final-draft issue. Quantized workload evidence and quantized convolution
+capture remain optional follow-up work beyond the tested per-tensor affine
+linear capture path. These boundaries are already reflected in the scope,
 frontend, IR, evidence, and limitations sections above.
 
 \section{Conclusion}

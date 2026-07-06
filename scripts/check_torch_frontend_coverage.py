@@ -64,6 +64,12 @@ EVIDENCE_REFERENCES = {
         "tests/test_frontend.py::test_captures_real_strided_padded_dilated_torch_conv1d_module",
         "tests/test_frontend.py::test_extracts_fake_functional_strided_padded_dilated_conv1d",
     ),
+    "Quantized `nn.Linear`": (
+        "tests/test_frontend.py::test_captures_real_quantized_linear_module_as_packed_affine",
+        "tests/test_frontend.py::test_extracts_fake_quantized_linear_module_as_packed_affine",
+        "tests/test_frontend.py::test_extracts_fake_biased_quantized_linear_module_as_affine",
+        "tests/test_frontend.py::test_ignores_unsupported_fake_quantized_linear_variants",
+    ),
     "Exported graph fixed-weight `addmm` and nested linear": (
         "tests/test_frontend.py::test_captures_real_torch_exported_addmm_pattern_as_affine",
         "tests/test_frontend.py::test_extracts_exported_nested_linear_from_signature_state_dict",

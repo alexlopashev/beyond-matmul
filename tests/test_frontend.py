@@ -8,7 +8,13 @@ from beyond_matmul.frontend import (
     capture_torch_named_adapter_operators,
     extract_torch_fx_low_rank_operators,
 )
-from beyond_matmul.ir import AffineOperator, Convolution1DOperator, DenseOperator, MultiChannelConvolution1DOperator
+from beyond_matmul.ir import (
+    AffineOperator,
+    Convolution1DOperator,
+    DenseOperator,
+    MultiChannelConvolution1DOperator,
+    PackedAffineQuantizedOperator,
+)
 from beyond_matmul.planner import PlanningRequest, plan_fixed_weight
 
 try:
@@ -70,6 +76,43 @@ class Conv1d:
         self.groups = groups
         self.in_channels = in_channels
         self.out_channels = out_channels
+
+
+class FakeQuantizedTensor:
+    def __init__(self, integers, scale=0.25, zero_point=0, qscheme="per_tensor_affine", dtype="qint8"):
+        self._integers = integers
+        self._scale = scale
+        self._zero_point = zero_point
+        self._qscheme = qscheme
+        self.dtype = dtype
+
+    def int_repr(self):
+        return self._integers
+
+    def q_scale(self):
+        return self._scale
+
+    def q_zero_point(self):
+        return self._zero_point
+
+    def qscheme(self):
+        return self._qscheme
+
+
+class QuantizedLinear:
+    def __init__(self, weight, bias=None):
+        self._weight = weight
+        self._bias = bias
+
+    def weight(self):
+        return self._weight
+
+    def bias(self):
+        return self._bias
+
+
+class DynamicQuantizedLinear(QuantizedLinear):
+    pass
 
 
 class FakeGraph:
@@ -271,6 +314,137 @@ class FrontendTests(unittest.TestCase):
         self.assertEqual(operator.groups, 3)
         self.assertEqual(operator.metadata.lowerings[0], "conv1d_depthwise_direct")
         self.assertEqual(captured["conv1d"].event.notes["group_type"], "depthwise")
+
+    def test_extracts_fake_quantized_linear_module_as_packed_affine(self):
+        graph_module = FakeGraphModule([])
+        graph_module.qlinear = QuantizedLinear(
+            FakeQuantizedTensor(
+                [
+                    [-4, 0, 4],
+                    [8, -8, 2],
+                ],
+                scale=0.125,
+                zero_point=0,
+                qscheme="per_tensor_affine",
+                dtype="qint8",
+            )
+        )
+        x = FakeNode("x", "placeholder", "x")
+        x.meta["tensor_meta"] = FakeTensorMeta((2, 3))
+        qlinear = FakeNode("qlinear", "call_module", "qlinear", args=(x,))
+        graph_module.graph.nodes = [x, qlinear]
+
+        captured = extract_torch_fx_operators(graph_module)
+
+        self.assertIn("qlinear", captured)
+        operator = captured["qlinear"].operator
+        self.assertIsInstance(operator, PackedAffineQuantizedOperator)
+        self.assertEqual(operator.integers, [[-4, 0, 4], [8, -8, 2]])
+        self.assertEqual(operator.scale, 0.125)
+        self.assertEqual(operator.zero_point, 0)
+        self.assertEqual(operator.bits, 8)
+        self.assertEqual(operator.integer_range, (-128, 127))
+        self.assertEqual(operator.metadata.quantization.scheme, "per_tensor_affine")
+        self.assertEqual(operator.metadata.provenance.framework, "torch.fx")
+        self.assertEqual(operator.metadata.provenance.transform_history[-1], "quantized_linear_module_pattern")
+        self.assertEqual(captured["qlinear"].event.notes["capture"], "quantized_linear_module")
+        self.assertEqual(captured["qlinear"].event.notes["integer_range"], "(-128, 127)")
+
+        plan = plan_fixed_weight(operator, PlanningRequest(batch_size=2, calls=16, codebook_sizes=(2,)))
+        self.assertEqual(plan.selected.name, "packed_affine_kernel")
+        self.assertIn("dense_gemm", {option.name for option in plan.options})
+
+    def test_extracts_fake_biased_quantized_linear_module_as_affine(self):
+        graph_module = FakeGraphModule([])
+        graph_module.qlinear = QuantizedLinear(
+            FakeQuantizedTensor(
+                [
+                    [1, 3],
+                    [5, 7],
+                ],
+                scale=0.5,
+                zero_point=3,
+                qscheme="per_tensor_affine",
+                dtype="quint8",
+            ),
+            bias=[0.25, -0.5],
+        )
+        x = FakeNode("x", "placeholder", "x")
+        x.meta["tensor_meta"] = FakeTensorMeta((1, 2))
+        qlinear = FakeNode("qlinear", "call_module", "qlinear", args=(x,))
+        graph_module.graph.nodes = [x, qlinear]
+
+        captured = extract_torch_fx_operators(graph_module)
+
+        operator = captured["qlinear"].operator
+        self.assertIsInstance(operator, AffineOperator)
+        self.assertIsInstance(operator.linear, PackedAffineQuantizedOperator)
+        self.assertEqual(operator.bias, [0.25, -0.5])
+        self.assertEqual(operator.linear.integer_range, (0, 255))
+        self.assertEqual(captured["qlinear"].event.op_type, "affine_packed_affine_quantized")
+        self.assertEqual(captured["qlinear"].event.notes["bias"], "true")
+
+    @unittest.skipIf(torch is None, "PyTorch is not installed")
+    def test_captures_real_quantized_linear_module_as_packed_affine(self):
+        engines = [engine for engine in torch.backends.quantized.supported_engines if engine != "none"]
+        if not engines:
+            self.skipTest("Torch quantized linear engine is not available")
+        previous_engine = torch.backends.quantized.engine
+        torch.backends.quantized.engine = "x86" if "x86" in engines else engines[0]
+        try:
+            quantized = torch.ao.nn.quantized.Linear(3, 2)
+            quantized_weight = torch.quantize_per_tensor(
+                torch.tensor(
+                    [
+                        [0.0, 0.25, -0.25],
+                        [0.5, -0.5, 0.125],
+                    ]
+                ),
+                scale=0.125,
+                zero_point=0,
+                dtype=torch.qint8,
+            )
+            quantized.set_weight_bias(quantized_weight, torch.tensor([0.1, -0.2]))
+
+            class QuantizedProjection(nn.Module):
+                def __init__(self):
+                    super().__init__()
+                    self.qlinear = quantized
+
+                def forward(self, x):
+                    return self.qlinear(x)
+
+            captured = capture_torch_fx_operators(QuantizedProjection().eval())
+        finally:
+            if previous_engine in engines:
+                torch.backends.quantized.engine = previous_engine
+
+        operator = captured["qlinear"].operator
+        self.assertIsInstance(operator, AffineOperator)
+        self.assertIsInstance(operator.linear, PackedAffineQuantizedOperator)
+        self.assertEqual(operator.linear.integers, [[0, 2, -2], [4, -4, 1]])
+        self.assertEqual(operator.linear.scale, 0.125)
+        self.assertEqual(operator.linear.zero_point, 0)
+        self.assertEqual(operator.linear.integer_range, (-128, 127))
+        self.assertEqual(operator.bias, [0.10000000149011612, -0.20000000298023224])
+        self.assertEqual(captured["qlinear"].event.notes["capture"], "quantized_linear_module")
+
+    def test_ignores_unsupported_fake_quantized_linear_variants(self):
+        unsupported_modules = [
+            QuantizedLinear(FakeQuantizedTensor([[1, 2, 3]], qscheme="per_channel_affine")),
+            QuantizedLinear(FakeQuantizedTensor([[1, 2, 3]], qscheme="per_axis_affine")),
+            DynamicQuantizedLinear(FakeQuantizedTensor([[1, 2, 3]], qscheme="per_tensor_affine")),
+        ]
+        for module in unsupported_modules:
+            with self.subTest(module=type(module).__name__):
+                graph_module = FakeGraphModule([])
+                graph_module.qlinear = module
+                x = FakeNode("x", "placeholder", "x")
+                x.meta["tensor_meta"] = FakeTensorMeta((1, 3))
+                qlinear = FakeNode("qlinear", "call_module", "qlinear", args=(x,))
+                graph_module.graph.nodes = [x, qlinear]
+
+                self.assertEqual(extract_torch_fx_operators(graph_module), {})
 
     def test_ignores_unsupported_fake_functional_conv1d_variants(self):
         graph_module = FakeGraphModule([])
