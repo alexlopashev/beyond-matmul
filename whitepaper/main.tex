@@ -395,6 +395,83 @@ contracts are similarly explicit: a GPU request rejects an otherwise exact
 lowering, then selects the dense fallback. These costs are planner estimates in
 a deterministic artifact, not measured hardware timings.
 
+\section{Related Work}
+
+Beyond Matmul is closest to work that keeps linear structure visible long
+enough to choose a better representation, but it is not claiming that
+structured operators, compression, quantization, or compiler metadata are new.
+The narrower claim is that a fixed-weight inference system can benefit from
+making the reason for a matrix multiplication explicit until planning time.
+
+\subsection{Structured Linear Operators}
+
+Structured linear operators are a long-running alternative to treating every
+linear map as an arbitrary dense matrix. Convolutions, Toeplitz and circulant
+maps, diagonal scalings, Kronecker-like factorizations, fast transforms, and
+graph or stencil operators all expose algebraic constraints that can reduce
+storage or work when the backend supports the corresponding kernel.
+\textbf{TODO citation: structured matrices, fast transforms, convolution
+lowering, graph and stencil linear operators.} This project uses that lineage
+as motivation, but its current evidence is smaller: executable dense
+equivalence and planner behavior for the operator families listed in the IR
+section. It does not claim that every structured family is supported or that a
+specialized kernel is always faster.
+
+\subsection{Sparse and Low-Rank Inference}
+
+Sparse inference systems and low-rank adaptation methods show that many
+inference workloads can use fewer degrees of freedom than a dense matrix
+exposes. Sparse kernels exploit zeros or block patterns, while low-rank
+methods preserve a factorized product instead of materializing the merged
+dense weight. \textbf{TODO citation: sparse neural inference, block sparse
+kernels, low-rank approximation, LoRA and adapter inference.} Beyond Matmul
+borrows these representations as planner candidates. The distinction is the
+contract around provenance and fallback: a low-rank adapter captured before
+densification carries different evidence than a low-rank approximation
+recovered from a dense matrix, and dense GEMM remains valid when sparsity or
+rank evidence is weak.
+
+\subsection{Quantized and Packed Weights}
+
+Quantization, codebook methods, and packed binary or low-bit weights already
+separate storage format from mathematical dense multiplication. Their practical
+benefit depends on scale and zero-point semantics, packing layout, calibration
+or error bounds, and backend support. \textbf{TODO citation: post-training
+quantization, weight-only quantization, vector quantization/codebooks, binary
+and ternary neural networks.} The current artifact only models a small part of
+that space through codebook and bitpacked operators plus placeholder
+quantization metadata. Quantized Torch modules are therefore described as
+future work until the IR, frontend, planner, and evidence artifacts can
+represent their contracts without silently dequantizing away the relevant
+structure.
+
+\subsection{Compiler IR and Lowering}
+
+ML compilers routinely preserve information across lowering levels through
+operator dialects, layout attributes, shape constraints, buffer metadata, and
+target-specific scheduling decisions. \textbf{TODO citation: MLIR, XLA, TVM,
+Torch FX/export, tensor compiler lowering and scheduling systems.} Beyond
+Matmul is compatible with that tradition rather than a replacement for it. Its
+prototype IR is intentionally small and research-facing: it records enough
+source, structure, exactness, approximation, reuse, layout, and backend
+metadata to test whether fixed-weight planner decisions improve over immediate
+dense lowering. Production compiler concerns such as full graph optimization,
+autograd, memory planning, and GPU code generation remain outside the current
+scope.
+
+\subsection{Provenance and Metadata}
+
+Database systems, compilers, and ML tooling all use provenance or metadata to
+explain where values came from, whether transformations are legal, and how
+artifacts should be interpreted. \textbf{TODO citation: data provenance,
+compiler debug/provenance metadata, model cards or dataset documentation where
+relevant.} This paper uses a narrower phrase, computation reason provenance,
+for why a fixed linear operator exists and what lowerings remain valid. That
+choice connects related work back to the project's main limitation: provenance
+that is preserved by a frontend is stronger than structure guessed from a
+dense matrix, and recovered candidates need explicit uncertainty and
+output-level validation before a planner should prefer them over dense GEMM.
+
 \section{Development Methodology}
 
 All code work should be test-driven and issue-driven. Each issue should be
