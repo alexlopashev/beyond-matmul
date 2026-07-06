@@ -368,6 +368,9 @@ def _capture_conv1d_module(graph_module: Any, node: Any) -> Optional[CapturedOpe
     module = _maybe_resolve_attr(graph_module, str(getattr(node, "target", "")))
     if module is None or not _is_supported_conv1d_module(module):
         return None
+    args = list(getattr(node, "args", ()) or ())
+    if not args or not _is_runtime_activation_operand(args[0]):
+        return None
     weight = _conv1d_weight(getattr(module, "weight", None))
     if weight is None:
         return None

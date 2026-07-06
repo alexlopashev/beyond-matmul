@@ -11,9 +11,9 @@ current IR or capture rules need more design before claiming coverage.
 | Nested `F.linear` | Supported | `LowRankOperator` or `AffineOperator` | Fixed right and left factors must resolve from FX attributes. |
 | Named adapter pairs | Supported | `LowRankOperator` or `AffineOperator` | Scans pairs such as `down`/`up`, `lora_A`/`lora_B`, and merged-weight hints. |
 | `Embedding` followed by projection | Supported | `LowRankOperator` or `AffineOperator` | Represents the embedding table as a projection over one-hot token inputs. |
-| Single-channel `nn.Conv1d` | Supported | `Convolution1DOperator` or `AffineOperator` | Fixed weights, scalar stride/padding/dilation, groups 1. |
-| Multi-channel `nn.Conv1d` | Supported | `MultiChannelConvolution1DOperator` or `AffineOperator` | Fixed weights, channel-major flattened rows, scalar stride/padding/dilation. |
-| Functional `conv1d` | Supported | `Convolution1DOperator`, `MultiChannelConvolution1DOperator`, or `AffineOperator` | Captures fixed `torch.nn.functional.conv1d`/`torch.conv1d` weights, optional fixed bias, scalar stride/padding/dilation, and grouped/depthwise forms. |
+| Single-channel `nn.Conv1d` | Supported | `Convolution1DOperator` or `AffineOperator` | Runtime activation, fixed weights, scalar stride/padding/dilation, groups 1. |
+| Multi-channel `nn.Conv1d` | Supported | `MultiChannelConvolution1DOperator` or `AffineOperator` | Runtime activation, fixed weights, channel-major flattened rows, scalar stride/padding/dilation. |
+| Functional `conv1d` | Supported | `Convolution1DOperator`, `MultiChannelConvolution1DOperator`, or `AffineOperator` | Captures runtime activation with fixed `torch.nn.functional.conv1d`/`torch.conv1d` weights, optional fixed bias, scalar stride/padding/dilation, and grouped/depthwise forms. |
 | `operator.matmul` / `x @ weight.T` | Supported | `DenseOperator` | Requires a runtime left operand and an explicitly transposed fixed right operand. |
 | `torch.matmul` | Supported | `DenseOperator` | Same exact fixed-weight rule as `x @ weight.T`. |
 | `torch.mm` | Supported | `DenseOperator` | Supports function and method forms when the right operand is fixed and explicitly transposed. |
@@ -54,14 +54,16 @@ ambiguous.
 Conv1d capture is exact but intentionally narrow. Module and functional forms
 are supported when weights and optional bias are fixed and stride, padding, and
 dilation are scalar 1D parameters with positive stride/dilation and non-negative
-padding. Multi-channel Conv1d rows flatten inputs as
+padding, and the convolution input is a runtime activation rather than a fixed
+buffer. Multi-channel Conv1d rows flatten inputs as
 `(in_channels, input_length)` and outputs as `(out_channels, output_length)` in
 channel-major order. Grouped and depthwise rows preserve PyTorch-style group
 partitions with explicit `groups`, `input_channels_per_group`, and
 `group_type` metadata; the real Torch tests cover grouped modules and
 grouped/depthwise functional forms against PyTorch outputs. Unsupported
-parameter shapes, invalid output lengths, dynamic weights, and dynamic bias
-values are ignored cleanly rather than captured as structured Conv1d.
+parameter shapes, invalid output lengths, dynamic weights, dynamic bias values,
+and fixed-buffer inputs are ignored cleanly rather than captured as structured
+Conv1d.
 
 Quantized module capture remains unsupported even though the IR now documents a
 fixed-weight quantization contract. `CodebookOperator` and
