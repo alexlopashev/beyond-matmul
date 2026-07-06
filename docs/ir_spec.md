@@ -96,13 +96,19 @@ MultiChannelConvolution1DOperator(
         [[-0.25, 0.75, 1.5], [1.0, -0.5, 0.25]],
     ],
     input_length=128,
+    groups=1,
 )
 ```
 
 Structure: block-Toeplitz dense equivalent for fixed valid Conv1d. Input rows
 flatten `(in_channels, input_length)` and output rows flatten
-`(out_channels, output_length)` in channel-major order.
-Lowerings: `conv1d_channel_direct`, `dense_gemm`.
+`(out_channels, output_length)` in channel-major order. `groups` partitions
+input and output channels with PyTorch-style weight shape
+`(out_channels, in_channels / groups, kernel_size)`. Ungrouped, grouped, and
+depthwise forms keep explicit metadata for `groups`,
+`input_channels_per_group`, and `group_type`.
+Lowerings: `conv1d_channel_direct`, `conv1d_grouped_direct`,
+`conv1d_depthwise_direct`, `dense_gemm`.
 
 ### Sparse
 

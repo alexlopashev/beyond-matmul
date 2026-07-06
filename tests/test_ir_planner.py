@@ -53,6 +53,66 @@ class OperatorTests(unittest.TestCase):
         self.assertEqual(conv.shape, (6, 10))
         self.assertEqual(conv.apply(inputs), DenseOperator(conv.to_dense()).apply(inputs))
 
+    def test_grouped_conv1d_to_dense(self):
+        conv = MultiChannelConvolution1DOperator(
+            [
+                [[1.0, 0.5, -1.0], [0.25, 2.0, -0.5]],
+                [[-1.5, 0.75, 0.25], [1.25, -0.25, 0.5]],
+                [[0.5, -0.5, 1.5], [1.0, 0.0, -1.0]],
+                [[-0.25, 0.5, 0.75], [2.0, -1.0, 0.25]],
+            ],
+            input_length=5,
+            groups=2,
+        )
+        inputs = [[
+            1.0, 2.0, 3.0, 4.0, 5.0,
+            -1.0, 0.5, 2.0, -2.0, 1.5,
+            0.0, -1.0, 1.5, 2.5, -0.5,
+            2.0, -0.5, 1.0, 0.25, -1.5,
+        ]]
+
+        self.assertEqual(conv.shape, (12, 20))
+        self.assertEqual(conv.metadata.lowerings[0], "conv1d_grouped_direct")
+        self.assertEqual(conv.metadata.structure["groups"], 2)
+        self.assertEqual(conv.apply(inputs), DenseOperator(conv.to_dense()).apply(inputs))
+        dense = conv.to_dense()
+        self.assertEqual(dense[6][:10], [0.0 for _ in range(10)])
+        self.assertNotEqual(dense[6][10:], [0.0 for _ in range(10)])
+
+    def test_depthwise_conv1d_to_dense(self):
+        conv = MultiChannelConvolution1DOperator(
+            [
+                [[1.0, 0.0, -1.0]],
+                [[0.5, -0.5, 1.5]],
+                [[2.0, 1.0, 0.25]],
+            ],
+            input_length=5,
+            groups=3,
+        )
+        inputs = [[
+            1.0, 2.0, 3.0, 4.0, 5.0,
+            -1.0, 0.5, 2.0, -2.0, 1.5,
+            0.0, -1.0, 1.5, 2.5, -0.5,
+        ]]
+
+        self.assertEqual(conv.shape, (9, 15))
+        self.assertEqual(conv.metadata.lowerings[0], "conv1d_depthwise_direct")
+        self.assertEqual(conv.metadata.structure["group_type"], "depthwise")
+        self.assertEqual(conv.apply(inputs), DenseOperator(conv.to_dense()).apply(inputs))
+
+    def test_grouped_conv1d_validation(self):
+        with self.assertRaisesRegex(ValueError, "groups must be a positive integer"):
+            MultiChannelConvolution1DOperator([[[1.0, 2.0, 3.0]]], input_length=5, groups=0)
+        with self.assertRaisesRegex(ValueError, "output channels must be divisible by groups"):
+            MultiChannelConvolution1DOperator(
+                [
+                    [[1.0, 2.0, 3.0]],
+                    [[1.0, 2.0, 3.0]],
+                ],
+                input_length=5,
+                groups=3,
+            )
+
 
 class PlannerTests(unittest.TestCase):
     def test_planner_selects_diagonal_kernel_for_diagonal_weight(self):
@@ -115,6 +175,36 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(plan.selected.name, "conv1d_channel_direct_bias")
         self.assertTrue(plan.selected.exact)
         self.assertEqual(plan.selected.operator.apply(inputs), weight.apply(inputs))
+
+    def test_planner_distinguishes_grouped_and_depthwise_conv1d(self):
+        grouped = MultiChannelConvolution1DOperator(
+            [
+                [[1.0, 0.5, -1.0], [0.25, 2.0, -0.5]],
+                [[-1.5, 0.75, 0.25], [1.25, -0.25, 0.5]],
+                [[0.5, -0.5, 1.5], [1.0, 0.0, -1.0]],
+                [[-0.25, 0.5, 0.75], [2.0, -1.0, 0.25]],
+            ],
+            input_length=5,
+            groups=2,
+        )
+        depthwise = MultiChannelConvolution1DOperator(
+            [
+                [[1.0, 0.0, -1.0]],
+                [[0.5, -0.5, 1.5]],
+                [[2.0, 1.0, 0.25]],
+            ],
+            input_length=5,
+            groups=3,
+        )
+
+        grouped_plan = plan_fixed_weight(grouped, PlanningRequest(batch_size=2, calls=16, codebook_sizes=(2,)))
+        depthwise_plan = plan_fixed_weight(depthwise, PlanningRequest(batch_size=2, calls=16, codebook_sizes=(2,)))
+
+        self.assertEqual(grouped_plan.selected.name, "conv1d_grouped_direct")
+        self.assertEqual(grouped_plan.selected.cost.apply_ops, 144)
+        self.assertIn("dense_gemm", {option.name for option in grouped_plan.options})
+        self.assertEqual(depthwise_plan.selected.name, "conv1d_depthwise_direct")
+        self.assertEqual(depthwise_plan.selected.cost.apply_ops, 54)
 
     def test_plan_option_exposes_cost_breakdown(self):
         weight = DiagonalOperator([1.0, 2.0, 3.0, 4.0])
