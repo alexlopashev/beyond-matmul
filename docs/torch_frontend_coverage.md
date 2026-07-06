@@ -22,7 +22,7 @@ current IR or capture rules need more design before claiming coverage.
 | Stride/padding/dilation `Conv1d` variants | Next | Not captured | Current Conv1d IR is valid-mode only. |
 | `Conv2d` | Unsupported | Not captured | Needs 2D convolution IR and layout decisions before frontend matching. |
 | Quantized linear/conv | Unsupported | Not captured | Needs quantization-aware IR mapping rather than lossy dense recovery. |
-| Exported graph variants | Next | Not hardened | Parameter names and module structure may be erased; fixed weights need robust recovery. |
+| Exported graph fixed-weight `addmm` and nested linear | Supported | `DenseOperator`, `AffineOperator(DenseOperator)`, `LowRankOperator`, or `AffineOperator(LowRankOperator)` | Recovers fixed parameter/buffer values through graph signature state, with provenance notes marking exported recovery. |
 | Dynamic-weight matmul/addmm | Unsupported | Not captured | Fixed-weight reuse is the scope; runtime weights are ignored cleanly. |
 
 ## Current Capture Rule
@@ -35,6 +35,13 @@ forms. It does not infer orientation from shapes alone.
 `torch.addmm` follows the same fixed-weight rule and additionally requires a
 fixed one-dimensional bias. Non-default `alpha` or `beta` values are ignored
 until scaling is represented explicitly and tested.
+
+Exported-program recovery is explicit rather than shape inferred: placeholders
+must map through a graph signature to fixed parameter, buffer, or constant state.
+Recovered events record `exported_graph_state` notes and add
+`exported_graph_constant_recovery` to provenance history. Shape-only or dynamic
+placeholders are ignored cleanly, and untransposed right-hand weights are still
+ambiguous.
 
 Conv1d capture is exact but intentionally narrow. Module and functional forms
 are supported when weights and optional bias are fixed, stride is 1, padding is

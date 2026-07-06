@@ -137,6 +137,9 @@ def capture_torch_fx_operators(module, sample_inputs: Any = None) -> Dict[str, C
     orientation information is present.
     """
 
+    if _is_exported_program_like(module):
+        return extract_torch_fx_operators(module)
+
     try:
         import torch.fx as fx  # type: ignore
     except Exception as exc:  # pragma: no cover - depends on optional torch
@@ -149,6 +152,14 @@ def capture_torch_fx_operators(module, sample_inputs: Any = None) -> Dict[str, C
     for name, operator in capture_torch_named_adapter_operators(module).items():
         captured.setdefault(name, operator)
     return captured
+
+
+def _is_exported_program_like(value: Any) -> bool:
+    return (
+        getattr(value, "graph_signature", None) is not None
+        and getattr(value, "graph_module", None) is not None
+        and isinstance(getattr(value, "state_dict", None), dict)
+    )
 
 
 def extract_torch_fx_low_rank_operators(graph_module: Any) -> Dict[str, CapturedOperator]:
@@ -266,12 +277,17 @@ def _capture_nested_linear(graph_module: Any, inner: Any, outer: Any) -> Optiona
     outer_bias = _linear_bias(graph_module, outer, expected_length=len(left))
     if inner_bias is None or outer_bias is None:
         return None
+    weight_recovery = _fixed_value_recovery_note(graph_module, _linear_weight_operand(inner), _linear_weight_operand(outer))
+    bias_recovery = _fixed_value_recovery_note(graph_module, _linear_bias_operand(inner), _linear_bias_operand(outer))
+    transform_history = ["torch.fx symbolic_trace", "low_rank_linear_pattern"]
+    if weight_recovery is not None or bias_recovery is not None:
+        transform_history.append("exported_graph_constant_recovery")
     provenance = Provenance(
         source=str(getattr(outer, "name", "torch_fx_low_rank")),
         framework="torch.fx",
         expression="linear(linear(x, right), left)",
         inputs=(str(getattr(inner, "name", "inner")), str(getattr(outer, "name", "outer"))),
-        transform_history=("torch.fx symbolic_trace", "low_rank_linear_pattern"),
+        transform_history=tuple(transform_history),
         confidence=0.95,
     )
     notes = {
@@ -279,6 +295,10 @@ def _capture_nested_linear(graph_module: Any, inner: Any, outer: Any) -> Optiona
         "outer_node": str(getattr(outer, "name", "unknown")),
         "rank": str(len(right)),
     }
+    if weight_recovery is not None:
+        notes["weight_recovery"] = weight_recovery
+    if bias_recovery is not None:
+        notes["bias_recovery"] = bias_recovery
     return _captured_low_rank_or_affine(str(getattr(outer, "name", "torch_fx_low_rank")), left, right, inner_bias, outer_bias, provenance, notes)
 
 
@@ -481,12 +501,16 @@ def _capture_dense_matmul(graph_module: Any, node: Any) -> Optional[CapturedOper
 
     name = str(getattr(node, "name", "torch_fx_matmul"))
     weight_source = _source_name(_transpose_base(rhs)) or "fixed_weight"
+    rhs_recovery = _fixed_value_recovery_note(graph_module, _transpose_base(rhs))
+    transform_history = ["torch.fx symbolic_trace", "dense_matmul_pattern"]
+    if rhs_recovery is not None:
+        transform_history.append("exported_graph_constant_recovery")
     provenance = Provenance(
         source=name,
         framework="torch.fx",
         expression="x @ weight.T",
         inputs=(_source_name(activation) or "activation", weight_source),
-        transform_history=("torch.fx symbolic_trace", "dense_matmul_pattern"),
+        transform_history=tuple(transform_history),
         confidence=0.9,
     )
     notes = {
@@ -495,6 +519,8 @@ def _capture_dense_matmul(graph_module: Any, node: Any) -> Optional[CapturedOper
         "rhs_orientation": "transposed_fixed_weight",
         "weight_layout": "out_in",
     }
+    if rhs_recovery is not None:
+        notes["rhs_recovery"] = rhs_recovery
     try:
         operator = DenseOperator(weight, provenance=provenance)
     except ValueError:
@@ -526,12 +552,17 @@ def _capture_dense_addmm(graph_module: Any, node: Any) -> Optional[CapturedOpera
     name = str(getattr(node, "name", "torch_fx_addmm"))
     weight_source = _source_name(_transpose_base(rhs)) or "fixed_weight"
     bias_source = _source_name(bias_operand) or "fixed_bias"
+    rhs_recovery = _fixed_value_recovery_note(graph_module, _transpose_base(rhs))
+    bias_recovery = _fixed_value_recovery_note(graph_module, bias_operand)
+    transform_history = ["torch.fx symbolic_trace", "dense_addmm_pattern"]
+    if rhs_recovery is not None or bias_recovery is not None:
+        transform_history.append("exported_graph_constant_recovery")
     provenance = Provenance(
         source=name,
         framework="torch.fx",
         expression="torch.addmm(bias, x, weight.T)",
         inputs=(bias_source, _source_name(activation) or "activation", weight_source),
-        transform_history=("torch.fx symbolic_trace", "dense_addmm_pattern"),
+        transform_history=tuple(transform_history),
         confidence=0.9,
     )
     notes = {
@@ -541,6 +572,10 @@ def _capture_dense_addmm(graph_module: Any, node: Any) -> Optional[CapturedOpera
         "rhs_orientation": "transposed_fixed_weight",
         "weight_layout": "out_in",
     }
+    if rhs_recovery is not None:
+        notes["rhs_recovery"] = rhs_recovery
+    if bias_recovery is not None:
+        notes["bias_recovery"] = bias_recovery
     try:
         linear = DenseOperator(weight, provenance=provenance)
         operator = AffineOperator(linear, bias, provenance=provenance)
@@ -563,8 +598,13 @@ def _propagate_torch_fx_shapes(graph_module: Any, sample_inputs: Any) -> None:
 
 
 def _iter_fx_nodes(graph_module: Any) -> Iterable[Any]:
-    graph = getattr(graph_module, "graph", graph_module)
+    graph_owner = _fx_graph_owner(graph_module)
+    graph = getattr(graph_owner, "graph", graph_owner)
     return getattr(graph, "nodes", ())
+
+
+def _fx_graph_owner(graph_module: Any) -> Any:
+    return getattr(graph_module, "graph_module", graph_module)
 
 
 def _is_linear_node(graph_module: Any, node: Any) -> bool:
@@ -775,10 +815,17 @@ def _linear_weight(graph_module: Any, node: Any) -> Optional[List[List[float]]]:
             return None
         return _to_matrix(getattr(module, "weight", None))
 
+    operand = _linear_weight_operand(node)
+    if operand is None:
+        return None
+    return _node_value_as_matrix(graph_module, operand)
+
+
+def _linear_weight_operand(node: Any) -> Any:
     args = list(getattr(node, "args", ()) or ())
     if len(args) < 2:
         return None
-    return _node_value_as_matrix(graph_module, args[1])
+    return args[1]
 
 
 def _linear_bias(graph_module: Any, node: Any, expected_length: int) -> Optional[List[float]]:
@@ -789,10 +836,13 @@ def _linear_bias(graph_module: Any, node: Any, expected_length: int) -> Optional
             return None
         return _module_bias(module, expected_length)
 
+    return _bias_value(_node_value(graph_module, _linear_bias_operand(node)), expected_length)
+
+
+def _linear_bias_operand(node: Any) -> Any:
     args = list(getattr(node, "args", ()) or ())
     kwargs = dict(getattr(node, "kwargs", {}) or {})
-    bias = args[2] if len(args) >= 3 else kwargs.get("bias")
-    return _bias_value(_node_value(graph_module, bias), expected_length)
+    return args[2] if len(args) >= 3 else kwargs.get("bias")
 
 
 def _is_embedding_node(graph_module: Any, node: Any) -> bool:
@@ -899,6 +949,8 @@ def _transpose_base(value: Any) -> Optional[Any]:
     if op == "call_function":
         if _target_has_name(target, {"getattr"}) and len(args) >= 2 and args[1] == "T":
             return args[0]
+        if _target_has_name(target, {"numpy_T"}) and args:
+            return args[0]
         if _target_has_name(target, {"transpose"}) and _is_2d_transpose_args(args[1:]):
             return args[0]
     if op == "call_method":
@@ -929,10 +981,18 @@ def _is_default_scale(value: Any) -> bool:
 
 def _target_has_name(target: Any, names: set[str]) -> bool:
     direct_name = getattr(target, "__name__", None)
-    if direct_name in names:
-        return True
+    if direct_name is not None:
+        if direct_name in names or any(str(direct_name).startswith(f"{name}.") for name in names):
+            return True
     text = str(target)
-    return any(text == name or text.endswith(f".{name}") or f" {name}" in text for name in names)
+    return any(
+        text == name
+        or text.startswith(f"{name}.")
+        or text.endswith(f".{name}")
+        or f".{name}." in text
+        or f" {name}" in text
+        for name in names
+    )
 
 
 def _source_name(value: Any) -> Optional[str]:
@@ -946,8 +1006,16 @@ def _source_name(value: Any) -> Optional[str]:
 
 
 def _node_value(graph_module: Any, value: Any) -> Any:
-    if getattr(value, "op", None) == "get_attr":
-        return _resolve_attr(graph_module, str(getattr(value, "target", "")))
+    op = getattr(value, "op", None)
+    if op == "get_attr":
+        return _resolve_attr(_fx_graph_owner(graph_module), str(getattr(value, "target", "")))
+    if op == "placeholder":
+        exported_value = _exported_placeholder_value(graph_module, value)
+        if exported_value is not None:
+            return exported_value
+    constant_value = _constant_node_value(value)
+    if constant_value is not None:
+        return constant_value
     return value
 
 
@@ -957,7 +1025,7 @@ def _node_value_as_matrix(graph_module: Any, value: Any) -> Optional[List[List[f
 
 def _maybe_resolve_attr(obj: Any, path: str) -> Any:
     try:
-        return _resolve_attr(obj, path)
+        return _resolve_attr(_fx_graph_owner(obj), path)
     except AttributeError:
         return None
 
@@ -969,6 +1037,70 @@ def _resolve_attr(obj: Any, path: str) -> Any:
             continue
         current = getattr(current, part)
     return current
+
+
+def _fixed_value_recovery_note(graph_module: Any, *values: Any) -> Optional[str]:
+    recoveries = {_fixed_value_recovery(graph_module, value) for value in values if value is not None}
+    recoveries.discard(None)
+    if "exported_graph_state" in recoveries:
+        return "exported_graph_state"
+    if "constant_node_meta" in recoveries:
+        return "constant_node_meta"
+    return None
+
+
+def _fixed_value_recovery(graph_module: Any, value: Any) -> Optional[str]:
+    if getattr(value, "op", None) == "placeholder" and _exported_placeholder_value(graph_module, value) is not None:
+        return "exported_graph_state"
+    if _constant_node_value(value) is not None:
+        return "constant_node_meta"
+    return None
+
+
+def _exported_placeholder_value(graph_module: Any, node: Any) -> Any:
+    target = _exported_placeholder_target(graph_module, node)
+    if target is None:
+        return None
+    for mapping in _exported_value_mappings(graph_module):
+        if target in mapping:
+            return mapping[target]
+    return None
+
+
+def _exported_placeholder_target(graph_module: Any, node: Any) -> Optional[str]:
+    if getattr(node, "op", None) != "placeholder":
+        return None
+    placeholder_name = str(getattr(node, "target", getattr(node, "name", "")))
+    signature = getattr(graph_module, "graph_signature", None)
+    input_specs = getattr(signature, "input_specs", ()) if signature is not None else ()
+    for spec in input_specs:
+        arg = getattr(spec, "arg", None)
+        arg_name = getattr(arg, "name", None)
+        target = getattr(spec, "target", None)
+        kind_text = str(getattr(spec, "kind", ""))
+        if arg_name != placeholder_name or target is None:
+            continue
+        if not any(kind in kind_text for kind in ("PARAMETER", "BUFFER", "CONSTANT")):
+            continue
+        return str(target)
+    return None
+
+
+def _exported_value_mappings(graph_module: Any) -> Iterable[Dict[str, Any]]:
+    for attr in ("state_dict", "constants"):
+        mapping = getattr(graph_module, attr, None)
+        if isinstance(mapping, dict):
+            yield mapping
+
+
+def _constant_node_value(value: Any) -> Any:
+    meta = getattr(value, "meta", None)
+    if not isinstance(meta, dict):
+        return None
+    for key in ("constant_value", "fixed_value", "literal_value"):
+        if key in meta:
+            return meta[key]
+    return None
 
 
 def _is_zero_value(value: Any, tolerance: float = 1e-12) -> bool:

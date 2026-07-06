@@ -36,6 +36,30 @@ class FakeTensorMeta:
         self.shape = shape
 
 
+class FakeTensorArgument:
+    def __init__(self, name):
+        self.name = name
+
+
+class FakeInputSpec:
+    def __init__(self, placeholder_name, target):
+        self.arg = FakeTensorArgument(placeholder_name)
+        self.target = target
+        self.kind = "PARAMETER"
+
+
+class FakeGraphSignature:
+    def __init__(self, input_specs):
+        self.input_specs = input_specs
+
+
+class FakeExportedProgram:
+    def __init__(self, graph_module, state_dict, input_specs):
+        self.graph_module = graph_module
+        self.state_dict = state_dict
+        self.graph_signature = FakeGraphSignature(input_specs)
+
+
 class Conv1d:
     def __init__(self, weight, bias=None, stride=1, padding=0, dilation=1, groups=1, in_channels=1, out_channels=1):
         self.weight = weight
@@ -250,6 +274,110 @@ class FrontendTests(unittest.TestCase):
         self.assertEqual(plan.selected.name, "dense_gemm_bias")
         self.assertTrue(plan.selected.exact)
 
+    def test_extracts_exported_addmm_from_signature_state_dict(self):
+        graph_module = FakeGraphModule([])
+        state_dict = {
+            "weight": [[1.0, 2.0, 3.0], [-0.5, 0.25, 4.0]],
+            "bias": [0.25, -0.75],
+        }
+        exported = FakeExportedProgram(
+            graph_module,
+            state_dict,
+            [
+                FakeInputSpec("p_weight", "weight"),
+                FakeInputSpec("p_bias", "bias"),
+            ],
+        )
+
+        p_weight = FakeNode("p_weight", "placeholder", "p_weight")
+        p_bias = FakeNode("p_bias", "placeholder", "p_bias")
+        x = FakeNode("x", "placeholder", "x")
+        x.meta["tensor_meta"] = FakeTensorMeta((2, 3))
+        weight_t = FakeNode("numpy_t", "call_function", "aten.numpy_T.default", args=(p_weight,))
+        addmm = FakeNode("addmm", "call_function", "aten.addmm.default", args=(p_bias, x, weight_t))
+        graph_module.graph.nodes = [p_weight, p_bias, x, weight_t, addmm]
+
+        captured = extract_torch_fx_operators(exported)
+
+        self.assertIn("addmm", captured)
+        operator = captured["addmm"].operator
+        self.assertIsInstance(operator, AffineOperator)
+        self.assertIsInstance(operator.linear, DenseOperator)
+        self.assertEqual(operator.shape, (2, 3))
+        self.assertEqual(operator.bias, [0.25, -0.75])
+        self.assertEqual(captured["addmm"].event.notes["capture"], "dense_addmm")
+        self.assertEqual(captured["addmm"].event.notes["rhs_recovery"], "exported_graph_state")
+        self.assertEqual(captured["addmm"].event.notes["bias_recovery"], "exported_graph_state")
+        self.assertIn("exported_graph_constant_recovery", operator.metadata.provenance.transform_history)
+        self.assertMatrixAlmostEqual(operator.apply([[1.0, 0.0, -1.0], [0.5, 2.0, 1.0]]), [[-1.75, -5.25], [7.75, 3.5]])
+
+    def test_extracts_exported_matmul_from_signature_state_dict(self):
+        graph_module = FakeGraphModule([])
+        state_dict = {
+            "weight": [[1.0, 2.0, 3.0], [-0.5, 0.25, 4.0]],
+        }
+        exported = FakeExportedProgram(
+            graph_module,
+            state_dict,
+            [
+                FakeInputSpec("p_weight", "weight"),
+            ],
+        )
+
+        p_weight = FakeNode("p_weight", "placeholder", "p_weight")
+        x = FakeNode("x", "placeholder", "x")
+        x.meta["tensor_meta"] = FakeTensorMeta((2, 3))
+        weight_t = FakeNode("numpy_t", "call_function", "aten.numpy_T.default", args=(p_weight,))
+        matmul = FakeNode("matmul", "call_function", "aten.matmul.default", args=(x, weight_t))
+        graph_module.graph.nodes = [p_weight, x, weight_t, matmul]
+
+        captured = extract_torch_fx_operators(exported)
+
+        self.assertIn("matmul", captured)
+        operator = captured["matmul"].operator
+        self.assertIsInstance(operator, DenseOperator)
+        self.assertEqual(operator.shape, (2, 3))
+        self.assertEqual(captured["matmul"].event.notes["capture"], "dense_matmul")
+        self.assertEqual(captured["matmul"].event.notes["rhs_recovery"], "exported_graph_state")
+        self.assertIn("exported_graph_constant_recovery", operator.metadata.provenance.transform_history)
+        self.assertMatrixAlmostEqual(operator.apply([[1.0, 0.0, -1.0], [0.5, 2.0, 1.0]]), [[-2.0, -4.5], [7.5, 4.25]])
+
+    def test_extracts_exported_nested_linear_from_signature_state_dict(self):
+        graph_module = FakeGraphModule([])
+        state_dict = {
+            "right": [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]],
+            "left": [[0.5, 1.0], [-1.0, 2.0]],
+            "bias": [0.0, 1.0],
+        }
+        exported = FakeExportedProgram(
+            graph_module,
+            state_dict,
+            [
+                FakeInputSpec("p_right", "right"),
+                FakeInputSpec("p_left", "left"),
+                FakeInputSpec("p_bias", "bias"),
+            ],
+        )
+
+        x = FakeNode("x", "placeholder", "x")
+        p_right = FakeNode("p_right", "placeholder", "p_right")
+        p_left = FakeNode("p_left", "placeholder", "p_left")
+        p_bias = FakeNode("p_bias", "placeholder", "p_bias")
+        inner = FakeNode("linear", "call_function", "aten.linear.default", args=(x, p_right))
+        outer = FakeNode("linear_1", "call_function", "aten.linear.default", args=(inner, p_left, p_bias))
+        graph_module.graph.nodes = [p_right, p_left, p_bias, x, inner, outer]
+
+        captured = extract_torch_fx_low_rank_operators(exported)
+
+        self.assertIn("linear_1", captured)
+        operator = captured["linear_1"].operator
+        self.assertIsInstance(operator, AffineOperator)
+        self.assertEqual(operator.shape, (2, 3))
+        self.assertEqual(operator.bias, [0.0, 1.0])
+        self.assertEqual(captured["linear_1"].event.notes["weight_recovery"], "exported_graph_state")
+        self.assertIn("exported_graph_constant_recovery", operator.metadata.provenance.transform_history)
+        self.assertEqual(operator.apply([[1.0, 0.0, -1.0]]), [[-3.0, -1.0]])
+
     def test_ignores_unsupported_matmul_and_addmm_variants(self):
         graph_module = FakeGraphModule([])
         graph_module.weight = [[1.0, 2.0, 3.0], [-0.5, 0.25, 4.0]]
@@ -282,6 +410,21 @@ class FrontendTests(unittest.TestCase):
             scaled_addmm,
             dynamic_bias_addmm,
         ]
+
+        self.assertEqual(extract_torch_fx_operators(graph_module), {})
+
+    def test_ignores_export_like_dynamic_or_ambiguous_dense_operands(self):
+        graph_module = FakeGraphModule([])
+        graph_module.weight = [[1.0, 2.0, 3.0], [-0.5, 0.25, 4.0]]
+
+        x = FakeNode("x", "placeholder", "x")
+        x.meta["tensor_meta"] = FakeTensorMeta((1, 3))
+        dynamic_weight = FakeNode("dynamic_weight", "placeholder", "dynamic_weight")
+        fixed_weight = FakeNode("fixed_weight", "get_attr", "weight")
+        dynamic_weight_t = FakeNode("numpy_t", "call_function", "aten.numpy_T.default", args=(dynamic_weight,))
+        dynamic_matmul = FakeNode("matmul", "call_function", "aten.matmul.default", args=(x, dynamic_weight_t))
+        ambiguous_matmul = FakeNode("matmul_1", "call_function", "aten.matmul.default", args=(x, fixed_weight))
+        graph_module.graph.nodes = [x, dynamic_weight, fixed_weight, dynamic_weight_t, dynamic_matmul, ambiguous_matmul]
 
         self.assertEqual(extract_torch_fx_operators(graph_module), {})
 
@@ -461,6 +604,32 @@ class FrontendTests(unittest.TestCase):
         )
         self.assertEqual(plan.selected.name, "dense_gemm_bias")
         self.assertTrue(plan.selected.exact)
+
+    @unittest.skipIf(torch is None, "PyTorch is not installed")
+    def test_captures_real_torch_exported_addmm_pattern_as_affine(self):
+        class AddmmProjection(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.weight = nn.Parameter(torch.tensor([[1.0, -2.0, 0.5], [0.75, 1.25, -1.5]]))
+                self.bias = nn.Parameter(torch.tensor([0.25, -0.5]))
+
+            def forward(self, x):
+                return torch.addmm(self.bias, x, self.weight.T)
+
+        module = AddmmProjection().eval()
+        torch_input = torch.tensor([[1.0, 0.0, -1.0], [0.5, 2.0, 1.0]])
+        exported = torch.export.export(module, (torch_input,))
+
+        captured = capture_torch_fx_operators(exported)
+
+        self.assertIn("addmm", captured)
+        operator = captured["addmm"].operator
+        self.assertIsInstance(operator, AffineOperator)
+        self.assertIsInstance(operator.linear, DenseOperator)
+        self.assertEqual(operator.shape, (2, 3))
+        self.assertEqual(captured["addmm"].event.notes["rhs_recovery"], "exported_graph_state")
+        self.assertEqual(captured["addmm"].event.notes["bias_recovery"], "exported_graph_state")
+        self.assertMatrixAlmostEqual(operator.apply(torch_input.tolist()), module(torch_input).detach().tolist())
 
     @unittest.skipIf(torch is None, "PyTorch is not installed")
     def test_captures_real_biasless_torch_conv1d_module(self):
