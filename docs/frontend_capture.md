@@ -37,6 +37,9 @@ executable IR payloads for:
   `torch.addmm(bias, x, weight.T)` patterns, represented as `DenseOperator` or
   `AffineOperator(DenseOperator)` when the right-hand weight is explicitly
   transposed
+- Torch exported-program graphs for the tested fixed-weight `addmm` and nested
+  linear forms, where parameter names are recovered through the export graph
+  signature and state dictionary rather than module nesting
 - valid `nn.Conv1d` modules and fixed-weight functional `conv1d`, represented
   as `Convolution1DOperator`, `MultiChannelConvolution1DOperator`, or affine
   convolution when an input length is known from `sample_inputs` shape
@@ -46,4 +49,4 @@ executable IR payloads for:
 
 See `docs/torch_frontend_coverage.md` for the current support matrix. Open
 frontend targets remain grouped/depthwise convolution, stride/padding/dilation
-variants, quantized modules, and richer provenance hints around exported graphs.
+variants, quantized modules, and broader exported graph operator coverage.
