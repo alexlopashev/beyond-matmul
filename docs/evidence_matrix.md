@@ -1,0 +1,32 @@
+# Evidence Matrix
+
+This matrix maps the current whitepaper claims to the executable evidence or
+explicit boundary that backs them. It is intentionally compact: it should point
+reviewers to the source of truth, not duplicate every test assertion.
+
+## Claim Map
+
+| Claim area | Current claim | Evidence | Boundary |
+| --- | --- | --- | --- |
+| Project scope | Beyond Matmul targets fixed-weight inference where dense GEMM remains a valid fallback. | `README.md`, `whitepaper/main.tex`, `docs/research_outline.md` | Training-time mutation, production GPU kernels, and hardware-calibrated speedup claims remain out of scope. |
+| Torch frontend coverage | The Torch FX frontend preserves supported fixed-weight linear, adapter, embedding-projection, valid Conv1d, matmul/mm, and addmm patterns before densification. | `docs/torch_frontend_coverage.md`; `tests/test_frontend.py`; `examples/torch_fx_frontend_demo.py`; `examples/torch_coverage_demo.py`; `examples/adapter_workload_demo.py`; `examples/conv1d_workload_demo.py` | Grouped/depthwise Conv1d, stride/padding/dilation variants, Conv2d, quantized operators, exported graph variants, and dynamic-weight matmul/addmm are listed as next or unsupported, not claimed as covered. |
+| IR operator families | The IR has executable semantics and dense fallbacks for dense, diagonal, sparse COO, low-rank, affine, codebook, bitpacked binary, single-channel Conv1d, and multi-channel Conv1d operators. | `docs/ir_spec.md`; `beyond_matmul/ir.py`; `tests/test_ir_planner.py::test_structured_operators_match_dense_application`; `tests/test_ir_planner.py::test_conv1d_to_dense`; `tests/test_ir_planner.py::test_multi_channel_conv1d_to_dense` | Dense fallback is preserved as an equivalence and portability path. This is not a claim that every backend has specialized kernels. |
+| Recovery after lost provenance | Cheap analyzers can identify selected dense-matrix structures and expose confidence/reuse evidence. | `beyond_matmul/analyzer.py`; `tests/test_analyzer.py`; `examples/fixed_weight_inference_demo.py` | Recovery is weaker than preserved provenance. The current tests cover diagonal, sparse, small-codebook, and reuse confidence behavior; broader recovery quality should remain future work until benchmarked. |
+| Planner exactness and fallback | The planner selects valid lowerings under exactness, error, reuse, backend, and layout contracts, with dense GEMM as fallback. | `beyond_matmul/planner.py`; `docs/ir_spec.md`; `tests/test_ir_planner.py::test_planner_selects_diagonal_kernel_for_diagonal_weight`; `tests/test_ir_planner.py::test_planner_uses_dense_fallback_when_error_contract_disallows_approximation`; `tests/test_ir_planner.py::test_planner_preserves_affine_low_rank_bias`; `tests/test_ir_planner.py::test_planner_preserves_affine_multi_channel_conv1d_bias` | Cost choices are model estimates unless backed by the benchmark artifacts below. |
+| Approximation and error contracts | Approximate low-rank, sparse top-k, codebook, and bitpacked candidates are evaluated with product-aware/output-relative error, not only matrix reconstruction error. | `beyond_matmul/approximations.py`; `tests/test_ir_planner.py::test_product_error_contract_can_accept_low_rank`; `benchmarks/approximation_error_ablation.py`; `tests/test_approximation_error_ablation.py`; `docs/benchmark_artifacts.md` | The current ablation is one deterministic synthetic case. It supports the need for output-aware acceptance, not broad model-quality conclusions. |
+| Benchmark and cost claims | The project records operation, memory, preprocessing, amortization, output-error, and pure-Python latency proxies for controlled fixed-weight cases. | `benchmarks/fixed_weight.py`; `tests/test_benchmark_artifacts.py`; `tests/test_ci_local.py`; `.github/workflows/ci.yml`; `scripts/ci_local`; `docs/benchmark_artifacts.md` | Timings are pure-Python research proxies and figure-generation inputs, not production performance or hardware speedup evidence. |
+| Workload narratives | Small demos and the workload case-study artifact show how preserved provenance affects LoRA/adapters, embedding projection, Conv1d, Torch FX capture, recovery, planning, and timing narratives. | `examples/fixed_weight_inference_demo.py`; `examples/torch_fx_frontend_demo.py`; `examples/adapter_workload_demo.py`; `examples/conv1d_workload_demo.py`; `examples/case_study_artifacts.py`; `tests/test_case_study_artifacts.py`; `docs/results/workload_case_studies.json` workflow artifact; `examples/torch_coverage_demo.py` | Attention, masked attention, quantized modules, and CNN-block breadth are planned paper case-study targets until implemented with tests and artifacts. The workload case-study artifact records planner cost and memory proxies, not benchmark timings. |
+
+## Claims Without Current Support
+
+- Hardware-calibrated speedups: explicitly out of scope until real backend
+  measurements exist.
+- Universal Torch operation coverage: narrowed by `docs/torch_frontend_coverage.md`
+  to supported, next, and unsupported rows.
+- Broad approximation quality: narrowed to the deterministic ablation in
+  `docs/benchmark_artifacts.md`.
+- Production-ready recovery from dense matrices: narrowed to cheap probes plus
+  explicit confidence and validation requirements.
+
+These boundaries are already reflected in the whitepaper draft and support
+docs, so this matrix does not create a new follow-up issue by itself.
