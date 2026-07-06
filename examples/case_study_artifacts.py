@@ -15,7 +15,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from beyond_matmul import _linalg as la
-from beyond_matmul.frontend import capture_torch_fx_linear_operators, capture_torch_fx_operators
+from beyond_matmul.frontend import capture_torch_fx_linear_operators, capture_torch_fx_operators, extract_torch_fx_operators
 from beyond_matmul.ir import AffineOperator, DenseOperator, FixedMaskOperator, Provenance
 from beyond_matmul.planner import PlanOption, PlanningRequest, plan_fixed_weight
 
@@ -334,6 +334,90 @@ def collect_fixed_mask_case() -> Dict[str, Any]:
     )
 
 
+def collect_quantized_linear_case() -> Dict[str, Any]:
+    class FakeQuantizedTensor:
+        def __init__(self, integers, scale=0.125, zero_point=0, dtype="qint8") -> None:
+            self._integers = integers
+            self._scale = scale
+            self._zero_point = zero_point
+            self.dtype = dtype
+
+        def int_repr(self):
+            return self._integers
+
+        def q_scale(self):
+            return self._scale
+
+        def q_zero_point(self):
+            return self._zero_point
+
+        def qscheme(self):
+            return "per_tensor_affine"
+
+    class QuantizedLinear:
+        def __init__(self, weight, bias) -> None:
+            self._weight = weight
+            self._bias = bias
+
+        def weight(self):
+            return self._weight
+
+        def bias(self):
+            return self._bias
+
+    graph_module = SimpleNamespace()
+    graph_module.qlinear = QuantizedLinear(
+        FakeQuantizedTensor(
+            [
+                [-7, -5, -3, -1],
+                [1, 3, 5, 7],
+                [9, 11, 13, 15],
+            ],
+            scale=0.125,
+            zero_point=0,
+            dtype="qint8",
+        ),
+        bias=[0.125, -0.25, 0.375],
+    )
+    activation = SimpleNamespace(
+        name="activation",
+        target="activation",
+        op="placeholder",
+        args=(),
+        kwargs={},
+        meta={"tensor_meta": SimpleNamespace(shape=(8, 4))},
+    )
+    qlinear = SimpleNamespace(
+        name="qlinear",
+        target="qlinear",
+        op="call_module",
+        args=(activation,),
+        kwargs={},
+        meta={},
+    )
+    graph_module.graph = SimpleNamespace(nodes=[activation, qlinear])
+
+    captured = extract_torch_fx_operators(graph_module)
+    captured_operator = captured.get("qlinear")
+    if captured_operator is None:
+        raise RuntimeError("no quantized linear operator was captured")
+
+    inputs = la.random_batch(8, captured_operator.operator.in_features, seed=37)
+    reference_outputs = _dense_operator_for(captured_operator.operator).apply(inputs)
+    return _case_record(
+        case="quantized_linear_module",
+        workload="quantized_linear",
+        title="Fixed per-tensor affine quantized linear module",
+        captured_operator=captured_operator,
+        input_rows=inputs,
+        torch_outputs=reference_outputs,
+        provenance_label=(
+            "quantized linear provenance preserves packed integer payload, scale, and zero point "
+            "before dense dequantized fallback materialization"
+        ),
+    )
+
+
 def collect_results() -> Dict[str, Any]:
     return {
         "schema_version": 1,
@@ -342,7 +426,12 @@ def collect_results() -> Dict[str, Any]:
             "timing_unit": "not_measured",
             "timing_proxy_boundary": TIMING_PROXY_BOUNDARY,
         },
-        "cases": [collect_adapter_case(), *collect_conv1d_cases(), collect_fixed_mask_case()],
+        "cases": [
+            collect_adapter_case(),
+            *collect_conv1d_cases(),
+            collect_fixed_mask_case(),
+            collect_quantized_linear_case(),
+        ],
     }
 
 
