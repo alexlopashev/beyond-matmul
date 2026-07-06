@@ -11,7 +11,8 @@ lowerings that are cheaper than dense GEMM for fixed-weight inference.
 
 1. Provenance-aware `LinearOperator` IR.
 2. Planner for fixed-weight inference with amortized preprocessing.
-3. Exact lowerings: dense, diagonal, sparse COO, low-rank product, direct conv1d.
+3. Exact lowerings: dense, diagonal, sparse COO, fixed-mask sparse, low-rank
+   product, direct conv1d.
 4. Approximate lowerings: low-rank sketch, top-k sparse, codebook, bitpacked.
 5. Benchmarks comparing latency proxy, memory proxy, preprocessing, and output
    error against dense fallback, with JSON artifacts documented in
@@ -39,8 +40,8 @@ lowerings that are cheaper than dense GEMM for fixed-weight inference.
   the current matrix-error versus output-error ablation.
 - `benchmarks/planner_contract_ablation.py`: deterministic table source for
   exactness, bounded-error, reuse, backend, and dense fallback planner checks.
-- `examples/case_study_artifacts.py`: machine-readable adapter and Conv1d
-  workload case-study evidence with dense fallback comparisons.
+- `examples/case_study_artifacts.py`: machine-readable adapter, Conv1d, and
+  fixed-mask workload case-study evidence with dense fallback comparisons.
 
 ## Recovery Confidence Semantics
 
@@ -77,13 +78,15 @@ Current workload case-study artifacts:
 - Conv1d module and functional Conv1d capture before dense materialization.
 - LoRA/adapters merged into a dense weight, with nearby adapter factors
   recovered by provenance capture.
+- A fixed causal-band mask applied as a sparse linear map over features,
+  independent of attention scores.
 
 Real workload case studies still future work:
 
-- Attention projection with fixed structured weights; full masked attention is
-  future work because score computation, softmax, mask semantics, KV-cache
-  layout, and dynamic sequence behavior are outside the current fixed-weight
-  linear IR boundary.
+- Attention projection with fixed structured weights; full masked attention,
+  broadcast mask contracts, score masking, softmax, KV-cache layout, and
+  dynamic sequence behavior are outside the current fixed-weight linear IR
+  boundary.
 - Embedding plus projection in a language model.
 - Quantized linear or convolutional modules once the IR can represent their
   contracts honestly.

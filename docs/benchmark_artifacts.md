@@ -4,7 +4,7 @@
 
 | Artifact | Regeneration command | Meaning | Boundary |
 | --- | --- | --- | --- |
-| `docs/results/workload_case_studies.json` | `mise exec -- uv run python examples/case_study_artifacts.py --json-output docs/results/workload_case_studies.json` | Captured adapter and Conv1d workload provenance, dense fallback comparison, selected lowering, output error, cost proxy, memory proxy, and timing/proxy boundary. | Case-study evidence only; planner cost and memory proxies are recorded, but no benchmark timings are measured. |
+| `docs/results/workload_case_studies.json` | `mise exec -- uv run python examples/case_study_artifacts.py --json-output docs/results/workload_case_studies.json` | Captured adapter, Conv1d, and fixed-mask workload provenance, dense fallback comparison, selected lowering, output error, cost proxy, memory proxy, and timing/proxy boundary. | Case-study evidence only; planner cost and memory proxies are recorded, but no benchmark timings are measured. |
 | `docs/results/fixed_weight.json` | `mise exec -- uv run python benchmarks/fixed_weight.py --json-output docs/results/fixed_weight.json` | Synthetic fixed-weight benchmark rows for structured lowerings versus dense fallback. | Pure-Python latency proxies, not hardware-calibrated production performance. |
 | `docs/results/approximation_error_ablation.json` | `mise exec -- uv run python benchmarks/approximation_error_ablation.py --json-output docs/results/approximation_error_ablation.json` | Deterministic matrix-reconstruction-error versus output-error candidate table. | One bounded synthetic case, not a broad approximation-quality benchmark. |
 | `docs/results/planner_contract_ablation.json` | `mise exec -- uv run python benchmarks/planner_contract_ablation.py --json-output docs/results/planner_contract_ablation.json` | Deterministic exactness, bounded-error, reuse, backend-support, and dense fallback planner checks. | Contract coverage only; costs are planner estimates, not runtime measurements. |
@@ -55,16 +55,18 @@ The JSON schema is versioned with `schema_version: 1`. Each case records:
 
 - captured operator name, kind, linear kind, shape, lowerings, and provenance
 - provenance notes from the capture pass
-- selected lowering with output-relative error against the Torch module
+- selected lowering with output-relative error against the reference workload
 - dense fallback selected lowering and the same planner proxy fields
 - cost and memory proxies from the planner
 - an explicit timing/proxy boundary stating that the case-study artifact does
   not measure timings
 
-The controlled case set currently includes a merged LoRA-style adapter, an
-`nn.Conv1d` module, and a functional `F.conv1d` with fixed bias. These rows are
+The controlled case set currently includes a merged LoRA-style adapter,
+`nn.Conv1d` and functional `F.conv1d` rows, grouped/depthwise Conv1d rows, and
+a fixed causal-band mask applied as a sparse linear map. These rows are
 case-study evidence for provenance preservation and dense fallback comparison;
-they are not benchmark timing evidence.
+they are not benchmark timing evidence. The fixed-mask row does not claim full
+masked attention support.
 
 ## Approximation Error Ablation
 

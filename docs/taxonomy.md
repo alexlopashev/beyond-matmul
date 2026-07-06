@@ -28,11 +28,12 @@ fixed-weight linear boundary clear:
 
 | Scope option | Linear fixed-weight part | Outside first artifact scope | Decision |
 | --- | --- | --- | --- |
-| Fixed mask as sparse linear operator | A constant causal, banded, block, or page mask can be represented as a fixed sparse linear map when applied to values or features independent of input-dependent scores. | Softmax normalization, score-dependent sparsity, KV-cache policy, and dynamic sequence layout. | Plausible future PR after a sparse-mask IR contract exists. |
+| Fixed mask as sparse linear operator | A constant causal, banded, block, or page mask can be represented as a fixed sparse linear map when applied to values or features independent of input-dependent scores. | Softmax normalization, score-dependent sparsity, KV-cache policy, broadcast semantics, and dynamic sequence layout. | Implemented for explicit binary fixed masks as `FixedMaskOperator`; richer mask metadata remains future work. |
 | Attention projection with structured weight | Query/key/value/output projections with fixed structured weights are ordinary fixed-weight linear maps, already aligned with dense, low-rank, sparse, or adapter-style IR concepts. | The attention score computation, mask application around softmax, and dynamic token-dependent behavior. | In scope only as a projection case study, not as masked attention support. |
 | Full masked attention block | Individual projections may be fixed-weight linear maps. | End-to-end attention combines dynamic activations, softmax, masking semantics, cache layout, and backend kernel policy. | Future work note, not a PR-sized first-artifact implementation. |
 
-Decision: keep the first artifact focused on fixed-weight linear projections
-and clearly mark full masked attention as future work. A later PR-sized issue
-can add fixed-mask metadata and sparse-mask lowering only after it defines
-exact mask shape, broadcast, and dynamic-sequence contracts with tests.
+Decision: keep the first artifact focused on fixed-weight linear maps and
+clearly mark full masked attention as future work. The implemented fixed-mask
+slice covers explicit binary masks with exact sparse-linear semantics and dense
+fallback. Broadcast masks, dynamic sequence lengths, score masking, softmax,
+and KV-cache behavior remain outside this artifact.

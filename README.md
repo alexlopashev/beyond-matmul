@@ -7,8 +7,8 @@ operators.
 The current artifact is scoped to fixed-weight inference:
 
 - a provenance-aware linear and affine operator IR
-- exact operators for dense, diagonal, sparse COO, low-rank, convolutional,
-  codebook, and bitpacked weights
+- exact operators for dense, diagonal, sparse COO, fixed-mask, low-rank,
+  convolutional, codebook, and bitpacked weights
 - cheap structure recovery from dense matrices
 - product-aware approximation scoring
 - a planner that chooses a valid lowering under exactness, error, reuse, and
@@ -62,8 +62,8 @@ uv run python examples/torch_fx_frontend_demo.py
   merged dense weight and recovered low-rank factors
 - `examples/conv1d_workload_demo.py`: tiny PyTorch module and functional Conv1d
   case study comparing convolution provenance against dense materialization
-- `examples/case_study_artifacts.py`: machine-readable adapter and Conv1d
-  case-study evidence while preserving the human-readable demo paths
+- `examples/case_study_artifacts.py`: machine-readable adapter, Conv1d, and
+  fixed-mask case-study evidence while preserving the human-readable demo paths
 - `examples/torch_coverage_demo.py`: Torch frontend coverage smoke demo for
   supported fixed-weight patterns
 - `docs/taxonomy.md`: taxonomy of dense lowerings and lost structure

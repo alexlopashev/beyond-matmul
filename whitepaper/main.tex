@@ -158,11 +158,14 @@ contract is part of the operator rather than an external note: exact operators
 require backend and layout support, while approximate operators additionally
 carry metric, epsilon, observed error, and sample-count evidence.
 
-Implemented operator families include dense, diagonal, sparse COO, low-rank,
-affine, codebook, bitpacked binary, single-channel Conv1d, and multi-channel
-Conv1d operators. Conv1d operators keep stride, padding, dilation, output
-length, and grouped/depthwise channel partition metadata so the planner can
-distinguish direct convolution lowerings from dense materialization. Every
+Implemented operator families include dense, diagonal, sparse COO, fixed-mask,
+low-rank, affine, codebook, bitpacked binary, single-channel Conv1d, and
+multi-channel Conv1d operators. Fixed-mask operators cover explicit binary
+masks applied as sparse linear maps over values or features, independent of
+input-dependent attention scores. Conv1d operators keep stride, padding,
+dilation, output length, and grouped/depthwise channel partition metadata so
+the planner can distinguish direct convolution lowerings from dense
+materialization. Every
 implemented exact family exposes executable semantics and a dense fallback,
 which keeps dense GEMM available for equivalence checks and portability. The
 evidence anchor is the \texttt{IR operator families} row in
@@ -284,10 +287,11 @@ workload case studies.
   materialization;
   \item LoRA or adapter weights merged into a dense projection;
   \item Conv/linear lowering from a broader CNN-style block;
-  \item attention projection with fixed structured weights, with full masked
-  attention left as future work because score computation, softmax, mask
-  semantics, KV-cache layout, and dynamic sequence behavior sit outside the
-  current fixed-weight linear boundary;
+  \item fixed binary masks applied as sparse linear maps, with full masked
+  attention left as future work because score computation, softmax, broadcast
+  mask contracts, KV-cache layout, and dynamic sequence behavior sit outside
+  the current fixed-weight linear boundary;
+  \item attention projection with fixed structured weights;
   \item embedding plus projection in a language-model-like block;
   \item quantized linear or convolutional modules once the IR can represent
   their contracts honestly.
@@ -336,9 +340,12 @@ The workload case-study artifact is evidence for provenance preservation, not
 timing performance. It records a merged LoRA-style adapter selecting
 \texttt{low\_rank\_product\_bias}, an \texttt{nn.Conv1d} module selecting
 \texttt{conv1d\_channel\_direct}, and a functional fixed-bias Conv1d selecting
-\texttt{conv1d\_channel\_direct\_bias}. Each row records output-relative error
-against the Torch workload, planner cost and memory proxies, dense fallback
-fields, and an explicit \texttt{measured\_timing: false} boundary.
+\texttt{conv1d\_channel\_direct\_bias}. It also records grouped/depthwise
+Conv1d rows and a fixed causal-band mask selecting
+\texttt{fixed\_mask\_sparse}. Each row records output-relative error against
+the reference workload, planner cost and memory proxies, dense fallback fields,
+and an explicit \texttt{measured\_timing: false} boundary. The fixed-mask row
+does not claim full masked attention support.
 
 The approximation and planner-contract artifacts bound the negative claims. In
 the approximation ablation, low-rank and sparse top-k candidates pass the

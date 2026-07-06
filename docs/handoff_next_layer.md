@@ -7,8 +7,8 @@ Date: 2026-07-05
 The repository now has a runnable fixed-weight inference research artifact:
 
 - Provenance-aware linear and affine operator IR.
-- Exact operators for dense, diagonal, sparse COO, low-rank, affine, conv1d,
-  codebook, and bitpacked binary weights.
+- Exact operators for dense, diagonal, sparse COO, fixed masks, low-rank,
+  affine, conv1d, codebook, and bitpacked binary weights.
 - Cheap dense recovery probes.
 - Product-aware approximation scoring.
 - Fixed-weight lowering planner with exactness, error, reuse, backend contracts,
@@ -19,7 +19,8 @@ The repository now has a runnable fixed-weight inference research artifact:
 - Torch FX frontend capture for nested `F.linear`/`nn.Linear`, biased affine
   linears, named adapter factors, merged-weight hints, and embedding-projection
   patterns over one-hot inputs.
-- Tiny PyTorch adapter workload demo.
+- Tiny PyTorch adapter workload demo and machine-readable adapter, Conv1d, and
+  fixed-mask case-study artifact.
 - Reproducible tooling through mise, uv, and `uv.lock`.
 
 Merged work on `main`:
@@ -49,6 +50,8 @@ mise exec -- uv run python -m unittest discover -s tests
 mise exec -- uv run python examples/fixed_weight_inference_demo.py
 mise exec -- uv run python examples/torch_fx_frontend_demo.py
 mise exec -- uv run python examples/adapter_workload_demo.py
+mise exec -- uv run python examples/conv1d_workload_demo.py
+mise exec -- uv run python examples/case_study_artifacts.py --json-output docs/results/workload_case_studies.json
 mise exec -- uv run python benchmarks/fixed_weight.py
 ```
 
@@ -61,6 +64,8 @@ mise exec -- uv run python -m py_compile beyond_matmul/*.py examples/*.py tests/
 mise exec -- uv run python examples/fixed_weight_inference_demo.py
 mise exec -- uv run python examples/torch_fx_frontend_demo.py
 mise exec -- uv run python examples/adapter_workload_demo.py
+mise exec -- uv run python examples/conv1d_workload_demo.py
+mise exec -- uv run python examples/case_study_artifacts.py --json-output docs/results/workload_case_studies.json
 mise exec -- uv run python benchmarks/fixed_weight.py
 ```
 
@@ -80,6 +85,8 @@ after dense materialization.
   framework capture, not only fake graph tests.
 - NumPy is required because Torch expects it for clean tensor interop.
 - `uv.lock` is committed for reproducible binary dependency resolution.
+- Explicit binary fixed masks are supported only as sparse linear maps over
+  values or features; full masked attention remains future work.
 
 ## Known Gaps
 
