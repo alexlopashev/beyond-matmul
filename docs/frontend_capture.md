@@ -44,7 +44,7 @@ executable IR payloads for:
   as `Convolution1DOperator`, `MultiChannelConvolution1DOperator`, or affine
   convolution when an input length is known from `sample_inputs` shape
   propagation or a module input-length hint, including scalar stride, padding,
-  dilation, and grouped/depthwise channel partitions
+  dilation, and tested grouped/depthwise channel partitions
 
 `capture_torch_fx_linear_operators` remains as a backward-compatible alias.
 

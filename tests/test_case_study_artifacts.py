@@ -26,7 +26,13 @@ class CaseStudyArtifactTests(unittest.TestCase):
         self.assertEqual(artifact["artifact"], "workload_case_studies")
         self.assertEqual(
             {case["case"] for case in artifact["cases"]},
-            {"adapter_merged_lora", "conv1d_module", "conv1d_functional_bias"},
+            {
+                "adapter_merged_lora",
+                "conv1d_module",
+                "conv1d_functional_bias",
+                "conv1d_grouped_module",
+                "conv1d_depthwise_functional",
+            },
         )
         self.assertEqual(artifact["metadata"]["timing_unit"], "not_measured")
         self.assertIn("not benchmark timings", artifact["metadata"]["timing_proxy_boundary"])
@@ -68,6 +74,14 @@ class CaseStudyArtifactTests(unittest.TestCase):
         self.assertEqual(rows["conv1d_functional_bias"]["selected_lowering"], "conv1d_channel_direct_bias")
         self.assertEqual(rows["conv1d_functional_bias"]["captured_operator"]["kind"], "affine")
         self.assertEqual(rows["conv1d_functional_bias"]["dense_fallback"]["selected_lowering"], "dense_gemm_bias")
+        self.assertEqual(rows["conv1d_grouped_module"]["selected_lowering"], "conv1d_grouped_direct_bias")
+        self.assertEqual(rows["conv1d_grouped_module"]["captured_operator"]["linear_kind"], "conv1d_channel")
+        self.assertEqual(rows["conv1d_grouped_module"]["provenance_notes"]["group_type"], "grouped")
+        self.assertEqual(rows["conv1d_grouped_module"]["dense_fallback"]["selected_lowering"], "dense_gemm_bias")
+        self.assertEqual(rows["conv1d_depthwise_functional"]["selected_lowering"], "conv1d_depthwise_direct")
+        self.assertEqual(rows["conv1d_depthwise_functional"]["captured_operator"]["linear_kind"], "conv1d_channel")
+        self.assertEqual(rows["conv1d_depthwise_functional"]["provenance_notes"]["group_type"], "depthwise")
+        self.assertEqual(rows["conv1d_depthwise_functional"]["dense_fallback"]["selected_lowering"], "dense_gemm")
 
     def test_writes_json_artifact(self):
         artifacts = _load_case_study_module()

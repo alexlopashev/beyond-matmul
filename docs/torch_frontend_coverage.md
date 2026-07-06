@@ -18,7 +18,7 @@ current IR or capture rules need more design before claiming coverage.
 | `torch.matmul` | Supported | `DenseOperator` | Same exact fixed-weight rule as `x @ weight.T`. |
 | `torch.mm` | Supported | `DenseOperator` | Supports function and method forms when the right operand is fixed and explicitly transposed. |
 | `torch.addmm` | Supported | `AffineOperator(DenseOperator)` | Supports `torch.addmm(bias, x, weight.T)` with fixed bias and default `alpha=1`, `beta=1`. |
-| Grouped/depthwise `Conv1d` | Supported | `MultiChannelConvolution1DOperator` or `AffineOperator` | Preserves explicit `groups`, `group_type`, stride, padding, and dilation metadata. |
+| Grouped/depthwise `Conv1d` | Supported | `MultiChannelConvolution1DOperator` or `AffineOperator` | Tested for fixed-weight `nn.Conv1d` modules and functional `conv1d`; preserves explicit `groups`, `group_type`, stride, padding, and dilation metadata. |
 | Stride/padding/dilation `Conv1d` variants | Supported | `Convolution1DOperator`, `MultiChannelConvolution1DOperator`, or `AffineOperator` | Scalar 1D parameters only; invalid output lengths and multi-dimensional parameter shapes are rejected. |
 | `Conv2d` | Unsupported | Not captured | Needs 2D convolution IR and layout decisions before frontend matching. |
 | Quantized linear/conv | Unsupported | Not captured | Needs quantization-aware IR mapping rather than lossy dense recovery. |
@@ -50,6 +50,7 @@ padding. Multi-channel Conv1d rows flatten inputs as
 `(in_channels, input_length)` and outputs as `(out_channels, output_length)` in
 channel-major order. Grouped and depthwise rows preserve PyTorch-style group
 partitions with explicit `groups`, `input_channels_per_group`, and
-`group_type` metadata. Unsupported parameter shapes, invalid output lengths,
-dynamic weights, and dynamic bias values are ignored cleanly rather than
-captured as structured Conv1d.
+`group_type` metadata; the real Torch tests cover grouped modules and
+grouped/depthwise functional forms against PyTorch outputs. Unsupported
+parameter shapes, invalid output lengths, dynamic weights, and dynamic bias
+values are ignored cleanly rather than captured as structured Conv1d.
