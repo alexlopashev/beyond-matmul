@@ -47,11 +47,27 @@ def _print_options(plan: LoweringPlan, limit: int = 8) -> None:
 
 
 def _print_candidates(candidates: Iterable) -> None:
-    print("candidate                         confidence  exact  evidence")
-    print("--------------------------------  ----------  -----  ----------------------------------------")
+    print("candidate                         confidence  exact  validation                  evidence")
+    print("--------------------------------  ----------  -----  --------------------------  ----------------------------------------")
     for candidate in list(candidates)[:6]:
-        evidence = ", ".join(f"{key}={value}" for key, value in candidate.evidence.items())
-        print(f"{candidate.kind:<32}  {candidate.confidence:10.3f}  {str(candidate.exact):<5}  {evidence}")
+        evidence_items = dict(candidate.evidence)
+        validation = evidence_items.pop("validation", None)
+        if validation is None:
+            validation_text = "not_sample_validated"
+        else:
+            validation_text = (
+                f"{validation['metric']}={validation['output_relative_error']:.3g}, "
+                f"n={validation['sample_count']}, exact={validation['exact_on_samples']}, "
+                f"bound={validation['confidence_bound']:.3g}"
+            )
+        evidence = ", ".join(f"{key}={value}" for key, value in evidence_items.items())
+        print(
+            f"{candidate.kind:<32}  "
+            f"{candidate.confidence:10.3f}  "
+            f"{str(candidate.exact):<5}  "
+            f"{validation_text:<26}  "
+            f"{evidence}"
+        )
 
 
 def main() -> None:
@@ -97,7 +113,7 @@ def main() -> None:
     print()
 
     print("4. Recover cheap structure from dense weights")
-    _print_candidates(analyze_dense(dense_weight, ranks=(1, 2, 4, 8)))
+    _print_candidates(analyze_dense(dense_weight, ranks=(1, 2, 4, 8), sample_inputs=inputs))
     print()
 
     print("5. Check output behavior and proxy timings")

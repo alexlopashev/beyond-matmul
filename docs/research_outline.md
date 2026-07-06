@@ -42,6 +42,26 @@ lowerings that are cheaper than dense GEMM for fixed-weight inference.
 - `examples/case_study_artifacts.py`: machine-readable adapter and Conv1d
   workload case-study evidence with dense fallback comparisons.
 
+## Recovery Confidence Semantics
+
+Analyzer confidence values are bounded heuristic scores in `[0, 1]` for ranking
+candidate structures from a single dense matrix. They are probe-specific:
+diagonal confidence follows off-diagonal residual, sparse confidence follows
+zero fraction, codebook confidence follows rounded unique-value pressure,
+low-rank confidence follows matrix-relative reconstruction error against a
+small "good error" threshold, and reuse confidence follows observed repeated
+fixed-weight sightings. If representative sample inputs are supplied,
+executable recovered candidates cap this structural score by a validation
+confidence bound derived from output-relative error.
+
+These values are not statistically calibrated probabilities and should not be
+read as model-quality guarantees. When representative sample inputs are
+available, executable recovered candidates also record validation evidence:
+`output_relative_l2`, sample count, whether the candidate was exact on those
+samples, and the validation-derived confidence bound. That validation is
+evidence for the provided input set only; it does not replace dense fallback or
+broader benchmark coverage.
+
 ## Evaluation Plan
 
 Synthetic controlled cases:

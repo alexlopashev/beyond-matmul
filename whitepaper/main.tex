@@ -141,6 +141,11 @@ testing.
 When provenance is lost, cheap analyzers probe dense matrices for recoverable
 structure. Recovery is intentionally weaker than preserved provenance: it can
 suggest candidates, but confidence, error, and validation must be explicit.
+Current confidence values are heuristic probe scores rather than calibrated
+probabilities. When representative sample inputs are available, recovered
+executable candidates record output-relative error on those samples and cap
+confidence by that validation evidence, while dense GEMM remains the exact
+fallback.
 
 \subsection{Approximation Builders}
 
@@ -253,8 +258,9 @@ issues.
   are stable.
   \item Agent drift: autonomous workers may optimize for local issue completion
   instead of paper-quality evidence.
-  \item Recovery ambiguity: dense structure probes may look convincing without
-  sufficient confidence or output-error validation.
+  \item Recovery ambiguity: dense structure probes may look convincing; current
+  confidence is heuristic, and output-error validation covers only supplied
+  representative samples.
 \end{itemize}
 
 \section{Completion Criteria}

@@ -6,7 +6,8 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Mapping, Sequence, Tuple
 
 from beyond_matmul import _linalg as la
-from beyond_matmul.approximations import codebook_quantize, low_rank_approximation
+from beyond_matmul.approximations import codebook_quantize, low_rank_approximation, sparse_from_dense
+from beyond_matmul.ir import DiagonalOperator, LinearOperator
 
 
 @dataclass(frozen=True)
@@ -30,6 +31,47 @@ class ObservedMatmulSite:
 
 def _safe_confidence(value: float) -> float:
     return max(0.0, min(1.0, value))
+
+
+def _output_validation(
+    reference_matrix: Sequence[Sequence[float]],
+    candidate_operator: LinearOperator,
+    sample_inputs: Sequence[Sequence[float]] | None,
+    good_error: float = 0.05,
+) -> Mapping[str, Any] | None:
+    if sample_inputs is None:
+        return None
+    batch = la.ensure_batch(sample_inputs)
+    expected = la.apply_weight(reference_matrix, batch)
+    observed = candidate_operator.apply(batch)
+    error = la.rms_relative_error(expected, observed)
+    exact_on_samples = error <= 1e-9
+    confidence_bound = 1.0 if exact_on_samples else _safe_confidence(1.0 - (error / good_error))
+    return {
+        "metric": "output_relative_l2",
+        "output_relative_error": error,
+        "sample_count": len(batch),
+        "exact_on_samples": exact_on_samples,
+        "confidence_bound": confidence_bound,
+    }
+
+
+def _with_validation(
+    candidate: StructureCandidate,
+    validation: Mapping[str, Any] | None,
+) -> StructureCandidate:
+    if validation is None:
+        return candidate
+    confidence = min(candidate.confidence, float(validation["confidence_bound"]))
+    evidence = dict(candidate.evidence)
+    evidence["validation"] = validation
+    return StructureCandidate(
+        kind=candidate.kind,
+        confidence=confidence,
+        exact=candidate.exact,
+        cost=candidate.cost,
+        evidence=evidence,
+    )
 
 
 def diagonal_probe(matrix: Sequence[Sequence[float]], tolerance: float = 1e-9) -> StructureCandidate:
@@ -147,6 +189,7 @@ def low_rank_probe(
     matrix: Sequence[Sequence[float]],
     ranks: Sequence[int] = (1, 2, 4),
     good_error: float = 0.05,
+    sample_inputs: Sequence[Sequence[float]] | None = None,
 ) -> List[StructureCandidate]:
     checked = la.as_matrix(matrix)
     rows, cols = len(checked), len(checked[0])
@@ -158,13 +201,17 @@ def low_rank_probe(
         error = la.relative_frobenius_error(checked, op.to_dense())
         exact = error <= 1e-8
         confidence = 1.0 if exact else _safe_confidence(1.0 - (error / good_error))
+        candidate = StructureCandidate(
+            kind="low_rank",
+            confidence=confidence,
+            exact=exact,
+            cost=rows * cols * rank * 12,
+            evidence={"rank": rank, "relative_frobenius_error": error},
+        )
         candidates.append(
-            StructureCandidate(
-                kind="low_rank",
-                confidence=confidence,
-                exact=exact,
-                cost=rows * cols * rank * 12,
-                evidence={"rank": rank, "relative_frobenius_error": error},
+            _with_validation(
+                candidate,
+                _output_validation(checked, op, sample_inputs),
             )
         )
     return candidates
@@ -197,17 +244,32 @@ def analyze_dense(
     tolerance: float = 1e-9,
     max_codebook_size: int = 16,
     ranks: Sequence[int] = (1, 2, 4),
+    sample_inputs: Sequence[Sequence[float]] | None = None,
 ) -> List[StructureCandidate]:
     checked = la.as_matrix(matrix)
+    rows, cols = len(checked), len(checked[0])
+    diagonal_validation = None
+    if rows == cols:
+        diagonal_validation = _output_validation(
+            checked,
+            DiagonalOperator([checked[index][index] for index in range(rows)]),
+            sample_inputs,
+        )
     candidates: List[StructureCandidate] = [
-        diagonal_probe(checked, tolerance=tolerance),
-        sparsity_probe(checked, tolerance=tolerance),
+        _with_validation(diagonal_probe(checked, tolerance=tolerance), diagonal_validation),
+        _with_validation(
+            sparsity_probe(checked, tolerance=tolerance),
+            _output_validation(checked, sparse_from_dense(checked, tolerance=tolerance), sample_inputs),
+        ),
         block_sparsity_probe(checked, tolerance=tolerance),
         permutation_probe(checked, tolerance=tolerance),
-        codebook_probe(checked, max_codebook_size=max_codebook_size),
+        _with_validation(
+            codebook_probe(checked, max_codebook_size=max_codebook_size),
+            _output_validation(checked, codebook_quantize(checked, codebook_size=max_codebook_size), sample_inputs),
+        ),
         repeated_block_probe(checked, tolerance=tolerance),
     ]
-    candidates.extend(low_rank_probe(checked, ranks=ranks))
+    candidates.extend(low_rank_probe(checked, ranks=ranks, sample_inputs=sample_inputs))
     return sorted(candidates, key=lambda candidate: (candidate.confidence, candidate.exact), reverse=True)
 
 
