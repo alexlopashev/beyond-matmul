@@ -462,20 +462,37 @@ class MultiChannelConvolution1DOperator(LinearOperator):
     weight: Sequence[Sequence[Sequence[float]]]
     input_length: int
     mode: str = "valid"
+    groups: int = 1
     provenance: Optional[Provenance] = None
     metadata: Optional[OperatorMetadata] = None
 
     def __post_init__(self) -> None:
         weight = self._checked_weight(self.weight)
+        if not isinstance(self.groups, int) or self.groups < 1:
+            raise ValueError("conv1d groups must be a positive integer")
         if self.mode != "valid":
             raise ValueError("only valid multi-channel 1D convolution is implemented in the prototype")
         kernel_size = len(weight[0][0])
         if self.input_length < kernel_size:
             raise ValueError("input length must be at least kernel length")
         self.weight = weight
+        groups = self.groups
         out_channels = len(weight)
-        in_channels = len(weight[0])
+        if out_channels % groups != 0:
+            raise ValueError("conv1d output channels must be divisible by groups")
+        input_channels_per_group = len(weight[0])
+        output_channels_per_group = out_channels // groups
+        in_channels = input_channels_per_group * groups
         output_length = self.input_length - kernel_size + 1
+        if groups == 1:
+            group_type = "standard"
+            primary_lowering = "conv1d_channel_direct"
+        elif input_channels_per_group == 1 and groups == in_channels:
+            group_type = "depthwise"
+            primary_lowering = "conv1d_depthwise_direct"
+        else:
+            group_type = "grouped"
+            primary_lowering = "conv1d_grouped_direct"
         self.metadata = _metadata(
             kind="conv1d_channel",
             shape=(out_channels * output_length, in_channels * self.input_length),
@@ -484,13 +501,17 @@ class MultiChannelConvolution1DOperator(LinearOperator):
             structure={
                 "out_channels": out_channels,
                 "in_channels": in_channels,
+                "input_channels_per_group": input_channels_per_group,
+                "output_channels_per_group": output_channels_per_group,
+                "groups": groups,
+                "group_type": group_type,
                 "kernel_size": kernel_size,
                 "input_length": self.input_length,
                 "output_length": output_length,
                 "mode": self.mode,
                 "lowering": "block_toeplitz",
             },
-            lowerings=("conv1d_channel_direct", "dense_gemm"),
+            lowerings=(primary_lowering, "dense_gemm"),
         )
 
     @staticmethod
@@ -527,6 +548,18 @@ class MultiChannelConvolution1DOperator(LinearOperator):
         return int(self.metadata.structure["in_channels"])
 
     @property
+    def input_channels_per_group(self) -> int:
+        return int(self.metadata.structure["input_channels_per_group"])
+
+    @property
+    def output_channels_per_group(self) -> int:
+        return int(self.metadata.structure["output_channels_per_group"])
+
+    @property
+    def group_type(self) -> str:
+        return str(self.metadata.structure["group_type"])
+
+    @property
     def kernel_size(self) -> int:
         return int(self.metadata.structure["kernel_size"])
 
@@ -537,10 +570,12 @@ class MultiChannelConvolution1DOperator(LinearOperator):
     def to_dense(self) -> la.Matrix:
         dense = la.zeros(self.out_features, self.in_features)
         for out_channel, channel_weight in enumerate(self.weight):
+            group_index = out_channel // self.output_channels_per_group
+            input_group_offset = group_index * self.input_channels_per_group
             for out_position in range(self.output_length):
                 out_index = out_channel * self.output_length + out_position
                 for in_channel, kernel in enumerate(channel_weight):
-                    input_offset = in_channel * self.input_length
+                    input_offset = (input_group_offset + in_channel) * self.input_length
                     for kernel_index, value in enumerate(kernel):
                         dense[out_index][input_offset + out_position + kernel_index] = value
         return dense
@@ -552,10 +587,12 @@ class MultiChannelConvolution1DOperator(LinearOperator):
         outputs = la.zeros(len(batch), self.out_features)
         for batch_index, input_row in enumerate(batch):
             for out_channel, channel_weight in enumerate(self.weight):
+                group_index = out_channel // self.output_channels_per_group
+                input_group_offset = group_index * self.input_channels_per_group
                 for out_position in range(self.output_length):
                     total = 0.0
                     for in_channel, kernel in enumerate(channel_weight):
-                        input_offset = in_channel * self.input_length
+                        input_offset = (input_group_offset + in_channel) * self.input_length
                         for kernel_index, value in enumerate(kernel):
                             total += value * input_row[input_offset + out_position + kernel_index]
                     outputs[batch_index][out_channel * self.output_length + out_position] = total

@@ -39,6 +39,8 @@ BACKEND_SUPPORT = {
         "bitpacked_kernel",
         "conv1d_direct",
         "conv1d_channel_direct",
+        "conv1d_grouped_direct",
+        "conv1d_depthwise_direct",
         "dense_gemm_bias",
         "diagonal_kernel_bias",
         "sparse_kernel_bias",
@@ -47,6 +49,8 @@ BACKEND_SUPPORT = {
         "bitpacked_kernel_bias",
         "conv1d_direct_bias",
         "conv1d_channel_direct_bias",
+        "conv1d_grouped_direct_bias",
+        "conv1d_depthwise_direct_bias",
     },
     "cpu": {
         "dense_gemm",
@@ -57,6 +61,8 @@ BACKEND_SUPPORT = {
         "bitpacked_kernel",
         "conv1d_direct",
         "conv1d_channel_direct",
+        "conv1d_grouped_direct",
+        "conv1d_depthwise_direct",
         "dense_gemm_bias",
         "diagonal_kernel_bias",
         "sparse_kernel_bias",
@@ -65,6 +71,8 @@ BACKEND_SUPPORT = {
         "bitpacked_kernel_bias",
         "conv1d_direct_bias",
         "conv1d_channel_direct_bias",
+        "conv1d_grouped_direct_bias",
+        "conv1d_depthwise_direct_bias",
     },
     "gpu": {
         "dense_gemm",
@@ -73,12 +81,16 @@ BACKEND_SUPPORT = {
         "bitpacked_kernel",
         "conv1d_direct",
         "conv1d_channel_direct",
+        "conv1d_grouped_direct",
+        "conv1d_depthwise_direct",
         "dense_gemm_bias",
         "sparse_kernel_bias",
         "low_rank_product_bias",
         "bitpacked_kernel_bias",
         "conv1d_direct_bias",
         "conv1d_channel_direct_bias",
+        "conv1d_grouped_direct_bias",
+        "conv1d_depthwise_direct_bias",
     },
 }
 
@@ -178,8 +190,8 @@ def _estimate_apply_cost(operator: LinearOperator, batch_size: int, word_bits: i
         return batch_size * out_features * kernel_size
     if kind == "conv1d_channel":
         kernel_size = int(operator.metadata.structure["kernel_size"])
-        in_channels = int(operator.metadata.structure["in_channels"])
-        return batch_size * out_features * in_channels * kernel_size
+        input_channels_per_group = int(operator.metadata.structure.get("input_channels_per_group", operator.metadata.structure["in_channels"]))
+        return batch_size * out_features * input_channels_per_group * kernel_size
     return batch_size * out_features * in_features
 
 
@@ -207,9 +219,9 @@ def _estimate_memory_bytes(operator: LinearOperator) -> int:
         return kernel_size * 4
     if kind == "conv1d_channel":
         out_channels = int(operator.metadata.structure["out_channels"])
-        in_channels = int(operator.metadata.structure["in_channels"])
+        input_channels_per_group = int(operator.metadata.structure.get("input_channels_per_group", operator.metadata.structure["in_channels"]))
         kernel_size = int(operator.metadata.structure["kernel_size"])
-        return out_channels * in_channels * kernel_size * 4
+        return out_channels * input_channels_per_group * kernel_size * 4
     return out_features * in_features * 4
 
 

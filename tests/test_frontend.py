@@ -130,7 +130,7 @@ class FrontendTests(unittest.TestCase):
             Conv1d([[[1.0, 2.0, 3.0]]], stride=2),
             Conv1d([[[1.0, 2.0, 3.0]]], padding=1),
             Conv1d([[[1.0, 2.0, 3.0]]], dilation=2),
-            Conv1d([[[1.0, 2.0, 3.0]]], groups=2),
+            Conv1d([[[1.0, 2.0, 3.0]]], groups=2, in_channels=1, out_channels=1),
         ]
         for module in unsupported_modules:
             with self.subTest(module=module):
@@ -169,6 +169,34 @@ class FrontendTests(unittest.TestCase):
         self.assertEqual(operator.bias, [0.1, 0.1, 0.1, -0.2, -0.2, -0.2])
         self.assertEqual(captured["conv"].event.notes["capture"], "conv1d_module")
 
+    def test_extracts_fake_grouped_conv1d_module(self):
+        graph_module = FakeGraphModule([])
+        graph_module.conv = Conv1d(
+            [
+                [[1.0, 0.5, -1.0], [0.25, 2.0, -0.5]],
+                [[-1.5, 0.75, 0.25], [1.25, -0.25, 0.5]],
+                [[0.5, -0.5, 1.5], [1.0, 0.0, -1.0]],
+                [[-0.25, 0.5, 0.75], [2.0, -1.0, 0.25]],
+            ],
+            in_channels=4,
+            out_channels=4,
+            groups=2,
+        )
+        x = FakeNode("x", "placeholder", "x")
+        x.meta["tensor_meta"] = FakeTensorMeta((1, 4, 5))
+        conv = FakeNode("conv", "call_module", "conv", args=(x,))
+        graph_module.graph.nodes = [x, conv]
+
+        captured = extract_torch_fx_operators(graph_module)
+
+        self.assertIn("conv", captured)
+        operator = captured["conv"].operator
+        self.assertIsInstance(operator, MultiChannelConvolution1DOperator)
+        self.assertEqual(operator.shape, (12, 20))
+        self.assertEqual(operator.groups, 2)
+        self.assertEqual(operator.metadata.lowerings[0], "conv1d_grouped_direct")
+        self.assertEqual(captured["conv"].event.notes["groups"], "2")
+
     def test_extracts_fake_functional_conv1d(self):
         graph_module = FakeGraphModule([])
         graph_module.weight = [
@@ -194,6 +222,30 @@ class FrontendTests(unittest.TestCase):
         self.assertEqual(operator.bias, [0.1, 0.1, 0.1, -0.2, -0.2, -0.2])
         self.assertEqual(captured["conv1d"].event.notes["capture"], "conv1d_function")
 
+    def test_extracts_fake_functional_depthwise_conv1d(self):
+        graph_module = FakeGraphModule([])
+        graph_module.weight = [
+            [[1.0, 0.0, -1.0]],
+            [[0.5, -0.5, 1.5]],
+            [[2.0, 1.0, 0.25]],
+        ]
+
+        x = FakeNode("x", "placeholder", "x")
+        x.meta["tensor_meta"] = FakeTensorMeta((1, 3, 5))
+        weight = FakeNode("weight", "get_attr", "weight")
+        conv = FakeNode("conv1d", "call_function", "torch.nn.functional.conv1d", args=(x, weight), kwargs={"groups": 3})
+        graph_module.graph.nodes = [x, weight, conv]
+
+        captured = extract_torch_fx_operators(graph_module)
+
+        self.assertIn("conv1d", captured)
+        operator = captured["conv1d"].operator
+        self.assertIsInstance(operator, MultiChannelConvolution1DOperator)
+        self.assertEqual(operator.shape, (9, 15))
+        self.assertEqual(operator.groups, 3)
+        self.assertEqual(operator.metadata.lowerings[0], "conv1d_depthwise_direct")
+        self.assertEqual(captured["conv1d"].event.notes["group_type"], "depthwise")
+
     def test_ignores_unsupported_fake_functional_conv1d_variants(self):
         graph_module = FakeGraphModule([])
         graph_module.weight = [[[1.0, 2.0, 3.0]]]
@@ -208,7 +260,13 @@ class FrontendTests(unittest.TestCase):
         dynamic_weight_conv = FakeNode("conv1d", "call_function", "torch.nn.functional.conv1d", args=(x, dynamic_weight, bias))
         dynamic_bias_conv = FakeNode("conv1d_1", "call_function", "torch.nn.functional.conv1d", args=(x, weight, dynamic_bias))
         strided_conv = FakeNode("conv1d_2", "call_function", "torch.nn.functional.conv1d", args=(x, weight, bias), kwargs={"stride": 2})
-        grouped_conv = FakeNode("conv1d_3", "call_function", "torch.nn.functional.conv1d", args=(x, weight, bias), kwargs={"groups": 2})
+        invalid_grouped_conv = FakeNode(
+            "conv1d_3",
+            "call_function",
+            "torch.nn.functional.conv1d",
+            args=(x, weight, bias),
+            kwargs={"groups": 2},
+        )
         graph_module.graph.nodes = [
             x,
             dynamic_weight,
@@ -218,7 +276,7 @@ class FrontendTests(unittest.TestCase):
             dynamic_weight_conv,
             dynamic_bias_conv,
             strided_conv,
-            grouped_conv,
+            invalid_grouped_conv,
         ]
 
         self.assertEqual(extract_torch_fx_operators(graph_module), {})
