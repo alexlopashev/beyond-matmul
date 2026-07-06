@@ -29,5 +29,6 @@ reviewers to the source of truth, not duplicate every test assertion.
   bounded heuristic confidence, and sample-limited validation evidence.
 
 These boundaries are centralized in the whitepaper limitations and threats to
-validity section and reflected in the support docs, so this matrix does not
-create a new follow-up issue by itself.
+validity section, reflected in the support docs, and audited in
+`docs/completion_audit.md`, so this matrix does not create a new follow-up
+issue by itself.

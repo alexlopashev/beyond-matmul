@@ -26,6 +26,9 @@ lowerings that are cheaper than dense GEMM for fixed-weight inference.
 8. A concise evidence matrix in `docs/evidence_matrix.md` that maps major
    whitepaper claims to tests, demos, benchmark artifacts, or future-work
    boundaries.
+9. A completion audit in `docs/completion_audit.md` that records final-draft
+   claim support, limitations, blocker status, validation commands, and
+   optional follow-up issues.
 
 ## Prototype Modules
 
@@ -82,13 +85,15 @@ Current workload case-study artifacts:
 - A fixed causal-band mask applied as a sparse linear map over features,
   independent of attention scores.
 
-Real workload case studies still future work:
+Future workload case studies still outside the current artifact:
 
 - Attention projection with fixed structured weights; full masked attention,
   broadcast mask contracts, score masking, softmax, KV-cache layout, and
   dynamic sequence behavior are outside the current fixed-weight linear IR
   boundary.
-- Embedding plus projection in a language model.
+- A fuller language-model-like embedding plus projection workload artifact;
+  the current frontend coverage already includes embedding followed by
+  projection over one-hot token inputs.
 - Quantized linear or convolutional modules once frontend capture has
   executable packed-payload rules for the documented quantization contracts.
 

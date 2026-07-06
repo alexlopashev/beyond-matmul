@@ -6,7 +6,7 @@
 
 \title{Beyond Matmul: Provenance-Aware Computation for Fixed-Weight ML Inference}
 \author{Beyond Matmul Contributors}
-\date{Draft 0.1 -- July 2026}
+\date{Final draft -- July 2026}
 
 \begin{document}
 
@@ -472,6 +472,11 @@ enough to choose a better representation, but it is not claiming that
 structured operators, compression, quantization, or compiler metadata are new.
 The narrower claim is that a fixed-weight inference system can benefit from
 making the reason for a matrix multiplication explicit until planning time.
+This first public artifact deliberately treats related work as a scoped map
+rather than a complete bibliography: it names the research areas the argument
+depends on, records how this artifact differs from them, and leaves canonical
+citation curation to a later paper-polish pass that does not change the
+executable claims.
 
 \subsection{Structured Linear Operators}
 
@@ -480,9 +485,8 @@ linear map as an arbitrary dense matrix. Convolutions, Toeplitz and circulant
 maps, diagonal scalings, Kronecker-like factorizations, fast transforms, and
 graph or stencil operators all expose algebraic constraints that can reduce
 storage or work when the backend supports the corresponding kernel.
-\textbf{TODO citation: structured matrices, fast transforms, convolution
-lowering, graph and stencil linear operators.} This project uses that lineage
-as motivation, but its current evidence is smaller: executable dense
+This project uses that lineage as motivation, but its current evidence is
+smaller: executable dense
 equivalence and planner behavior for the operator families listed in the IR
 section. It does not claim that every structured family is supported or that a
 specialized kernel is always faster.
@@ -493,10 +497,9 @@ Sparse inference systems and low-rank adaptation methods show that many
 inference workloads can use fewer degrees of freedom than a dense matrix
 exposes. Sparse kernels exploit zeros or block patterns, while low-rank
 methods preserve a factorized product instead of materializing the merged
-dense weight. \textbf{TODO citation: sparse neural inference, block sparse
-kernels, low-rank approximation, LoRA and adapter inference.} Beyond Matmul
-borrows these representations as planner candidates. The distinction is the
-contract around provenance and fallback: a low-rank adapter captured before
+dense weight. Beyond Matmul borrows these representations as planner
+candidates. The distinction is the contract around provenance and fallback: a
+low-rank adapter captured before
 densification carries different evidence than a low-rank approximation
 recovered from a dense matrix, and dense GEMM remains valid when sparsity or
 rank evidence is weak.
@@ -506,10 +509,8 @@ rank evidence is weak.
 Quantization, codebook methods, and packed binary or low-bit weights already
 separate storage format from mathematical dense multiplication. Their practical
 benefit depends on scale and zero-point semantics, packing layout, calibration
-or error bounds, and backend support. \textbf{TODO citation: post-training
-quantization, weight-only quantization, vector quantization/codebooks, binary
-and ternary neural networks.} The current artifact only models a small part of
-that space through codebook and bitpacked operators plus placeholder
+or error bounds, and backend support. The current artifact only models a small
+part of that space through codebook and bitpacked operators plus placeholder
 quantization metadata. Quantized Torch modules are therefore described as
 future work until the IR, frontend, planner, and evidence artifacts can
 represent their contracts without silently dequantizing away the relevant
@@ -519,10 +520,9 @@ structure.
 
 ML compilers routinely preserve information across lowering levels through
 operator dialects, layout attributes, shape constraints, buffer metadata, and
-target-specific scheduling decisions. \textbf{TODO citation: MLIR, XLA, TVM,
-Torch FX/export, tensor compiler lowering and scheduling systems.} Beyond
-Matmul is compatible with that tradition rather than a replacement for it. Its
-prototype IR is intentionally small and research-facing: it records enough
+target-specific scheduling decisions. Beyond Matmul is compatible with that
+tradition rather than a replacement for it. Its prototype IR is intentionally
+small and research-facing: it records enough
 source, structure, exactness, approximation, reuse, layout, and backend
 metadata to test whether fixed-weight planner decisions improve over immediate
 dense lowering. Production compiler concerns such as full graph optimization,
@@ -533,13 +533,12 @@ scope.
 
 Database systems, compilers, and ML tooling all use provenance or metadata to
 explain where values came from, whether transformations are legal, and how
-artifacts should be interpreted. \textbf{TODO citation: data provenance,
-compiler debug/provenance metadata, model cards or dataset documentation where
-relevant.} This paper uses a narrower phrase, computation reason provenance,
-for why a fixed linear operator exists and what lowerings remain valid. That
-choice connects related work back to the project's main limitation: provenance
-that is preserved by a frontend is stronger than structure guessed from a
-dense matrix, and recovered candidates need explicit uncertainty and
+artifacts should be interpreted. This paper uses a narrower phrase,
+computation reason provenance, for why a fixed linear operator exists and what
+lowerings remain valid. That choice connects related work back to the
+project's main limitation: provenance that is preserved by a frontend is
+stronger than structure guessed from a dense matrix, and recovered candidates
+need explicit uncertainty and
 output-level validation before a planner should prefer them over dense GEMM.
 
 \section{Development Methodology}
@@ -621,21 +620,25 @@ The project reaches its north star when:
   PRs that would change the conclusions.
 \end{enumerate}
 
-\section{Planned Paper Structure}
+\section{Completion Audit}
 
-The final paper should evolve from this draft into:
+The July 2026 draft now contains the final first-artifact argument: motivation,
+scope, provenance-aware IR and contracts, frontend capture, recovery,
+approximation builders, planner selection, controlled benchmark evidence,
+workload case-study evidence, recovery and approximation evaluation, related
+work boundaries, limitations, and conclusion. The claim-to-evidence mapping is
+centralized in \texttt{docs/evidence\_matrix.md}; the separate completion note
+in \texttt{docs/completion\_audit.md} records the final audit of claims,
+evidence, limitations, local validation commands, and remaining optional
+follow-up issues.
 
-\begin{enumerate}
-  \item introduction and motivation;
-  \item taxonomy of lost structure;
-  \item provenance-aware IR and contracts;
-  \item frontend capture and recovery methods;
-  \item planner and cost model;
-  \item evaluation on controlled and workload cases;
-  \item limitations and threats to validity;
-  \item related work;
-  \item conclusion.
-\end{enumerate}
+The live issue audit found no unresolved priority-zero or priority-one blocker
+that changes the paper thesis. The roadmap tracker remains blocked by this
+final-draft issue, and quantized frontend capture remains explicitly out of
+scope for the first artifact: packed affine quantized IR is tracked as optional
+follow-up work, while quantized capture and quantized workload evidence remain
+blocked behind it. These boundaries are already reflected in the scope,
+frontend, IR, evidence, and limitations sections above.
 
 \section{Conclusion}
 

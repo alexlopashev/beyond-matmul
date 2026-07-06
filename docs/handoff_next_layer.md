@@ -2,6 +2,12 @@
 
 Date: 2026-07-05
 
+Final-draft status is tracked in `whitepaper/main.tex`,
+`docs/evidence_matrix.md`, and `docs/completion_audit.md`. This handoff remains
+useful for next-layer engineering context, but the completion audit is the
+current source for first-artifact claim support, limitations, validation
+commands, and optional follow-up issues.
+
 ## Current State
 
 The repository now has a runnable fixed-weight inference research artifact:
@@ -23,11 +29,8 @@ The repository now has a runnable fixed-weight inference research artifact:
   fixed-mask case-study artifact.
 - Reproducible tooling through mise, uv, and `uv.lock`.
 
-Merged work on `main`:
-
-- PR #1: mise/bootstrap tooling.
-- PR #2: Torch FX frontend demo and required Torch dependency.
-- PR #3: CI for uv-backed demos.
+For the current merged evidence surface, prefer `docs/evidence_matrix.md` over
+historical PR lists.
 
 ## How To Reproduce
 
