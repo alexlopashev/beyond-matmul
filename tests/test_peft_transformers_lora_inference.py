@@ -1,8 +1,10 @@
 import importlib.util
 import json
 import numbers
+import os
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -156,6 +158,93 @@ class PeftTransformersLoraInferenceTests(unittest.TestCase):
             artifact["dependencies"]["peft_fork"]["requested_ref"],
             "beyond-matmul/provenance-lora-inference",
         )
+
+    def test_real_worker_prefers_src_layout_checkout_over_installed_peft(self):
+        benchmark = _load_benchmark_module()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            checkout = temp_path / "peft-checkout"
+            checkout_src = checkout / "src" / "peft"
+            installed_peft = temp_path / "installed" / "peft"
+            transformers = temp_path / "installed" / "transformers"
+            checkout_src.mkdir(parents=True)
+            installed_peft.mkdir(parents=True)
+            transformers.mkdir(parents=True)
+            (checkout_src / "__init__.py").write_text(
+                "\n".join(
+                    [
+                        "class PeftModel:",
+                        "    @staticmethod",
+                        "    def from_pretrained(model, adapter):",
+                        "        model.peft_source = 'checkout-src'",
+                        "        return model",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (installed_peft / "__init__.py").write_text(
+                "\n".join(
+                    [
+                        "class PeftModel:",
+                        "    @staticmethod",
+                        "    def from_pretrained(model, adapter):",
+                        "        raise RuntimeError('wrong peft imported')",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (transformers / "__init__.py").write_text(
+                "\n".join(
+                    [
+                        "class _Config:",
+                        "    vocab_size = 8",
+                        "",
+                        "class _Output:",
+                        "    def __init__(self, logits):",
+                        "        self.logits = logits",
+                        "",
+                        "class _Model:",
+                        "    config = _Config()",
+                        "",
+                        "    def eval(self):",
+                        "        return self",
+                        "",
+                        "    def merge_and_unload(self):",
+                        "        return self",
+                        "",
+                        "    def __call__(self, input_ids, attention_mask):",
+                        "        import torch",
+                        "        shape = (*input_ids.shape, self.config.vocab_size)",
+                        "        return _Output(torch.zeros(shape, dtype=torch.float32))",
+                        "",
+                        "class AutoModelForCausalLM:",
+                        "    @staticmethod",
+                        "    def from_pretrained(name):",
+                        "        return _Model()",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            old_pythonpath = os.environ.get("PYTHONPATH")
+            pythonpath = str(temp_path / "installed")
+            if old_pythonpath:
+                pythonpath = pythonpath + os.pathsep + old_pythonpath
+            with mock.patch.dict(os.environ, {"PYTHONPATH": pythonpath}):
+                payload = benchmark._run_real_worker(
+                    "upstream_peft_unmerged",
+                    sequence_length=2,
+                    batch_size=1,
+                    warmup_repetitions=0,
+                    measured_repetitions=1,
+                    peft_path=str(checkout),
+                    merge_dense=False,
+                )
+
+        self.assertEqual(payload["status"], "ok")
+        self.assertIsNone(payload["reason"])
+        self.assertIsNotNone(payload["logits"])
 
 
 if __name__ == "__main__":

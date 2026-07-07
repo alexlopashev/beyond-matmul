@@ -490,6 +490,28 @@ def _resolve_checkout(
     return str(target)
 
 
+def _peft_import_paths(path: str | os.PathLike[str]) -> List[str]:
+    checkout = Path(path)
+    if not checkout.exists():
+        raise FileNotFoundError(f"PEFT checkout path does not exist: {checkout}")
+    src = checkout / "src"
+    paths: List[Path] = []
+    if (src / "peft").is_dir():
+        paths.extend([src, checkout])
+    elif (checkout / "peft").is_dir():
+        paths.append(checkout)
+    else:
+        raise ImportError(f"PEFT checkout path is not importable; expected peft/ or src/peft under {checkout}")
+    return [str(path) for path in paths]
+
+
+def _prepend_peft_import_paths(path: str | os.PathLike[str]) -> None:
+    for import_path in reversed(_peft_import_paths(path)):
+        if import_path in sys.path:
+            sys.path.remove(import_path)
+        sys.path.insert(0, import_path)
+
+
 def _safe_ref(ref: str) -> str:
     return "".join(character if character.isalnum() or character in "._-" else "-" for character in ref)
 
@@ -597,10 +619,10 @@ def _non_ok_result_row(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _real_worker(args: argparse.Namespace) -> None:
-    if args._worker_peft_path:
-        sys.path.insert(0, args._worker_peft_path)
-    torch = _torch()
     try:
+        if args._worker_peft_path:
+            _prepend_peft_import_paths(args._worker_peft_path)
+        torch = _torch()
         from peft import PeftModel
         from transformers import AutoModelForCausalLM
 
