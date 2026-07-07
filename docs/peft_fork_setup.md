@@ -166,11 +166,13 @@ Beyond Matmul issue number in its branch name, PR body, and issue comments.
   runs.
 - #77 `Design PEFT low-rank provenance integration points`: design issue. If
   it needs a PEFT branch for inspection artifacts, use
-  `beyond-matmul/77-lora-provenance-design` and link it from the issue.
+  `beyond-matmul/77-lora-provenance-design` and link it from the issue. The
+  design note lives in `docs/peft_low_rank_provenance_design.md`.
 - #78 `Implement provenance-aware LoRA inference path in PEFT fork`:
   implementation issue. Use a PEFT branch such as
   `beyond-matmul/78-provenance-lora-inference`, then merge or fast-forward the
-  reviewed result into `beyond-matmul/provenance-lora-inference`.
+  reviewed result into `beyond-matmul/provenance-lora-inference`. Start from
+  the #77 handoff checklist instead of redoing PEFT integration discovery.
 - #79 and later benchmark-result issues: use the exact PEFT commit measured
   from `beyond-matmul/provenance-lora-inference`; link any PEFT PR that changed
   that commit.

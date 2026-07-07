@@ -110,6 +110,10 @@ Next capstone workload:
   inference for `hf-internal-testing/tiny-random-OPTForCausalLM` with
   `peft-internal-testing/tiny-OPTForCausalLM-lora`, sequence lengths `16`,
   `64`, and `128`, and batch sizes `1` and `4`.
+- The first fork integration design is
+  `docs/peft_low_rank_provenance_design.md`. It limits #78 to vanilla PEFT
+  LoRA `Linear` inference metadata, dense fallback, and benchmark harness
+  reporting before any custom kernel or broad adapter coverage.
 - The central hypothesis is that fixed LoRA/adapters should remain visible as
   structured low-rank operators through inference planning instead of being
   treated only as either runtime adapter modules or fully merged dense weights.
