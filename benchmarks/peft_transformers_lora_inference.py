@@ -282,6 +282,7 @@ def _result_row(
     reference_logits: Any,
     status: str = "ok",
     reason: str | None = None,
+    peft_provenance_events: Sequence[Dict[str, Any]] | None = None,
 ) -> Dict[str, Any]:
     correctness = _correctness_metrics(logits, reference_logits)
     if status == "ok" and not correctness["passed"]:
@@ -299,8 +300,10 @@ def _result_row(
         "adapter_switch_seconds": None,
         "adapter_switch_status": "not_measured_single_adapter",
         "correctness": correctness,
-        "lowering": _lowering_metadata(baseline),
+        "lowering": _lowering_metadata(baseline, peft_provenance_events=peft_provenance_events),
     }
+    if peft_provenance_events is not None:
+        row["peft_provenance_events"] = list(peft_provenance_events)
     if reason:
         row["reason"] = reason
     return row
@@ -360,7 +363,9 @@ def _correctness_metrics(logits: Any, reference_logits: Any) -> Dict[str, Any]:
     }
 
 
-def _lowering_metadata(baseline: str) -> Dict[str, Any]:
+def _lowering_metadata(
+    baseline: str, *, peft_provenance_events: Sequence[Dict[str, Any]] | None = None
+) -> Dict[str, Any]:
     if baseline == "upstream_peft_unmerged":
         return {
             "kind": "peft_unmerged_adapter",
@@ -373,11 +378,41 @@ def _lowering_metadata(baseline: str) -> Dict[str, Any]:
             "dense_fallback_available": True,
             "dense_fallback_used": True,
         }
+    if peft_provenance_events is not None:
+        return _fork_lowering_metadata_from_events(peft_provenance_events)
     return {
         "kind": "provenance_lora_fork",
         "dense_fallback_available": True,
         "dense_fallback_used": False,
     }
+
+
+def _fork_lowering_metadata_from_events(peft_provenance_events: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+    structured_events = [event for event in peft_provenance_events if event.get("path") == "structured_low_rank"]
+    fallback_reasons = sorted(
+        {
+            event["fallback_reason"]
+            for event in peft_provenance_events
+            if event.get("fallback_reason") is not None
+        }
+    )
+    if structured_events:
+        lowering = {
+            "kind": "provenance_lora_fork",
+            "dense_fallback_available": True,
+            "dense_fallback_used": False,
+        }
+    else:
+        lowering = {
+            "kind": "peft_dense_fallback",
+            "dense_fallback_available": True,
+            "dense_fallback_used": True,
+        }
+        if not fallback_reasons:
+            fallback_reasons = ["no_fork_provenance_events"]
+    if fallback_reasons:
+        lowering["fallback_reasons"] = fallback_reasons
+    return lowering
 
 
 def _dependency_metadata(
@@ -581,6 +616,7 @@ def _run_real_worker(
 def _worker_payload_to_row(payload: Dict[str, Any], reference_logits: Any) -> Dict[str, Any]:
     if payload["status"] != "ok":
         return _non_ok_result_row(payload)
+    peft_provenance_events = payload.get("peft_provenance_events")
     return _result_row(
         baseline=payload["baseline"],
         sequence_length=payload["sequence_length"],
@@ -590,12 +626,13 @@ def _worker_payload_to_row(payload: Dict[str, Any], reference_logits: Any) -> Di
         reference_logits=reference_logits,
         status=payload["status"],
         reason=payload.get("reason"),
+        peft_provenance_events=peft_provenance_events,
     )
 
 
 def _non_ok_result_row(payload: Dict[str, Any]) -> Dict[str, Any]:
     passed = payload["status"] == "not_applicable"
-    return {
+    row = {
         "case": f"seq{payload['sequence_length']}_batch{payload['batch_size']}",
         "baseline": payload["baseline"],
         "status": payload["status"],
@@ -613,9 +650,14 @@ def _non_ok_result_row(payload: Dict[str, Any]) -> Dict[str, Any]:
             "tolerance_profile": "cpu_fp32",
             "passed": passed,
         },
-        "lowering": _lowering_metadata(payload["baseline"]),
+        "lowering": _lowering_metadata(
+            payload["baseline"], peft_provenance_events=payload.get("peft_provenance_events")
+        ),
         "reason": payload.get("reason") or payload["status"],
     }
+    if "peft_provenance_events" in payload:
+        row["peft_provenance_events"] = payload["peft_provenance_events"]
+    return row
 
 
 def _real_worker(args: argparse.Namespace) -> None:
@@ -627,7 +669,17 @@ def _real_worker(args: argparse.Namespace) -> None:
         from transformers import AutoModelForCausalLM
 
         model = AutoModelForCausalLM.from_pretrained(BASE_MODEL)
-        model = PeftModel.from_pretrained(model, ADAPTER)
+        peft_config = None
+        if args._worker_baseline == "beyond_matmul_peft_fork":
+            from peft import LoraConfig
+
+            peft_config = LoraConfig.from_pretrained(ADAPTER)
+            if hasattr(peft_config, "runtime_config"):
+                peft_config.runtime_config.beyond_matmul_provenance = True
+        if peft_config is None:
+            model = PeftModel.from_pretrained(model, ADAPTER)
+        else:
+            model = PeftModel.from_pretrained(model, ADAPTER, config=peft_config)
         model.eval()
         if args._worker_merge_dense:
             try:
@@ -656,6 +708,7 @@ def _real_worker(args: argparse.Namespace) -> None:
         )
         with torch.inference_mode():
             logits = model(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"]).logits
+        peft_provenance_events = _collect_peft_provenance_events(model)
         payload = {
             "baseline": args._worker_baseline,
             "sequence_length": args._worker_sequence_length,
@@ -664,6 +717,7 @@ def _real_worker(args: argparse.Namespace) -> None:
             "reason": None,
             "latencies": latencies,
             "logits": logits.detach().cpu().tolist(),
+            "peft_provenance_events": peft_provenance_events,
         }
     except Exception as exc:  # pragma: no cover - depends on optional external dependencies.
         payload = {
@@ -676,6 +730,23 @@ def _real_worker(args: argparse.Namespace) -> None:
             "logits": None,
         }
     _write_json(args._worker_json_output, payload)
+
+
+def _collect_peft_provenance_events(model: Any) -> List[Dict[str, Any]]:
+    if not hasattr(model, "named_modules"):
+        return []
+    events = []
+    for module_name, module in model.named_modules():
+        event = getattr(module, "beyond_matmul_last_forward_provenance", None)
+        if not isinstance(event, dict):
+            continue
+        if event.get("kind") != "beyond_matmul_lora_provenance":
+            continue
+        event_copy = json.loads(json.dumps(event))
+        event_copy.setdefault("module_name", module_name)
+        events.append(event_copy)
+    events.sort(key=lambda event: (event.get("module_path") or "", event.get("adapter") or ""))
+    return events
 
 
 def _worker_inputs(sequence_length: int, batch_size: int, vocab_size: int) -> Dict[str, Any]:
