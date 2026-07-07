@@ -147,6 +147,8 @@ The benchmark artifact is a single JSON object:
         "reference_baseline": "upstream_peft_unmerged",
         "max_abs_error": 0.0,
         "relative_l2_error": 0.0,
+        "max_abs_tolerance": 0.0001,
+        "relative_l2_tolerance": 0.00001,
         "tolerance_profile": "cpu_fp32",
         "passed": true
       },
@@ -160,6 +162,13 @@ The benchmark artifact is a single JSON object:
   "summary": {
     "all_required_cases_present": true,
     "all_correctness_checks_passed": true,
+    "all_fork_fallback_cases_explicit": true,
+    "benchmark_ready": true,
+    "readiness_blockers": [],
+    "max_abs_error": 0.0,
+    "max_relative_l2_error": 0.0,
+    "fallback_cases": [],
+    "negative_cases": [],
     "performance_claim": "none"
   }
 }
@@ -180,6 +189,14 @@ The first implementation succeeds as a benchmark artifact if:
 - all non-`not_applicable` rows pass the correctness tolerance;
 - the fork row explicitly records dense fallback availability.
 
+The artifact must also report whether the benchmark is ready to support
+benchmark comparisons. `summary.benchmark_ready` is true only for real PEFT
+runs, not synthetic smoke artifacts, and only when the required grid is present,
+correctness checks pass, and any fork fallback cases are explicit. If readiness
+is false, `summary.readiness_blockers` must list the reason. The summary must
+also record the maximum absolute and relative output differences observed
+across rows.
+
 A performance claim requires more than successful execution. The capstone may
 claim a measured win only if the fork improves median latency or peak memory by
 at least `10%` against both upstream baselines for at least one required shape,
@@ -194,7 +211,10 @@ negative or neutral result.
 Negative results must be explicit. Reports should state whether the fork is
 slower, memory-neutral, unable to measure adapter switching, blocked by missing
 PEFT functionality, or equivalent to dense fallback. Summaries must include the
-full required grid and may not cherry-pick only favorable shapes.
+full required grid and may not cherry-pick only favorable shapes. The summary
+must list row-level `negative_cases` for failed, unsupported, or
+not-applicable rows and `fallback_cases` for fork rows that use or report dense
+fallback reasons.
 
 ## Inference Boundary
 
