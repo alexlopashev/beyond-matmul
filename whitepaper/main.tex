@@ -313,7 +313,8 @@ workload case studies.
   \item LoRA or adapter weights merged into a dense projection;
   \item PEFT plus Transformers inference with fixed LoRA/adapters, comparing
   upstream PEFT against a Beyond Matmul PEFT fork under a TorchBench-style
-  reproducible harness;
+  reproducible harness, with the first workload contract recorded in
+  \texttt{docs/peft\_capstone\_benchmark\_contract.md};
   \item Conv/linear lowering from a broader CNN-style block;
   \item fixed binary masks applied as sparse linear maps, with full masked
   attention left as future work because score computation, softmax, broadcast
@@ -675,7 +676,13 @@ inference project. The selected story is PEFT plus Transformers inference, with
 a fork at \texttt{alexlopashev/peft} and an integration branch named
 \texttt{beyond-matmul/provenance-lora-inference}. The benchmark should compare
 upstream PEFT with the fork under pinned model, adapter, prompt, batch, dtype,
-device, warmup, repetition, and correctness settings.
+device, warmup, repetition, and correctness settings. The first benchmark
+contract is now fixed in
+\texttt{docs/peft\_capstone\_benchmark\_contract.md}: CPU fp32 prefill-only
+causal LM inference for
+\texttt{hf-internal-testing/tiny-random-OPTForCausalLM} with
+\texttt{peft-internal-testing/tiny-OPTForCausalLM-lora}, measured across
+sequence lengths 16, 64, and 128 and batch sizes 1 and 4.
 
 The capstone claim should stay narrow until measured: for selected fixed-weight
 adapter-serving regimes, preserving LoRA provenance can expose structured

@@ -73,6 +73,8 @@ uv run python examples/torch_fx_frontend_demo.py
 - `docs/research_outline.md`: paper-shaped outline and evaluation plan
 - `docs/benchmark_artifacts.md`: benchmark JSON schemas, regeneration commands,
   and CI artifact names
+- `docs/peft_capstone_benchmark_contract.md`: contract for the first PEFT plus
+  Transformers capstone benchmark target and JSON artifact
 - `docs/evidence_matrix.md`: whitepaper claim-to-evidence map and current
   unsupported-claim boundaries
 - `docs/completion_audit.md`: final first-artifact audit of claims, evidence,
@@ -98,6 +100,7 @@ TorchBench-style reproducible harness.
 - upstream workload: `huggingface/peft` with Transformers inference
 - integration fork: `alexlopashev/peft`
 - feature branch: `beyond-matmul/provenance-lora-inference`
+- first contract: `docs/peft_capstone_benchmark_contract.md`
 - measurement style: compare upstream PEFT against the fork under pinned
   model, adapter, prompt, batch, dtype, device, warmup, and repetition settings
 - success target: preserving LoRA/adapter provenance exposes structured

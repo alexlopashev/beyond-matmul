@@ -105,12 +105,20 @@ Next capstone workload:
 - PEFT plus Transformers inference, using a fork of `huggingface/peft` at
   `alexlopashev/peft` on branch
   `beyond-matmul/provenance-lora-inference`.
+- The first benchmark contract is
+  `docs/peft_capstone_benchmark_contract.md`: CPU fp32 prefill-only causal LM
+  inference for `hf-internal-testing/tiny-random-OPTForCausalLM` with
+  `peft-internal-testing/tiny-OPTForCausalLM-lora`, sequence lengths `16`,
+  `64`, and `128`, and batch sizes `1` and `4`.
 - The central hypothesis is that fixed LoRA/adapters should remain visible as
   structured low-rank operators through inference planning instead of being
   treated only as either runtime adapter modules or fully merged dense weights.
 - The measurement plan is TorchBench-style: pinned dependencies, model,
   adapter, prompt, batch shape, dtype, device, warmup, repetitions, correctness
   checks, and JSON result artifacts comparing upstream PEFT with the fork.
+- Training, generation loops, KV-cache behavior, broad PEFT coverage, GPU
+  kernel claims, and universal Transformer speedups are outside the first
+  contract until separately scoped and measured.
 - The first external claim should be narrow: selected fixed-weight
   adapter-serving regimes can show lower latency, memory, or adapter-switching
   cost while retaining dense fallback and output equivalence.
