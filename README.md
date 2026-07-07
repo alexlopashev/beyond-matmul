@@ -88,3 +88,22 @@ uv run python examples/torch_fx_frontend_demo.py
 This work introduces a provenance-aware linear/affine-operator IR and planner
 that preserves or recovers structure behind dense matmuls, then selects exact or
 bounded-error lowerings that reduce inference cost relative to dense GEMM.
+
+## Next Capstone Target
+
+The next project target is an external performance proof inside a real
+open-source PyTorch inference stack: PEFT plus Transformers, measured with a
+TorchBench-style reproducible harness.
+
+- upstream workload: `huggingface/peft` with Transformers inference
+- integration fork: `alexlopashev/peft`
+- feature branch: `beyond-matmul/provenance-lora-inference`
+- measurement style: compare upstream PEFT against the fork under pinned
+  model, adapter, prompt, batch, dtype, device, warmup, and repetition settings
+- success target: preserving LoRA/adapter provenance exposes structured
+  low-rank inference paths with dense fallback, then produces measured wins for
+  selected fixed-weight adapter-serving regimes if the benchmark supports that
+  claim
+
+Until that benchmark lands, this remains a roadmap target rather than evidence
+for the current whitepaper claims.

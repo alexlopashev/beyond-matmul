@@ -100,6 +100,21 @@ Future workload case studies still outside the current artifact:
 - Quantized convolutional modules once frontend capture has executable
   packed-payload rules for convolution-specific quantization contracts.
 
+Next capstone workload:
+
+- PEFT plus Transformers inference, using a fork of `huggingface/peft` at
+  `alexlopashev/peft` on branch
+  `beyond-matmul/provenance-lora-inference`.
+- The central hypothesis is that fixed LoRA/adapters should remain visible as
+  structured low-rank operators through inference planning instead of being
+  treated only as either runtime adapter modules or fully merged dense weights.
+- The measurement plan is TorchBench-style: pinned dependencies, model,
+  adapter, prompt, batch shape, dtype, device, warmup, repetitions, correctness
+  checks, and JSON result artifacts comparing upstream PEFT with the fork.
+- The first external claim should be narrow: selected fixed-weight
+  adapter-serving regimes can show lower latency, memory, or adapter-switching
+  cost while retaining dense fallback and output equivalence.
+
 Metrics:
 
 - wall-clock latency

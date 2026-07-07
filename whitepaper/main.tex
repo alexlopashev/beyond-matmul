@@ -46,6 +46,13 @@ and its generated evidence, the GitHub wiki concisely defines the project for
 humans and agents, and GitHub issues no longer contain unresolved high-priority
 gaps against the stated research questions.
 
+After the first artifact, the next capstone target is to move from controlled
+evidence to an external PyTorch inference stack. The planned story is PEFT plus
+Transformers inference, measured with a TorchBench-style harness, where fixed
+LoRA/adapters remain visible as structured low-rank operators rather than only
+as runtime adapter modules or merged dense weights. This is a future evidence
+target, not part of the completed first-artifact claim set.
+
 \section{Problem}
 
 Dense matrix multiplication is an excellent implementation target and a robust
@@ -304,6 +311,9 @@ workload case studies.
   \item Conv1d module and functional Conv1d capture before dense
   materialization;
   \item LoRA or adapter weights merged into a dense projection;
+  \item PEFT plus Transformers inference with fixed LoRA/adapters, comparing
+  upstream PEFT against a Beyond Matmul PEFT fork under a TorchBench-style
+  reproducible harness;
   \item Conv/linear lowering from a broader CNN-style block;
   \item fixed binary masks applied as sparse linear maps, with full masked
   attention left as future work because score computation, softmax, broadcast
@@ -651,11 +661,28 @@ evidence, limitations, local validation commands, and remaining optional
 follow-up issues.
 
 The live issue audit found no unresolved priority-zero or priority-one blocker
-that changes the paper thesis. The roadmap tracker remains blocked by this
-final-draft issue. Quantized workload evidence now covers the tested fixed
-per-tensor affine linear path, while quantized convolution capture remains
-optional follow-up work. These boundaries are already reflected in the scope,
-frontend, IR, evidence, and limitations sections above.
+that changes the paper thesis. The first-artifact roadmap tracker is historical
+coordination rather than the current roadmap. Quantized workload evidence now
+covers the tested fixed per-tensor affine linear path, while quantized
+convolution capture remains optional follow-up work. These boundaries are
+already reflected in the scope, frontend, IR, evidence, and limitations
+sections above.
+
+\section{Next Capstone}
+
+The next target is to prove the approach inside a real open-source PyTorch
+inference project. The selected story is PEFT plus Transformers inference, with
+a fork at \texttt{alexlopashev/peft} and an integration branch named
+\texttt{beyond-matmul/provenance-lora-inference}. The benchmark should compare
+upstream PEFT with the fork under pinned model, adapter, prompt, batch, dtype,
+device, warmup, repetition, and correctness settings.
+
+The capstone claim should stay narrow until measured: for selected fixed-weight
+adapter-serving regimes, preserving LoRA provenance can expose structured
+low-rank inference paths, keep dense fallback available, and improve latency,
+memory, or adapter-switching cost. Training-time mutation, broad PEFT coverage,
+and universal Transformer speedups remain outside the claim until separate
+evidence exists.
 
 \section{Conclusion}
 
