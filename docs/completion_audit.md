@@ -54,7 +54,8 @@ rather than an active blocker:
 The next project target is an external performance proof using PEFT plus
 Transformers inference, with TorchBench-style reproducible benchmarking. The
 project fork is `alexlopashev/peft`, and the integration branch is
-`beyond-matmul/provenance-lora-inference`.
+`beyond-matmul/provenance-lora-inference`. The first benchmark target and JSON
+artifact contract are fixed in `docs/peft_capstone_benchmark_contract.md`.
 
 This capstone is intentionally outside the completed first-artifact audit. It
 should produce new evidence before the whitepaper claims measured external
