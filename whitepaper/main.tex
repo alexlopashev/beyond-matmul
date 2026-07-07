@@ -46,12 +46,15 @@ and its generated evidence, the GitHub wiki concisely defines the project for
 humans and agents, and GitHub issues no longer contain unresolved high-priority
 gaps against the stated research questions.
 
-After the first artifact, the next capstone target is to move from controlled
-evidence to an external PyTorch inference stack. The planned story is PEFT plus
-Transformers inference, measured with a TorchBench-style harness, where fixed
-LoRA/adapters remain visible as structured low-rank operators rather than only
-as runtime adapter modules or merged dense weights. This is a future evidence
-target, not part of the completed first-artifact claim set.
+After the first artifact, the PEFT plus Transformers capstone moved the project
+from controlled evidence to an external PyTorch inference stack. The
+TorchBench-style artifact from issue \#80 and PR \#90 records upstream PEFT,
+upstream merged dense, and Beyond Matmul PEFT-fork rows for a pinned
+fixed-LoRA causal-LM workload. It is useful evidence for provenance visibility:
+successful fork rows emit structured LoRA events while dense fallback remains
+available. It is negative evidence for performance: the seq128 rows fail across
+all baselines, \texttt{summary.benchmark\_ready} is false, and
+\texttt{summary.performance\_claim} is \texttt{none}.
 
 \section{Problem}
 
@@ -313,7 +316,9 @@ workload case studies.
   \item LoRA or adapter weights merged into a dense projection;
   \item PEFT plus Transformers inference with fixed LoRA/adapters, comparing
   upstream PEFT against a Beyond Matmul PEFT fork under a TorchBench-style
-  reproducible harness, with the first workload contract recorded in
+  reproducible harness. The first measured artifact is
+  \texttt{docs/results/peft\_transformers\_lora\_inference.json}, produced for
+  issue \#80 and merged in PR \#90 under the contract recorded in
   \texttt{docs/peft\_capstone\_benchmark\_contract.md};
   \item Conv/linear lowering from a broader CNN-style block;
   \item fixed binary masks applied as sparse linear maps, with full masked
@@ -406,6 +411,35 @@ support the narrower claim that preserved convolution provenance exposes
 direct channel-aware lowerings and exact dense fallbacks for the implemented
 1D cases. They do not establish Conv2d support, non-scalar Conv1d parameter
 coverage, quantized convolution contracts, or measured runtime behavior.
+
+\subsection{PEFT Capstone Evaluation}
+
+The external PEFT plus Transformers artifact is regenerated with \texttt{mise
+exec -- uv run --with transformers --with accelerate --with safetensors --with
+huggingface\_hub python benchmarks/peft\_transformers\_lora\_inference.py
+--json-output docs/results/peft\_transformers\_lora\_inference.json}. The
+committed artifact from issue \#80 and PR \#90 records mode
+\texttt{real}, the contract-defined
+\texttt{hf-internal-testing/tiny-random-OPTForCausalLM} base model,
+\texttt{peft-internal-testing/tiny-OPTForCausalLM-lora} adapter, CPU fp32
+prefill workload, upstream PEFT revision
+\texttt{8d5f7842d9178e51292c2be551e1147ad6f0b5f8}, PEFT fork revision
+\texttt{7ac8d57b100846837c5a3b76c65e1e1954ccc3c8}, and Transformers
+\texttt{5.13.0}.
+
+The result is bounded. The artifact includes all required rows and correctness
+passes for seq16 and seq64 across upstream unmerged PEFT, upstream merged
+dense, and the Beyond Matmul PEFT fork. On successful fork rows, the fork emits
+\texttt{beyond\_matmul\_lora\_provenance} events with rank, factor shapes,
+adapter identity, and explicit dense-fallback availability; this supports the
+claim that the external stack can expose fixed LoRA provenance without removing
+dense fallback. Both seq128 shapes fail across all baselines with
+\texttt{index out of range in self}, so the artifact records
+\texttt{summary.benchmark\_ready: false},
+\texttt{readiness\_blockers: ["correctness\_checks\_failed"]}, and
+\texttt{summary.performance\_claim: "none"}. The fork is not claimed to be
+faster than upstream PEFT, peak memory is not measurable on the CPU run, and
+adapter switching is \texttt{not\_measured\_single\_adapter}.
 
 The fixed-mask row is intentionally narrower than full masked attention. It
 applies a fixed causal-band binary mask as a sparse linear map and selects
@@ -669,27 +703,17 @@ convolution capture remains optional follow-up work. These boundaries are
 already reflected in the scope, frontend, IR, evidence, and limitations
 sections above.
 
-\section{Next Capstone}
+\section{Capstone Boundaries}
 
-The next target is to prove the approach inside a real open-source PyTorch
-inference project. The selected story is PEFT plus Transformers inference, with
-a fork at \texttt{alexlopashev/peft} and an integration branch named
-\texttt{beyond-matmul/provenance-lora-inference}. The benchmark should compare
-upstream PEFT with the fork under pinned model, adapter, prompt, batch, dtype,
-device, warmup, repetition, and correctness settings. The first benchmark
-contract is now fixed in
-\texttt{docs/peft\_capstone\_benchmark\_contract.md}: CPU fp32 prefill-only
-causal LM inference for
-\texttt{hf-internal-testing/tiny-random-OPTForCausalLM} with
-\texttt{peft-internal-testing/tiny-OPTForCausalLM-lora}, measured across
-sequence lengths 16, 64, and 128 and batch sizes 1 and 4.
-
-The capstone claim should stay narrow until measured: for selected fixed-weight
-adapter-serving regimes, preserving LoRA provenance can expose structured
-low-rank inference paths, keep dense fallback available, and improve latency,
-memory, or adapter-switching cost. Training-time mutation, broad PEFT coverage,
-and universal Transformer speedups remain outside the claim until separate
-evidence exists.
+The PEFT plus Transformers capstone proves less than the initial performance
+hypothesis, but it usefully narrows the research claim. The supported claim is
+that, for the measured fixed-LoRA inference workload, a PEFT fork can preserve
+structured low-rank adapter provenance and report dense fallback availability
+inside a real Transformers stack while matching upstream outputs on seq16 and
+seq64 rows. The unsupported claim is that this is benchmark-ready performance
+evidence: seq128 failures keep the artifact below the contract's readiness
+bar, and the artifact intentionally records no latency, memory, adapter
+switching, training, or universal Transformer speedup conclusion.
 
 \section{Conclusion}
 
