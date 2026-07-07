@@ -100,32 +100,33 @@ Future workload case studies still outside the current artifact:
 - Quantized convolutional modules once frontend capture has executable
   packed-payload rules for convolution-specific quantization contracts.
 
-Next capstone workload:
+Closed PEFT capstone:
 
-- PEFT plus Transformers inference, using a fork of `huggingface/peft` at
+- PEFT plus Transformers inference used a fork of `huggingface/peft` at
   `alexlopashev/peft` on branch
   `beyond-matmul/provenance-lora-inference`.
-- The first benchmark contract is
+- The benchmark contract is
   `docs/peft_capstone_benchmark_contract.md`: CPU fp32 prefill-only causal LM
   inference for `hf-internal-testing/tiny-random-OPTForCausalLM` with
   `peft-internal-testing/tiny-OPTForCausalLM-lora`, sequence lengths `16`,
   `64`, and `128`, and batch sizes `1` and `4`.
-- The first fork integration design is
+- The fork integration design is
   `docs/peft_low_rank_provenance_design.md`. It limits #78 to vanilla PEFT
   LoRA `Linear` inference metadata, dense fallback, and benchmark harness
   reporting before any custom kernel or broad adapter coverage.
-- The central hypothesis is that fixed LoRA/adapters should remain visible as
-  structured low-rank operators through inference planning instead of being
-  treated only as either runtime adapter modules or fully merged dense weights.
-- The measurement plan is TorchBench-style: pinned dependencies, model,
-  adapter, prompt, batch shape, dtype, device, warmup, repetitions, correctness
-  checks, and JSON result artifacts comparing upstream PEFT with the fork.
+- The measured artifact is
+  `docs/results/peft_transformers_lora_inference.json`. It supports the bounded
+  claim that successful seq16 and seq64 fork rows expose structured LoRA
+  provenance while preserving dense fallback and matching upstream outputs.
+- The result is negative for performance readiness: seq128 fails across all
+  baselines, `summary.benchmark_ready=false`,
+  `summary.performance_claim=none`, CPU peak memory is not measurable, and
+  adapter switching is not measured for the single-adapter workload.
 - Training, generation loops, KV-cache behavior, broad PEFT coverage, GPU
-  kernel claims, and universal Transformer speedups are outside the first
-  contract until separately scoped and measured.
-- The first external claim should be narrow: selected fixed-weight
-  adapter-serving regimes can show lower latency, memory, or adapter-switching
-  cost while retaining dense fallback and output equivalence.
+  kernel claims, memory savings, adapter-switching gains, and universal
+  Transformer speedups remain unsupported by this capstone.
+- The #82 retrospective closed the capstone as a bounded proof and created no
+  PEFT upstreaming or broader expansion issue.
 
 Metrics:
 

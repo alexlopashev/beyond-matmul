@@ -95,22 +95,27 @@ This work introduces a provenance-aware linear/affine-operator IR and planner
 that preserves or recovers structure behind dense matmuls, then selects exact or
 bounded-error lowerings that reduce inference cost relative to dense GEMM.
 
-## Next Capstone Target
+## PEFT Capstone Status
 
-The next project target is an external performance proof inside a real
-open-source PyTorch inference stack: PEFT plus Transformers, measured with a
-TorchBench-style reproducible harness.
+The external PEFT plus Transformers capstone is closed as a bounded proof, not
+as the current roadmap target. It reached a real open-source PyTorch inference
+stack and produced `docs/results/peft_transformers_lora_inference.json`.
 
 - upstream workload: `huggingface/peft` with Transformers inference
 - integration fork: `alexlopashev/peft`
-- feature branch: `beyond-matmul/provenance-lora-inference`
-- first contract: `docs/peft_capstone_benchmark_contract.md`
-- measurement style: compare upstream PEFT against the fork under pinned
+- measured branch: `beyond-matmul/provenance-lora-inference`
+- contract: `docs/peft_capstone_benchmark_contract.md`
+- measurement style: compared upstream PEFT against the fork under pinned
   model, adapter, prompt, batch, dtype, device, warmup, and repetition settings
-- success target: preserving LoRA/adapter provenance exposes structured
-  low-rank inference paths with dense fallback, then produces measured wins for
-  selected fixed-weight adapter-serving regimes if the benchmark supports that
-  claim
+- supported result: successful seq16 and seq64 fork rows expose structured
+  LoRA provenance with dense fallback and upstream-output parity
+- unsupported result: seq128 fails across all baselines,
+  `summary.benchmark_ready=false`, and `summary.performance_claim=none`
 
-Until that benchmark lands, this remains a roadmap target rather than evidence
-for the current whitepaper claims.
+The #82 retrospective closed the capstone without creating an upstreaming,
+TorchBench-integration, or broader PEFT expansion issue because the artifact
+supports claim narrowing rather than a performance-readiness claim.
+
+Current completion status: no unresolved priority-zero or priority-one blocker
+is known against the artifact thesis; `docs/completion_audit.md` records the
+latest issue audit and residual risks.

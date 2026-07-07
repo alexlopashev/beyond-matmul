@@ -1,6 +1,6 @@
 # Completion Audit
 
-Date: 2026-07-06
+Date: 2026-07-07
 
 This note records the final first-artifact audit for the Beyond Matmul
 whitepaper. It is a compact companion to `whitepaper/main.tex` and
@@ -29,15 +29,16 @@ curation is paper-polish work that does not change the executable evidence.
 | Recovery after lost provenance | `beyond_matmul/analyzer.py`, `tests/test_analyzer.py`, `examples/fixed_weight_inference_demo.py`, `docs/evidence_matrix.md` | Supported as heuristic recovery plus sample validation; not calibrated provenance proof. |
 | Planner exactness and fallback | `beyond_matmul/planner.py`, `tests/test_ir_planner.py`, `benchmarks/planner_contract_ablation.py`, `docs/benchmark_artifacts.md` | Supported as deterministic contract evidence; planner costs are estimates unless separately benchmarked. |
 | Approximation and error contracts | `beyond_matmul/approximations.py`, `tests/test_ir_planner.py`, `benchmarks/approximation_error_ablation.py`, `docs/benchmark_artifacts.md` | Supported for the bounded output-aware acceptance claim, not broad model-quality conclusions. |
-| Benchmark and cost claims | `benchmarks/fixed_weight.py`, `docs/results/fixed_weight.json`, `tests/test_benchmark_artifacts.py`, `scripts/ci_local`, `docs/benchmark_artifacts.md` | Supported as generated research artifacts and pure-Python proxies; not production performance evidence. |
+| Benchmark and cost claims | `benchmarks/fixed_weight.py`, `docs/results/fixed_weight.json`, `docs/results/peft_transformers_lora_inference.json`, `tests/test_benchmark_artifacts.py`, `tests/test_peft_transformers_lora_inference.py`, `scripts/ci_local`, `docs/benchmark_artifacts.md` | Supported as generated research artifacts, pure-Python proxies, and bounded PEFT capstone evidence; not production performance evidence. |
 | Workload narratives | Torch examples, `examples/case_study_artifacts.py`, `docs/results/workload_case_studies.json`, `tests/test_case_study_artifacts.py` | Supported for adapter, Conv1d, grouped/depthwise Conv1d, fixed-mask, and per-tensor affine quantized-linear rows; broader workloads remain future work. |
 
 ## Open Blocker Audit
 
-Live GitHub issue state on 2026-07-06 showed no unresolved priority-zero or
-priority-one blocker against the first-artifact thesis. After the final-draft
-work merged, the first-artifact completion state became historical context
-rather than an active blocker:
+Live GitHub issue state on 2026-07-07 showed no unresolved priority-zero or
+priority-one blocker against the current artifact thesis, aside from this
+documentation refresh while it is in flight. After the final-draft work merged,
+the first-artifact completion state became historical context rather than an
+active blocker:
 
 - #40 was the final-draft issue for the first public artifact.
 - #41 was the roadmap tracker for that first artifact and should be treated as
@@ -48,20 +49,30 @@ rather than an active blocker:
 - Quantized convolution, per-axis/per-channel or dynamic quantization,
   production integer kernels, and hardware-calibrated speedups remain outside
   the first public artifact unless separate issues add executable evidence.
+- #73 and #82 are closed: the PEFT plus Transformers capstone is no longer the
+  next roadmap target. The retrospective decision was to close it as a bounded
+  provenance proof, not to pursue PEFT upstreaming, broader adapter coverage,
+  or TorchBench integration from the current evidence.
 
-## Next Capstone Target
+## Closed PEFT Capstone
 
-The next project target is an external performance proof using PEFT plus
-Transformers inference, with TorchBench-style reproducible benchmarking. The
-project fork is `alexlopashev/peft`, and the integration branch is
-`beyond-matmul/provenance-lora-inference`. The first benchmark target and JSON
-artifact contract are fixed in `docs/peft_capstone_benchmark_contract.md`.
+The external PEFT plus Transformers capstone has closed as bounded evidence,
+not as a new expansion roadmap. The measured artifact is
+`docs/results/peft_transformers_lora_inference.json`, produced for the contract
+in `docs/peft_capstone_benchmark_contract.md` and summarized in
+`docs/evidence_matrix.md` and `whitepaper/main.tex`. The project fork was
+`alexlopashev/peft`, and the measured integration branch was
+`beyond-matmul/provenance-lora-inference`.
 
-This capstone is intentionally outside the completed first-artifact audit. It
-should produce new evidence before the whitepaper claims measured external
-performance gains: a PEFT fork integration, an upstream-vs-fork benchmark
-harness, correctness checks, JSON artifacts, and a narrow analysis of where
-preserved LoRA provenance improves latency, memory, or adapter-switching cost.
+The result supports a narrow provenance claim: successful seq16 and seq64 fork
+rows expose structured LoRA provenance while keeping dense fallback available
+and matching upstream outputs. It is negative performance-readiness evidence:
+seq128 fails across all baselines, `summary.benchmark_ready` is false,
+`summary.performance_claim` is `none`, CPU peak memory is not measurable in the
+run, and adapter switching is not measured for the single-adapter workload. The
+#82 retrospective created no upstreaming or broader PEFT expansion issue
+because the measured result supports claim narrowing and closure, not larger
+PEFT implementation work.
 
 ## Reader Pointers
 
@@ -72,6 +83,8 @@ preserved LoRA provenance improves latency, memory, or adapter-switching cost.
   artifacts without duplicating the paper.
 - `docs/research_outline.md` remains the compact research plan and now points
   to this audit for the final status.
+- PEFT reader pointers are historical capstone evidence, not a next capstone
+  target.
 
 ## Validation Commands
 
