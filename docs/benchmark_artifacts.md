@@ -8,6 +8,7 @@
 | `docs/results/fixed_weight.json` | `mise exec -- uv run python benchmarks/fixed_weight.py --json-output docs/results/fixed_weight.json` | Synthetic fixed-weight benchmark rows for structured lowerings versus dense fallback. | Pure-Python latency proxies, not hardware-calibrated production performance. |
 | `docs/results/approximation_error_ablation.json` | `mise exec -- uv run python benchmarks/approximation_error_ablation.py --json-output docs/results/approximation_error_ablation.json` | Deterministic matrix-reconstruction-error versus output-error candidate table. | One bounded synthetic case, not a broad approximation-quality benchmark. |
 | `docs/results/planner_contract_ablation.json` | `mise exec -- uv run python benchmarks/planner_contract_ablation.py --json-output docs/results/planner_contract_ablation.json` | Deterministic exactness, bounded-error, reuse, backend-support, and dense fallback planner checks. | Contract coverage only; costs are planner estimates, not runtime measurements. |
+| `docs/results/peft_transformers_lora_inference_smoke.json` | `mise exec -- uv run python benchmarks/peft_transformers_lora_inference.py --smoke --json-output docs/results/peft_transformers_lora_inference_smoke.json` | Contract-shaped PEFT plus Transformers LoRA upstream-vs-fork benchmark smoke artifact. | CI smoke uses a tiny torch-only synthetic path for schema, timing, and correctness checks; real PEFT plus Transformers runs require explicit checkouts and optional dependencies on suitable hardware. |
 
 ## Fixed-Weight Benchmark
 
@@ -123,3 +124,34 @@ The JSON schema is versioned with `schema_version: 1`. The scenario rows record:
 The controlled cases are small deterministic planner checks. They support
 claims about contract enforcement and dense fallback availability, but they do
 not measure backend runtime or establish broad performance conclusions.
+
+## PEFT Transformers LoRA Inference Smoke
+
+`benchmarks/peft_transformers_lora_inference.py` implements the first
+TorchBench-style harness for the PEFT capstone benchmark contract. CI runs the
+torch-only smoke path:
+
+```bash
+mise exec -- uv run python benchmarks/peft_transformers_lora_inference.py --smoke --json-output docs/results/peft_transformers_lora_inference_smoke.json
+```
+
+The smoke artifact uses the schema from
+`docs/peft_capstone_benchmark_contract.md`, including warmup, repetitions,
+timing summaries, correctness metrics, dependency target metadata, device
+metadata, and the three required baselines. It is a contract and CI health
+check, not external PEFT performance evidence.
+
+For manual full runs, provide PEFT checkouts by path or allow the harness to
+resolve the configured git refs:
+
+```bash
+mise exec -- uv run python benchmarks/peft_transformers_lora_inference.py \
+  --upstream-peft-path /path/to/huggingface-peft \
+  --fork-peft-path /path/to/alexlopashev-peft \
+  --json-output docs/results/peft_transformers_lora_inference.json
+```
+
+The default refs are upstream `huggingface/peft@main` and
+`alexlopashev/peft@beyond-matmul/provenance-lora-inference`. The manual run
+expects compatible `transformers` and `peft` dependencies and remains outside
+the local CI dependency set.

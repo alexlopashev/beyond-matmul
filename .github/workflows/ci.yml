@@ -61,6 +61,9 @@ jobs:
       - name: Run planner contract ablation artifact
         run: mise exec -- uv run python benchmarks/planner_contract_ablation.py --json-output docs/results/planner_contract_ablation.json
 
+      - name: Run PEFT Transformers LoRA smoke artifact
+        run: mise exec -- uv run python benchmarks/peft_transformers_lora_inference.py --smoke --json-output docs/results/peft_transformers_lora_inference_smoke.json
+
       - name: Upload fixed-weight benchmark JSON
         uses: actions/upload-artifact@v4
         with:
@@ -84,3 +87,9 @@ jobs:
         with:
           name: planner-contract-ablation-json
           path: docs/results/planner_contract_ablation.json
+
+      - name: Upload PEFT Transformers LoRA smoke JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: peft-transformers-lora-inference-smoke-json
+          path: docs/results/peft_transformers_lora_inference_smoke.json
