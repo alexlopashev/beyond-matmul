@@ -9,6 +9,7 @@
 | `docs/results/approximation_error_ablation.json` | `mise exec -- uv run python benchmarks/approximation_error_ablation.py --json-output docs/results/approximation_error_ablation.json` | Deterministic matrix-reconstruction-error versus output-error candidate table. | One bounded synthetic case, not a broad approximation-quality benchmark. |
 | `docs/results/planner_contract_ablation.json` | `mise exec -- uv run python benchmarks/planner_contract_ablation.py --json-output docs/results/planner_contract_ablation.json` | Deterministic exactness, bounded-error, reuse, backend-support, and dense fallback planner checks. | Contract coverage only; costs are planner estimates, not runtime measurements. |
 | `docs/results/peft_transformers_lora_inference_smoke.json` | `mise exec -- uv run python benchmarks/peft_transformers_lora_inference.py --smoke --json-output docs/results/peft_transformers_lora_inference_smoke.json` | Contract-shaped PEFT plus Transformers LoRA upstream-vs-fork benchmark smoke artifact. | CI smoke uses a tiny torch-only synthetic path for schema, timing, and correctness checks; real PEFT plus Transformers runs require explicit checkouts and optional dependencies on suitable hardware. |
+| `docs/results/peft_transformers_lora_inference.json` | `mise exec -- uv run --with transformers --with accelerate --with safetensors --with huggingface_hub python benchmarks/peft_transformers_lora_inference.py --json-output docs/results/peft_transformers_lora_inference.json` | Real PEFT plus Transformers LoRA upstream-vs-fork capstone matrix for the contract-defined model, adapter, shapes, and baselines. | Measured local CPU run, not CI smoke. The committed run is a negative/blocked benchmark result: seq16 and seq64 rows pass correctness, seq128 rows fail with `index out of range in self`, `summary.benchmark_ready` is false, and `summary.performance_claim` is `none`. |
 
 ## Fixed-Weight Benchmark
 
@@ -157,3 +158,33 @@ The default refs are upstream `huggingface/peft@main` and
 `alexlopashev/peft@beyond-matmul/provenance-lora-inference`. The manual run
 expects compatible `transformers` and `peft` dependencies and remains outside
 the local CI dependency set.
+
+## PEFT Transformers LoRA Inference Measured Run
+
+`docs/results/peft_transformers_lora_inference.json` is the measured artifact
+for issue #80. It was regenerated with:
+
+```bash
+mise exec -- uv run --with transformers --with accelerate --with safetensors --with huggingface_hub python benchmarks/peft_transformers_lora_inference.py --json-output docs/results/peft_transformers_lora_inference.json
+```
+
+The committed run records mode `real`, generated time
+`2026-07-07T18:27:57Z`, macOS `26.5.1` on arm64 CPU, Python `3.14.6`, PyTorch
+`2.12.1`, Transformers `5.13.0`, base model revision
+`0abea37ca0a786ba455967e799b7b3d67f86541f`, adapter revision
+`14e64b8ba522284138bfc22e76002ab6c0ce31e2`, upstream PEFT revision
+`8d5f7842d9178e51292c2be551e1147ad6f0b5f8`, fork PEFT revision
+`7ac8d57b100846837c5a3b76c65e1e1954ccc3c8`, and Beyond Matmul revision
+`f179d49ed65b0b15aba8ec455b7ab1f2332024fa`.
+
+The artifact includes all required baseline and shape rows. Correctness passes
+for seq16 and seq64 rows across upstream unmerged, upstream merged dense, and
+the Beyond Matmul PEFT fork. Both seq128 shapes fail for all three baselines
+with `index out of range in self`, so `summary.benchmark_ready` is false with
+`correctness_checks_failed`.
+
+No performance win is claimed. Among successful rows, the fork is not at least
+10% faster than both upstream baselines, and the required seq128 rows did not
+complete. Adapter switching and peak memory remain unmeasured in this CPU run;
+the JSON records `adapter_switch_status: "not_measured_single_adapter"` and
+`peak_memory_status: "not_measurable_on_cpu"` row by row.

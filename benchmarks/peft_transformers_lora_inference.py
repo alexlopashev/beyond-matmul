@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import math
 import os
 import platform
+import shlex
 import statistics
 import subprocess
 import sys
@@ -98,6 +100,8 @@ def collect_results(
     upstream_peft_ref: str = DEFAULT_UPSTREAM_REF,
     fork_peft_ref: str = DEFAULT_FORK_REF,
     checkout_dir: str | os.PathLike[str] | None = None,
+    command: Sequence[str] | None = None,
+    generated_at_utc: str | None = None,
     time_forward: TimeForward = _time_forward,
 ) -> Dict[str, Any]:
     sequence_lengths = list(sequence_lengths or DEFAULT_SEQUENCE_LENGTHS)
@@ -181,6 +185,7 @@ def collect_results(
             fork_peft_ref=fork_peft_ref,
         ),
         "environment": _environment_metadata(),
+        "run": _run_metadata(command=command, generated_at_utc=generated_at_utc, mode=mode),
         "results": results,
         "summary": _artifact_summary(
             results,
@@ -607,6 +612,18 @@ def _environment_metadata() -> Dict[str, Any]:
     }
 
 
+def _run_metadata(
+    *, command: Sequence[str] | None, generated_at_utc: str | None, mode: str
+) -> Dict[str, Any]:
+    command_list = list(command) if command is not None else None
+    return {
+        "mode": mode,
+        "command": command_list,
+        "command_text": shlex.join(command_list) if command_list is not None else None,
+        "generated_at_utc": generated_at_utc,
+    }
+
+
 def _git_revision(path: Path) -> str | None:
     try:
         result = subprocess.run(
@@ -670,7 +687,23 @@ def _safe_ref(ref: str) -> str:
 
 
 def _revision_label(identifier: str, mode: str) -> str:
+    if mode == "real":
+        revision = _huggingface_revision(identifier)
+        if revision:
+            return revision
     return f"not_resolved_{mode}:{identifier}"
+
+
+def _huggingface_revision(identifier: str) -> str | None:
+    try:
+        from huggingface_hub import model_info
+    except ImportError:
+        return None
+    try:
+        info = model_info(identifier)
+    except Exception:
+        return None
+    return getattr(info, "sha", None)
 
 
 def _all_requested_cases_present(
@@ -952,6 +985,10 @@ def main() -> None:
         upstream_peft_ref=args.upstream_peft_ref,
         fork_peft_ref=args.fork_peft_ref,
         checkout_dir=args.checkout_dir,
+        command=[sys.executable, __file__, *sys.argv[1:]],
+        generated_at_utc=(
+            datetime.datetime.now(datetime.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+        ),
     )
     _print_table(artifact)
     if args.json_output:
