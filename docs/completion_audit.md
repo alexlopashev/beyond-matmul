@@ -35,17 +35,32 @@ curation is paper-polish work that does not change the executable evidence.
 ## Open Blocker Audit
 
 Live GitHub issue state on 2026-07-06 showed no unresolved priority-zero or
-priority-one blocker against the first-artifact thesis:
+priority-one blocker against the first-artifact thesis. After the final-draft
+work merged, the first-artifact completion state became historical context
+rather than an active blocker:
 
-- #40 is this final-draft issue.
-- #41 is a roadmap tracker blocked by #40 and should close or be replaced after
-  this final-draft PR is reviewed and merged.
+- #40 was the final-draft issue for the first public artifact.
+- #41 was the roadmap tracker for that first artifact and should be treated as
+  closed historical coordination rather than the current roadmap.
 - #30, #31, and #52 are completed: the current artifact includes fixed
   per-tensor affine quantized `nn.Linear` frontend capture, packed affine
   quantized IR evidence, and a quantized-linear workload row.
 - Quantized convolution, per-axis/per-channel or dynamic quantization,
   production integer kernels, and hardware-calibrated speedups remain outside
   the first public artifact unless separate issues add executable evidence.
+
+## Next Capstone Target
+
+The next project target is an external performance proof using PEFT plus
+Transformers inference, with TorchBench-style reproducible benchmarking. The
+project fork is `alexlopashev/peft`, and the integration branch is
+`beyond-matmul/provenance-lora-inference`.
+
+This capstone is intentionally outside the completed first-artifact audit. It
+should produce new evidence before the whitepaper claims measured external
+performance gains: a PEFT fork integration, an upstream-vs-fork benchmark
+harness, correctness checks, JSON artifacts, and a narrow analysis of where
+preserved LoRA provenance improves latency, memory, or adapter-switching cost.
 
 ## Reader Pointers
 
@@ -59,7 +74,7 @@ priority-one blocker against the first-artifact thesis:
 
 ## Validation Commands
 
-The final-draft PR should record the exact validation results for:
+For first-artifact reproducibility, use:
 
 ```bash
 mise exec -- uv run python examples/case_study_artifacts.py --json-output docs/results/workload_case_studies.json
