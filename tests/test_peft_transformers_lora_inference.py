@@ -109,7 +109,147 @@ class PeftTransformersLoraInferenceTests(unittest.TestCase):
         self.assertFalse(fork["lowering"]["dense_fallback_used"])
         self.assertTrue(first["summary"]["all_required_cases_present"])
         self.assertTrue(first["summary"]["all_correctness_checks_passed"])
+        self.assertTrue(first["summary"]["all_fork_fallback_cases_explicit"])
+        self.assertFalse(first["summary"]["benchmark_ready"])
+        self.assertEqual(first["summary"]["readiness_blockers"], ["synthetic_smoke_not_benchmark_evidence"])
+        self.assertLessEqual(first["summary"]["max_abs_error"], 1e-4)
+        self.assertLessEqual(first["summary"]["max_relative_l2_error"], 1e-5)
+        self.assertEqual(first["summary"]["fallback_cases"], [])
+        self.assertEqual(first["summary"]["negative_cases"], [])
         self.assertEqual(first["summary"]["performance_claim"], "none")
+
+    def test_summary_blocks_readiness_when_fork_changes_outputs(self):
+        benchmark = _load_benchmark_module()
+
+        class DivergentSyntheticLoraModel:
+            def __init__(self, baseline, vocab_size=16):
+                self.baseline = baseline
+                self.vocab_size = vocab_size
+
+            def __call__(self, input_ids, attention_mask):
+                torch = benchmark._torch()
+                logits = torch.ones((*input_ids.shape, self.vocab_size), dtype=torch.float32)
+                if self.baseline == "beyond_matmul_peft_fork":
+                    logits = logits + 0.01
+                return logits
+
+        with mock.patch.object(benchmark, "_SyntheticLoraModel", DivergentSyntheticLoraModel):
+            artifact = benchmark.collect_results(
+                sequence_lengths=[4],
+                batch_sizes=[1],
+                warmup_repetitions=1,
+                measured_repetitions=1,
+                mode="synthetic-smoke",
+                time_forward=lambda _baseline, _inputs, _warmup, _repetitions: [0.01],
+            )
+
+        fork = next(row for row in artifact["results"] if row["baseline"] == "beyond_matmul_peft_fork")
+        self.assertEqual(fork["status"], "failed_correctness")
+        self.assertFalse(fork["correctness"]["passed"])
+        self.assertFalse(artifact["summary"]["all_correctness_checks_passed"])
+        self.assertFalse(artifact["summary"]["benchmark_ready"])
+        self.assertIn("correctness_checks_failed", artifact["summary"]["readiness_blockers"])
+        self.assertGreater(artifact["summary"]["max_abs_error"], 1e-4)
+        self.assertGreater(artifact["summary"]["max_relative_l2_error"], 1e-5)
+        self.assertEqual(
+            artifact["summary"]["negative_cases"],
+            [
+                {
+                    "case": "seq4_batch1",
+                    "baseline": "beyond_matmul_peft_fork",
+                    "status": "failed_correctness",
+                    "reason": "correctness tolerance failed",
+                    "correctness_passed": False,
+                }
+            ],
+        )
+
+    def test_real_summary_records_explicit_not_applicable_and_fallback_cases(self):
+        benchmark = _load_benchmark_module()
+
+        fallback_event = {
+            "schema_version": 1,
+            "kind": "beyond_matmul_lora_provenance",
+            "path": "dense_fallback",
+            "module_path": "model.layers.0.self_attn.q_proj",
+            "adapter": "default",
+            "dense_fallback_available": True,
+            "dense_fallback_used": True,
+            "fallback_reason": "unsupported_adapter_composition",
+        }
+        reference_payload = {
+            "baseline": "upstream_peft_unmerged",
+            "sequence_length": 4,
+            "batch_size": 1,
+            "status": "ok",
+            "reason": None,
+            "latencies": [0.01],
+            "logits": [[[0.0, 1.0]]],
+            "peft_provenance_events": [],
+        }
+        merged_payload = {
+            "baseline": "upstream_peft_merged_dense",
+            "sequence_length": 4,
+            "batch_size": 1,
+            "status": "not_applicable",
+            "reason": "merge_and_unload failed: unsupported adapter",
+            "latencies": None,
+            "logits": None,
+        }
+        fork_payload = {
+            "baseline": "beyond_matmul_peft_fork",
+            "sequence_length": 4,
+            "batch_size": 1,
+            "status": "ok",
+            "reason": None,
+            "latencies": [0.02],
+            "logits": [[[0.0, 1.0]]],
+            "peft_provenance_events": [fallback_event],
+        }
+
+        with mock.patch.object(benchmark, "_resolve_checkout", side_effect=["/tmp/upstream-peft", "/tmp/fork-peft"]):
+            with mock.patch.object(
+                benchmark,
+                "_run_real_worker",
+                side_effect=[reference_payload, merged_payload, fork_payload],
+            ):
+                artifact = benchmark.collect_results(
+                    sequence_lengths=[4],
+                    batch_sizes=[1],
+                    warmup_repetitions=0,
+                    measured_repetitions=1,
+                    mode="real",
+                )
+
+        self.assertTrue(artifact["summary"]["all_correctness_checks_passed"])
+        self.assertTrue(artifact["summary"]["all_fork_fallback_cases_explicit"])
+        self.assertTrue(artifact["summary"]["benchmark_ready"])
+        self.assertEqual(artifact["summary"]["readiness_blockers"], [])
+        self.assertEqual(
+            artifact["summary"]["fallback_cases"],
+            [
+                {
+                    "case": "seq4_batch1",
+                    "baseline": "beyond_matmul_peft_fork",
+                    "status": "ok",
+                    "kind": "peft_dense_fallback",
+                    "fallback_reasons": ["unsupported_adapter_composition"],
+                    "correctness_passed": True,
+                }
+            ],
+        )
+        self.assertEqual(
+            artifact["summary"]["negative_cases"],
+            [
+                {
+                    "case": "seq4_batch1",
+                    "baseline": "upstream_peft_merged_dense",
+                    "status": "not_applicable",
+                    "reason": "merge_and_unload failed: unsupported adapter",
+                    "correctness_passed": True,
+                }
+            ],
+        )
 
     def test_writes_json_artifact(self):
         benchmark = _load_benchmark_module()

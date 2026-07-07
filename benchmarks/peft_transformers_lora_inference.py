@@ -33,6 +33,8 @@ UPSTREAM_REPOSITORY = "huggingface/peft"
 FORK_REPOSITORY = "alexlopashev/peft"
 DEFAULT_UPSTREAM_REF = "main"
 DEFAULT_FORK_REF = "beyond-matmul/provenance-lora-inference"
+CORRECTNESS_MAX_ABS_TOLERANCE = 1e-4
+CORRECTNESS_RELATIVE_L2_TOLERANCE = 1e-5
 BASELINES = [
     "upstream_peft_unmerged",
     "upstream_peft_merged_dense",
@@ -180,13 +182,12 @@ def collect_results(
         ),
         "environment": _environment_metadata(),
         "results": results,
-        "summary": {
-            "all_required_cases_present": _all_requested_cases_present(results, sequence_lengths, batch_sizes),
-            "all_correctness_checks_passed": all(
-                row["status"] in {"ok", "not_applicable"} and row["correctness"]["passed"] for row in results
-            ),
-            "performance_claim": "none",
-        },
+        "summary": _artifact_summary(
+            results,
+            sequence_lengths=sequence_lengths,
+            batch_sizes=batch_sizes,
+            mode=mode,
+        ),
     }
 
 
@@ -353,14 +354,131 @@ def _correctness_metrics(logits: Any, reference_logits: Any) -> Dict[str, Any]:
     reference_norm = float(torch.linalg.vector_norm(reference).item())
     diff_norm = float(torch.linalg.vector_norm(diff).item())
     relative_l2_error = 0.0 if reference_norm == 0.0 else diff_norm / reference_norm
-    passed = finite and max_abs_error <= 1e-4 and relative_l2_error <= 1e-5
+    passed = (
+        finite
+        and max_abs_error <= CORRECTNESS_MAX_ABS_TOLERANCE
+        and relative_l2_error <= CORRECTNESS_RELATIVE_L2_TOLERANCE
+    )
     return {
         "reference_baseline": "upstream_peft_unmerged",
         "max_abs_error": max_abs_error,
         "relative_l2_error": relative_l2_error,
+        "max_abs_tolerance": CORRECTNESS_MAX_ABS_TOLERANCE,
+        "relative_l2_tolerance": CORRECTNESS_RELATIVE_L2_TOLERANCE,
         "tolerance_profile": "cpu_fp32",
         "passed": passed,
     }
+
+
+def _artifact_summary(
+    results: Sequence[Dict[str, Any]],
+    *,
+    sequence_lengths: Sequence[int],
+    batch_sizes: Sequence[int],
+    mode: str,
+) -> Dict[str, Any]:
+    all_required_cases_present = _all_requested_cases_present(results, sequence_lengths, batch_sizes)
+    all_correctness_checks_passed = all(
+        row["status"] in {"ok", "not_applicable"} and row["correctness"]["passed"] for row in results
+    )
+    all_fork_fallback_cases_explicit = _all_fork_fallback_cases_explicit(results)
+    readiness_blockers = _readiness_blockers(
+        mode=mode,
+        all_required_cases_present=all_required_cases_present,
+        all_correctness_checks_passed=all_correctness_checks_passed,
+        all_fork_fallback_cases_explicit=all_fork_fallback_cases_explicit,
+    )
+    return {
+        "all_required_cases_present": all_required_cases_present,
+        "all_correctness_checks_passed": all_correctness_checks_passed,
+        "all_fork_fallback_cases_explicit": all_fork_fallback_cases_explicit,
+        "benchmark_ready": not readiness_blockers,
+        "readiness_blockers": readiness_blockers,
+        "max_abs_error": _max_correctness_metric(results, "max_abs_error"),
+        "max_relative_l2_error": _max_correctness_metric(results, "relative_l2_error"),
+        "fallback_cases": _fallback_cases(results),
+        "negative_cases": _negative_cases(results),
+        "performance_claim": "none",
+    }
+
+
+def _readiness_blockers(
+    *,
+    mode: str,
+    all_required_cases_present: bool,
+    all_correctness_checks_passed: bool,
+    all_fork_fallback_cases_explicit: bool,
+) -> List[str]:
+    blockers = []
+    if mode != "real":
+        blockers.append("synthetic_smoke_not_benchmark_evidence")
+    if not all_required_cases_present:
+        blockers.append("required_cases_missing")
+    if not all_correctness_checks_passed:
+        blockers.append("correctness_checks_failed")
+    if not all_fork_fallback_cases_explicit:
+        blockers.append("fork_fallback_cases_not_explicit")
+    return blockers
+
+
+def _max_correctness_metric(results: Sequence[Dict[str, Any]], metric: str) -> float | None:
+    values = [
+        float(row["correctness"][metric])
+        for row in results
+        if row["correctness"].get(metric) is not None
+    ]
+    if not values:
+        return None
+    return max(values)
+
+
+def _fallback_cases(results: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    cases = []
+    for row in results:
+        if row["baseline"] != "beyond_matmul_peft_fork":
+            continue
+        lowering = row["lowering"]
+        fallback_reasons = list(lowering.get("fallback_reasons", []))
+        if not (lowering.get("dense_fallback_used") or fallback_reasons):
+            continue
+        cases.append(
+            {
+                "case": row["case"],
+                "baseline": row["baseline"],
+                "status": row["status"],
+                "kind": lowering["kind"],
+                "fallback_reasons": fallback_reasons,
+                "correctness_passed": row["correctness"]["passed"],
+            }
+        )
+    return cases
+
+
+def _negative_cases(results: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    cases = []
+    for row in results:
+        if row["status"] == "ok" and row["correctness"]["passed"]:
+            continue
+        cases.append(
+            {
+                "case": row["case"],
+                "baseline": row["baseline"],
+                "status": row["status"],
+                "reason": row.get("reason") or row["status"],
+                "correctness_passed": row["correctness"]["passed"],
+            }
+        )
+    return cases
+
+
+def _all_fork_fallback_cases_explicit(results: Sequence[Dict[str, Any]]) -> bool:
+    for row in results:
+        if row["baseline"] != "beyond_matmul_peft_fork":
+            continue
+        lowering = row["lowering"]
+        if lowering.get("dense_fallback_used") and not lowering.get("fallback_reasons"):
+            return False
+    return True
 
 
 def _lowering_metadata(

@@ -138,8 +138,10 @@ mise exec -- uv run python benchmarks/peft_transformers_lora_inference.py --smok
 The smoke artifact uses the schema from
 `docs/peft_capstone_benchmark_contract.md`, including warmup, repetitions,
 timing summaries, correctness metrics, dependency target metadata, device
-metadata, and the three required baselines. It is a contract and CI health
-check, not external PEFT performance evidence.
+metadata, the three required baselines, and summary-level readiness blockers.
+It is a contract and CI health check, not external PEFT performance evidence,
+so `summary.benchmark_ready` remains false for smoke artifacts even when the
+schema and torch-only correctness checks pass.
 
 For manual full runs, provide PEFT checkouts by path or allow the harness to
 resolve the configured git refs:
