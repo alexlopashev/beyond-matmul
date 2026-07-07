@@ -1,0 +1,2344 @@
+{
+  "benchmark": "peft_transformers_lora_inference",
+  "contract": "docs/peft_capstone_benchmark_contract.md",
+  "dependencies": {
+    "beyond_matmul": {
+      "repository": "alexlopashev/beyond-matmul",
+      "revision": "f179d49ed65b0b15aba8ec455b7ab1f2332024fa"
+    },
+    "peft_fork": {
+      "path": "/Users/sasha/Documents/beyond-matmul-80-peft-capstone-benchmark-artifacts/.peft_benchmark_checkouts/alexlopashev-peft-beyond-matmul-provenance-lora-inference",
+      "repository": "alexlopashev/peft",
+      "requested_ref": "beyond-matmul/provenance-lora-inference",
+      "revision": "7ac8d57b100846837c5a3b76c65e1e1954ccc3c8",
+      "version": null
+    },
+    "peft_upstream": {
+      "path": "/Users/sasha/Documents/beyond-matmul-80-peft-capstone-benchmark-artifacts/.peft_benchmark_checkouts/huggingface-peft-main",
+      "repository": "huggingface/peft",
+      "requested_ref": "main",
+      "revision": "8d5f7842d9178e51292c2be551e1147ad6f0b5f8",
+      "version": null
+    },
+    "python": "3.14.6",
+    "torch": "2.12.1",
+    "transformers": {
+      "revision": null,
+      "version": "5.13.0"
+    }
+  },
+  "environment": {
+    "accelerator": null,
+    "cpu": "arm",
+    "env": {},
+    "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+    "torch_num_threads": 5
+  },
+  "mode": "real",
+  "results": [
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "upstream_peft_unmerged",
+      "batch_size": 1,
+      "case": "seq16_batch1",
+      "correctness": {
+        "max_abs_error": 0.0,
+        "max_abs_tolerance": 0.0001,
+        "passed": true,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": 0.0,
+        "relative_l2_tolerance": 1e-05,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": {
+        "mean": 0.001329993363,
+        "median": 0.001264374994,
+        "p50": 0.001264374994,
+        "p90": 0.001746932755,
+        "p95": 0.001809454482,
+        "p99": 0.001819158338,
+        "stdev": 0.00026330518
+      },
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": false,
+        "kind": "peft_unmerged_adapter"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "peft_provenance_events": [],
+      "sequence_length": 16,
+      "status": "ok"
+    },
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "upstream_peft_merged_dense",
+      "batch_size": 1,
+      "case": "seq16_batch1",
+      "correctness": {
+        "max_abs_error": 0.0,
+        "max_abs_tolerance": 0.0001,
+        "passed": true,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": 0.0,
+        "relative_l2_tolerance": 1e-05,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": {
+        "mean": 0.000926828394,
+        "median": 0.000873270968,
+        "p50": 0.000873270968,
+        "p90": 0.001063946134,
+        "p95": 0.001355462644,
+        "p99": 0.001521754374,
+        "stdev": 0.00016762903
+      },
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": true,
+        "kind": "peft_merged_dense"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "peft_provenance_events": [],
+      "sequence_length": 16,
+      "status": "ok"
+    },
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "beyond_matmul_peft_fork",
+      "batch_size": 1,
+      "case": "seq16_batch1",
+      "correctness": {
+        "max_abs_error": 0.0,
+        "max_abs_tolerance": 0.0001,
+        "passed": true,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": 0.0,
+        "relative_l2_tolerance": 1e-05,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": {
+        "mean": 0.00120241326,
+        "median": 0.001100625028,
+        "p50": 0.001100625028,
+        "p90": 0.001432396052,
+        "p95": 0.001678020594,
+        "p99": 0.001986788462,
+        "stdev": 0.000224596464
+      },
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": false,
+        "kind": "provenance_lora_fork"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "peft_provenance_events": [
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.0.self_attn.q_proj",
+          "module_path": "model.decoder.layers.0.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.0.self_attn.v_proj",
+          "module_path": "model.decoder.layers.0.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.1.self_attn.q_proj",
+          "module_path": "model.decoder.layers.1.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.1.self_attn.v_proj",
+          "module_path": "model.decoder.layers.1.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.2.self_attn.q_proj",
+          "module_path": "model.decoder.layers.2.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.2.self_attn.v_proj",
+          "module_path": "model.decoder.layers.2.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.3.self_attn.q_proj",
+          "module_path": "model.decoder.layers.3.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.3.self_attn.v_proj",
+          "module_path": "model.decoder.layers.3.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.4.self_attn.q_proj",
+          "module_path": "model.decoder.layers.4.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.4.self_attn.v_proj",
+          "module_path": "model.decoder.layers.4.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        }
+      ],
+      "sequence_length": 16,
+      "status": "ok"
+    },
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "upstream_peft_unmerged",
+      "batch_size": 4,
+      "case": "seq16_batch4",
+      "correctness": {
+        "max_abs_error": 0.0,
+        "max_abs_tolerance": 0.0001,
+        "passed": true,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": 0.0,
+        "relative_l2_tolerance": 1e-05,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": {
+        "mean": 0.001527494981,
+        "median": 0.001459874969,
+        "p50": 0.001459874969,
+        "p90": 0.001792378933,
+        "p95": 0.001868289697,
+        "p99": 0.001961987733,
+        "stdev": 0.000146629145
+      },
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": false,
+        "kind": "peft_unmerged_adapter"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "peft_provenance_events": [],
+      "sequence_length": 16,
+      "status": "ok"
+    },
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "upstream_peft_merged_dense",
+      "batch_size": 4,
+      "case": "seq16_batch4",
+      "correctness": {
+        "max_abs_error": 0.0,
+        "max_abs_tolerance": 0.0001,
+        "passed": true,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": 0.0,
+        "relative_l2_tolerance": 1e-05,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": {
+        "mean": 0.001388987522,
+        "median": 0.001312125009,
+        "p50": 0.001312125009,
+        "p90": 0.001578787575,
+        "p95": 0.001831987541,
+        "p99": 0.002019858941,
+        "stdev": 0.000193588636
+      },
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": true,
+        "kind": "peft_merged_dense"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "peft_provenance_events": [],
+      "sequence_length": 16,
+      "status": "ok"
+    },
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "beyond_matmul_peft_fork",
+      "batch_size": 4,
+      "case": "seq16_batch4",
+      "correctness": {
+        "max_abs_error": 0.0,
+        "max_abs_tolerance": 0.0001,
+        "passed": true,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": 0.0,
+        "relative_l2_tolerance": 1e-05,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": {
+        "mean": 0.001668920065,
+        "median": 0.001557187003,
+        "p50": 0.001557187003,
+        "p90": 0.002077279333,
+        "p95": 0.002123958163,
+        "p99": 0.002295768434,
+        "stdev": 0.000221283484
+      },
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": false,
+        "kind": "provenance_lora_fork"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "peft_provenance_events": [
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.0.self_attn.q_proj",
+          "module_path": "model.decoder.layers.0.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.0.self_attn.v_proj",
+          "module_path": "model.decoder.layers.0.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.1.self_attn.q_proj",
+          "module_path": "model.decoder.layers.1.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.1.self_attn.v_proj",
+          "module_path": "model.decoder.layers.1.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.2.self_attn.q_proj",
+          "module_path": "model.decoder.layers.2.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.2.self_attn.v_proj",
+          "module_path": "model.decoder.layers.2.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.3.self_attn.q_proj",
+          "module_path": "model.decoder.layers.3.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.3.self_attn.v_proj",
+          "module_path": "model.decoder.layers.3.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.4.self_attn.q_proj",
+          "module_path": "model.decoder.layers.4.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            16,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.4.self_attn.v_proj",
+          "module_path": "model.decoder.layers.4.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        }
+      ],
+      "sequence_length": 16,
+      "status": "ok"
+    },
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "upstream_peft_unmerged",
+      "batch_size": 1,
+      "case": "seq64_batch1",
+      "correctness": {
+        "max_abs_error": 0.0,
+        "max_abs_tolerance": 0.0001,
+        "passed": true,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": 0.0,
+        "relative_l2_tolerance": 1e-05,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": {
+        "mean": 0.001739883304,
+        "median": 0.001682729053,
+        "p50": 0.001682729053,
+        "p90": 0.001994266629,
+        "p95": 0.002228907868,
+        "p99": 0.002295615457,
+        "stdev": 0.000193314599
+      },
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": false,
+        "kind": "peft_unmerged_adapter"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "peft_provenance_events": [],
+      "sequence_length": 64,
+      "status": "ok"
+    },
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "upstream_peft_merged_dense",
+      "batch_size": 1,
+      "case": "seq64_batch1",
+      "correctness": {
+        "max_abs_error": 0.0,
+        "max_abs_tolerance": 0.0001,
+        "passed": true,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": 0.0,
+        "relative_l2_tolerance": 1e-05,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": {
+        "mean": 0.001513023223,
+        "median": 0.001472541539,
+        "p50": 0.001472541539,
+        "p90": 0.001667554246,
+        "p95": 0.001731725136,
+        "p99": 0.001809533411,
+        "stdev": 0.000128712655
+      },
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": true,
+        "kind": "peft_merged_dense"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "peft_provenance_events": [],
+      "sequence_length": 64,
+      "status": "ok"
+    },
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "beyond_matmul_peft_fork",
+      "batch_size": 1,
+      "case": "seq64_batch1",
+      "correctness": {
+        "max_abs_error": 0.0,
+        "max_abs_tolerance": 0.0001,
+        "passed": true,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": 0.0,
+        "relative_l2_tolerance": 1e-05,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": {
+        "mean": 0.002061400055,
+        "median": 0.001939145965,
+        "p50": 0.001939145965,
+        "p90": 0.002504045924,
+        "p95": 0.002602850291,
+        "p99": 0.002684307232,
+        "stdev": 0.000271252978
+      },
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": false,
+        "kind": "provenance_lora_fork"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "peft_provenance_events": [
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.0.self_attn.q_proj",
+          "module_path": "model.decoder.layers.0.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.0.self_attn.v_proj",
+          "module_path": "model.decoder.layers.0.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.1.self_attn.q_proj",
+          "module_path": "model.decoder.layers.1.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.1.self_attn.v_proj",
+          "module_path": "model.decoder.layers.1.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.2.self_attn.q_proj",
+          "module_path": "model.decoder.layers.2.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.2.self_attn.v_proj",
+          "module_path": "model.decoder.layers.2.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.3.self_attn.q_proj",
+          "module_path": "model.decoder.layers.3.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.3.self_attn.v_proj",
+          "module_path": "model.decoder.layers.3.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.4.self_attn.q_proj",
+          "module_path": "model.decoder.layers.4.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            1,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.4.self_attn.v_proj",
+          "module_path": "model.decoder.layers.4.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        }
+      ],
+      "sequence_length": 64,
+      "status": "ok"
+    },
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "upstream_peft_unmerged",
+      "batch_size": 4,
+      "case": "seq64_batch4",
+      "correctness": {
+        "max_abs_error": 0.0,
+        "max_abs_tolerance": 0.0001,
+        "passed": true,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": 0.0,
+        "relative_l2_tolerance": 1e-05,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": {
+        "mean": 0.003716070822,
+        "median": 0.00365904154,
+        "p50": 0.00365904154,
+        "p90": 0.004027536919,
+        "p95": 0.004201727267,
+        "p99": 0.004286068936,
+        "stdev": 0.000220318043
+      },
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": false,
+        "kind": "peft_unmerged_adapter"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "peft_provenance_events": [],
+      "sequence_length": 64,
+      "status": "ok"
+    },
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "upstream_peft_merged_dense",
+      "batch_size": 4,
+      "case": "seq64_batch4",
+      "correctness": {
+        "max_abs_error": 0.0,
+        "max_abs_tolerance": 0.0001,
+        "passed": true,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": 0.0,
+        "relative_l2_tolerance": 1e-05,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": {
+        "mean": 0.003452733306,
+        "median": 0.003366062534,
+        "p50": 0.003366062534,
+        "p90": 0.003736662213,
+        "p95": 0.00378303281,
+        "p99": 0.003960794343,
+        "stdev": 0.000199022243
+      },
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": true,
+        "kind": "peft_merged_dense"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "peft_provenance_events": [],
+      "sequence_length": 64,
+      "status": "ok"
+    },
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "beyond_matmul_peft_fork",
+      "batch_size": 4,
+      "case": "seq64_batch4",
+      "correctness": {
+        "max_abs_error": 0.0,
+        "max_abs_tolerance": 0.0001,
+        "passed": true,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": 0.0,
+        "relative_l2_tolerance": 1e-05,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": {
+        "mean": 0.00406159498,
+        "median": 0.00404612493,
+        "p50": 0.00404612493,
+        "p90": 0.004249954631,
+        "p95": 0.004413468472,
+        "p99": 0.005002835598,
+        "stdev": 0.000280330313
+      },
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": false,
+        "kind": "provenance_lora_fork"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "peft_provenance_events": [
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.0.self_attn.q_proj",
+          "module_path": "model.decoder.layers.0.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.0.self_attn.v_proj",
+          "module_path": "model.decoder.layers.0.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.1.self_attn.q_proj",
+          "module_path": "model.decoder.layers.1.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.1.self_attn.v_proj",
+          "module_path": "model.decoder.layers.1.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.2.self_attn.q_proj",
+          "module_path": "model.decoder.layers.2.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.2.self_attn.v_proj",
+          "module_path": "model.decoder.layers.2.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.3.self_attn.q_proj",
+          "module_path": "model.decoder.layers.3.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.3.self_attn.v_proj",
+          "module_path": "model.decoder.layers.3.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.4.self_attn.q_proj",
+          "module_path": "model.decoder.layers.4.self_attn.q_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            8,
+            16
+          ],
+          "adapter": "default",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            16,
+            8
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 16,
+          "input_shape": [
+            4,
+            64,
+            16
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.4.self_attn.v_proj",
+          "module_path": "model.decoder.layers.4.self_attn.v_proj",
+          "out_features": 16,
+          "path": "structured_low_rank",
+          "rank": 8,
+          "scaling": 4.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        }
+      ],
+      "sequence_length": 64,
+      "status": "ok"
+    },
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "upstream_peft_unmerged",
+      "batch_size": 1,
+      "case": "seq128_batch1",
+      "correctness": {
+        "max_abs_error": null,
+        "passed": false,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": null,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": null,
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": false,
+        "kind": "peft_unmerged_adapter"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "reason": "index out of range in self",
+      "sequence_length": 128,
+      "status": "failed"
+    },
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "upstream_peft_merged_dense",
+      "batch_size": 1,
+      "case": "seq128_batch1",
+      "correctness": {
+        "max_abs_error": null,
+        "passed": false,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": null,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": null,
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": true,
+        "kind": "peft_merged_dense"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "reason": "index out of range in self",
+      "sequence_length": 128,
+      "status": "failed"
+    },
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "beyond_matmul_peft_fork",
+      "batch_size": 1,
+      "case": "seq128_batch1",
+      "correctness": {
+        "max_abs_error": null,
+        "passed": false,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": null,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": null,
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": false,
+        "kind": "provenance_lora_fork"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "reason": "index out of range in self",
+      "sequence_length": 128,
+      "status": "failed"
+    },
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "upstream_peft_unmerged",
+      "batch_size": 4,
+      "case": "seq128_batch4",
+      "correctness": {
+        "max_abs_error": null,
+        "passed": false,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": null,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": null,
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": false,
+        "kind": "peft_unmerged_adapter"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "reason": "index out of range in self",
+      "sequence_length": 128,
+      "status": "failed"
+    },
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "upstream_peft_merged_dense",
+      "batch_size": 4,
+      "case": "seq128_batch4",
+      "correctness": {
+        "max_abs_error": null,
+        "passed": false,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": null,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": null,
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": true,
+        "kind": "peft_merged_dense"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "reason": "index out of range in self",
+      "sequence_length": 128,
+      "status": "failed"
+    },
+    {
+      "adapter_switch_seconds": null,
+      "adapter_switch_status": "not_measured_single_adapter",
+      "baseline": "beyond_matmul_peft_fork",
+      "batch_size": 4,
+      "case": "seq128_batch4",
+      "correctness": {
+        "max_abs_error": null,
+        "passed": false,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": null,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": null,
+      "lowering": {
+        "dense_fallback_available": true,
+        "dense_fallback_used": false,
+        "kind": "provenance_lora_fork"
+      },
+      "peak_memory_bytes": null,
+      "peak_memory_status": "not_measurable_on_cpu",
+      "reason": "index out of range in self",
+      "sequence_length": 128,
+      "status": "failed"
+    }
+  ],
+  "run": {
+    "command": [
+      "/Users/sasha/.cache/uv/builds-v0/.tmphlV7kk/bin/python",
+      "/Users/sasha/Documents/beyond-matmul-80-peft-capstone-benchmark-artifacts/benchmarks/peft_transformers_lora_inference.py",
+      "--json-output",
+      "docs/results/peft_transformers_lora_inference.json"
+    ],
+    "command_text": "/Users/sasha/.cache/uv/builds-v0/.tmphlV7kk/bin/python /Users/sasha/Documents/beyond-matmul-80-peft-capstone-benchmark-artifacts/benchmarks/peft_transformers_lora_inference.py --json-output docs/results/peft_transformers_lora_inference.json",
+    "generated_at_utc": "2026-07-07T18:27:57Z",
+    "mode": "real"
+  },
+  "schema_version": 1,
+  "summary": {
+    "all_correctness_checks_passed": false,
+    "all_fork_fallback_cases_explicit": true,
+    "all_required_cases_present": true,
+    "benchmark_ready": false,
+    "fallback_cases": [],
+    "max_abs_error": 0.0,
+    "max_relative_l2_error": 0.0,
+    "negative_cases": [
+      {
+        "baseline": "upstream_peft_unmerged",
+        "case": "seq128_batch1",
+        "correctness_passed": false,
+        "reason": "index out of range in self",
+        "status": "failed"
+      },
+      {
+        "baseline": "upstream_peft_merged_dense",
+        "case": "seq128_batch1",
+        "correctness_passed": false,
+        "reason": "index out of range in self",
+        "status": "failed"
+      },
+      {
+        "baseline": "beyond_matmul_peft_fork",
+        "case": "seq128_batch1",
+        "correctness_passed": false,
+        "reason": "index out of range in self",
+        "status": "failed"
+      },
+      {
+        "baseline": "upstream_peft_unmerged",
+        "case": "seq128_batch4",
+        "correctness_passed": false,
+        "reason": "index out of range in self",
+        "status": "failed"
+      },
+      {
+        "baseline": "upstream_peft_merged_dense",
+        "case": "seq128_batch4",
+        "correctness_passed": false,
+        "reason": "index out of range in self",
+        "status": "failed"
+      },
+      {
+        "baseline": "beyond_matmul_peft_fork",
+        "case": "seq128_batch4",
+        "correctness_passed": false,
+        "reason": "index out of range in self",
+        "status": "failed"
+      }
+    ],
+    "performance_claim": "none",
+    "readiness_blockers": [
+      "correctness_checks_failed"
+    ]
+  },
+  "workload": {
+    "adapter": "peft-internal-testing/tiny-OPTForCausalLM-lora",
+    "adapter_revision": "14e64b8ba522284138bfc22e76002ab6c0ce31e2",
+    "base_model": "hf-internal-testing/tiny-random-OPTForCausalLM",
+    "base_model_revision": "0abea37ca0a786ba455967e799b7b3d67f86541f",
+    "batch_sizes": [
+      1,
+      4
+    ],
+    "device": "cpu",
+    "dtype": "float32",
+    "input_seed": 20260707,
+    "measured_repetitions": 50,
+    "sequence_lengths": [
+      16,
+      64,
+      128
+    ],
+    "task": "causal_lm_prefill_logits",
+    "warmup_repetitions": 10
+  }
+}

@@ -299,6 +299,48 @@ class PeftTransformersLoraInferenceTests(unittest.TestCase):
             "beyond-matmul/provenance-lora-inference",
         )
 
+    def test_artifact_can_record_regeneration_command(self):
+        benchmark = _load_benchmark_module()
+
+        artifact = benchmark.collect_results(
+            sequence_lengths=[4],
+            batch_sizes=[1],
+            warmup_repetitions=1,
+            measured_repetitions=1,
+            mode="synthetic-smoke",
+            command=[
+                "python",
+                "benchmarks/peft_transformers_lora_inference.py",
+                "--json-output",
+                "docs/results/peft_transformers_lora_inference.json",
+            ],
+            generated_at_utc="2026-07-07T18:30:00Z",
+            time_forward=lambda _baseline, _inputs, _warmup, _repetitions: [0.01],
+        )
+
+        self.assertEqual(
+            artifact["run"]["command"],
+            [
+                "python",
+                "benchmarks/peft_transformers_lora_inference.py",
+                "--json-output",
+                "docs/results/peft_transformers_lora_inference.json",
+            ],
+        )
+        self.assertEqual(
+            artifact["run"]["command_text"],
+            "python benchmarks/peft_transformers_lora_inference.py --json-output "
+            "docs/results/peft_transformers_lora_inference.json",
+        )
+        self.assertEqual(artifact["run"]["generated_at_utc"], "2026-07-07T18:30:00Z")
+        self.assertEqual(artifact["run"]["mode"], "synthetic-smoke")
+
+    def test_real_revision_label_resolves_huggingface_sha(self):
+        benchmark = _load_benchmark_module()
+
+        with mock.patch.object(benchmark, "_huggingface_revision", return_value="abc123"):
+            self.assertEqual(benchmark._revision_label("model-or-adapter", "real"), "abc123")
+
     def test_real_worker_prefers_src_layout_checkout_over_installed_peft(self):
         benchmark = _load_benchmark_module()
 
