@@ -246,6 +246,48 @@ class PeftTransformersLoraInferenceTests(unittest.TestCase):
         self.assertIsNone(payload["reason"])
         self.assertIsNotNone(payload["logits"])
 
+    def test_worker_payload_copies_fork_provenance_events_into_row(self):
+        benchmark = _load_benchmark_module()
+
+        event = {
+            "schema_version": 1,
+            "kind": "beyond_matmul_lora_provenance",
+            "path": "dense_fallback",
+            "module_path": "model.layers.0.self_attn.q_proj",
+            "adapter": "default",
+            "base_module": "Linear",
+            "rank": 8,
+            "in_features": 32,
+            "out_features": 32,
+            "input_shape": [1, 16, 32],
+            "a_shape": [8, 32],
+            "b_shape": [32, 8],
+            "scaling": 1.0,
+            "dtype": "torch.float32",
+            "device": "cpu",
+            "dense_fallback_available": True,
+            "dense_fallback_used": True,
+            "fallback_reason": "lora_bias",
+        }
+        payload = {
+            "baseline": "beyond_matmul_peft_fork",
+            "sequence_length": 16,
+            "batch_size": 1,
+            "status": "ok",
+            "reason": None,
+            "latencies": [0.01],
+            "logits": [[[0.0, 1.0]]],
+            "peft_provenance_events": [event],
+        }
+
+        row = benchmark._worker_payload_to_row(payload, reference_logits=payload["logits"])
+
+        self.assertEqual(row["peft_provenance_events"], [event])
+        self.assertEqual(row["lowering"]["kind"], "peft_dense_fallback")
+        self.assertTrue(row["lowering"]["dense_fallback_available"])
+        self.assertTrue(row["lowering"]["dense_fallback_used"])
+        self.assertEqual(row["lowering"]["fallback_reasons"], ["lora_bias"])
+
 
 if __name__ == "__main__":
     unittest.main()
