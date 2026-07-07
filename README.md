@@ -75,6 +75,8 @@ uv run python examples/torch_fx_frontend_demo.py
   and CI artifact names
 - `docs/peft_capstone_benchmark_contract.md`: contract for the first PEFT plus
   Transformers capstone benchmark target and JSON artifact
+- `docs/peft_fork_setup.md`: setup, sync, branch, and issue-mapping rules for
+  the PEFT fork integration branch
 - `docs/evidence_matrix.md`: whitepaper claim-to-evidence map and current
   unsupported-claim boundaries
 - `docs/completion_audit.md`: final first-artifact audit of claims, evidence,
