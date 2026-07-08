@@ -78,6 +78,9 @@ uv run python examples/torch_fx_frontend_demo.py
   dense-vs-direct benchmark contract and measured artifact harness
 - `docs/peft_capstone_benchmark_contract.md`: contract for the first PEFT plus
   Transformers capstone benchmark target and JSON artifact
+- `docs/peft_multi_adapter_serving_benchmark_contract.md`: contract for the
+  planned PEFT multi-adapter serving benchmark comparing factor provenance with
+  dense merged serving strategies
 - `docs/peft_fork_setup.md`: setup, sync, branch, and issue-mapping rules for
   the PEFT fork integration branch
 - `docs/peft_low_rank_provenance_design.md`: first PEFT low-rank provenance
