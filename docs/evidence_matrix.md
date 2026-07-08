@@ -22,6 +22,10 @@ reviewers to the source of truth, not duplicate every test assertion.
 
 - Hardware-calibrated speedups: explicitly out of scope until real backend
   measurements exist.
+- Live Whisper Conv1d speed or memory evidence: the contract in
+  `docs/live_conv1d_benchmark_contract.md` names the model layer, input trace,
+  dense fallback, metrics, and artifact schema, but it is not evidence until the
+  follow-up harness emits `docs/results/live_conv1d_whisper.json`.
 - Universal Torch operation coverage: narrowed by `docs/torch_frontend_coverage.md`
   to supported, next, and unsupported rows.
 - Broad approximation quality: narrowed to the deterministic ablation in

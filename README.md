@@ -73,6 +73,8 @@ uv run python examples/torch_fx_frontend_demo.py
 - `docs/research_outline.md`: paper-shaped outline and evaluation plan
 - `docs/benchmark_artifacts.md`: benchmark JSON schemas, regeneration commands,
   and CI artifact names
+- `docs/live_conv1d_benchmark_contract.md`: contract for the live Whisper
+  Conv1d layer-level dense-vs-direct benchmark target
 - `docs/peft_capstone_benchmark_contract.md`: contract for the first PEFT plus
   Transformers capstone benchmark target and JSON artifact
 - `docs/peft_fork_setup.md`: setup, sync, branch, and issue-mapping rules for
