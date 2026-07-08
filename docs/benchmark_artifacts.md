@@ -27,7 +27,7 @@ Regenerate the measured artifact with:
 mise exec -- uv run --with transformers --with librosa --with soundfile --with safetensors --with huggingface_hub python benchmarks/live_conv1d_whisper.py --json-output docs/results/live_conv1d_whisper.json
 ```
 
-The committed run records mode `real`, generated time `2026-07-08T09:29:29Z`,
+The committed run records mode `real`, generated time `2026-07-08T10:12:00Z`,
 macOS `26.5.1` on arm64 CPU, Python `3.14.6`, PyTorch `2.12.1`,
 Transformers `5.13.0`, and Hugging Face Hub `1.22.0`.
 
