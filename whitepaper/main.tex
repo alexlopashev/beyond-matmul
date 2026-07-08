@@ -466,10 +466,14 @@ artifacts bound the planner and error-contract claims. Future workload
 families, including quantized convolutional modules, full attention or
 score-dependent mask-aware cases, and broader CNN-style blocks, remain
 limitations until their frontend, IR, tests, and artifacts land.
-A live layer-level Conv1d benchmark contract now names an
-\texttt{openai/whisper-tiny} encoder convolution and exact dense Toeplitz
-fallback, but it remains a contract rather than whitepaper performance
-evidence until the harness and generated artifact land.
+A live layer-level Conv1d benchmark now measures the
+\texttt{openai/whisper-tiny} encoder \texttt{model.encoder.conv1} layer
+against an exact dense Toeplitz fallback for 8-, 16-, and 32-frame prefixes of
+the contract audio trace. The generated artifact passes the CPU fp32
+correctness tolerance and records dense materialized sizes and construction
+time. It is negative performance evidence for this local CPU run: direct
+Conv1d is faster than dense application, and the artifact keeps
+\texttt{summary.performance\_claim} at \texttt{none}.
 
 The approximation and planner-contract artifacts bound the negative claims. In
 the approximation ablation, low-rank and sparse top-k candidates pass the
