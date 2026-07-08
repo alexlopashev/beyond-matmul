@@ -1073,16 +1073,15 @@ def _real_worker(args: argparse.Namespace) -> None:
         from peft import PeftModel
         from transformers import AutoModelForCausalLM
 
+        if args._worker_baseline == "upstream_peft_merged_dense_cache":
+            payload = _run_dense_cache_worker(args, AutoModelForCausalLM, PeftModel, adapter)
+            _write_json(args._worker_json_output, payload)
+            return
+
         base_model = AutoModelForCausalLM.from_pretrained(BASE_MODEL, revision=BASE_MODEL_REVISION)
         model = _load_worker_model(PeftModel, base_model, adapter, args._worker_baseline)
         model.eval()
         inputs = _worker_inputs(args._worker_sequence_length, args._worker_batch_size, model.config.vocab_size)
-
-        if args._worker_baseline == "upstream_peft_merged_dense_cache":
-            model = _merge_dense_or_not_applicable(args, model, adapter)
-            if isinstance(model, dict):
-                _write_json(args._worker_json_output, model)
-                return
         if args._worker_baseline == "upstream_peft_repeated_merge_unmerge":
             payload = _run_repeated_merge_worker(args, model, inputs, adapter)
             _write_json(args._worker_json_output, payload)
@@ -1128,6 +1127,54 @@ def _real_worker(args: argparse.Namespace) -> None:
 
 
 def _load_worker_model(peft_model_class: Any, base_model: Any, adapter: AdapterSpec, baseline: str) -> Any:
+    model = _load_primary_worker_adapter(peft_model_class, base_model, adapter, baseline)
+    for other_adapter in ADAPTERS:
+        if other_adapter.name == adapter.name:
+            continue
+        _load_additional_worker_adapter(model, other_adapter, baseline)
+    if hasattr(model, "set_adapter"):
+        model.set_adapter(adapter.name)
+    return model
+
+
+def _load_primary_worker_adapter(peft_model_class: Any, base_model: Any, adapter: AdapterSpec, baseline: str) -> Any:
+    config = _worker_lora_config(adapter, baseline)
+    kwargs = {"adapter_name": adapter.name, "revision": adapter.revision}
+    if config is not None:
+        kwargs["config"] = config
+    try:
+        return peft_model_class.from_pretrained(base_model, adapter.repository, **kwargs)
+    except TypeError:
+        if "config" in kwargs:
+            kwargs.pop("config")
+            try:
+                return peft_model_class.from_pretrained(base_model, adapter.repository, **kwargs)
+            except TypeError:
+                pass
+        return peft_model_class.from_pretrained(base_model, adapter.repository, revision=adapter.revision)
+
+
+def _load_additional_worker_adapter(model: Any, adapter: AdapterSpec, baseline: str) -> None:
+    if not hasattr(model, "load_adapter"):
+        raise RuntimeError("PEFT model does not expose load_adapter for multi-adapter serving")
+    config = _worker_lora_config(adapter, baseline)
+    kwargs = {"adapter_name": adapter.name, "revision": adapter.revision}
+    if config is not None:
+        kwargs["config"] = config
+    try:
+        model.load_adapter(adapter.repository, **kwargs)
+    except TypeError:
+        if "config" in kwargs:
+            kwargs.pop("config")
+            try:
+                model.load_adapter(adapter.repository, **kwargs)
+                return
+            except TypeError:
+                pass
+        model.load_adapter(adapter.repository, adapter_name=adapter.name, revision=adapter.revision)
+
+
+def _worker_lora_config(adapter: AdapterSpec, baseline: str) -> Any:
     if baseline == "beyond_matmul_factor_provenance":
         try:
             from peft import LoraConfig
@@ -1135,24 +1182,72 @@ def _load_worker_model(peft_model_class: Any, base_model: Any, adapter: AdapterS
             peft_config = LoraConfig.from_pretrained(adapter.repository, revision=adapter.revision)
             if hasattr(peft_config, "runtime_config"):
                 peft_config.runtime_config.beyond_matmul_provenance = True
-            return peft_model_class.from_pretrained(
-                base_model,
-                adapter.repository,
-                adapter_name=adapter.name,
-                revision=adapter.revision,
-                config=peft_config,
-            )
-        except TypeError:
-            return peft_model_class.from_pretrained(base_model, adapter.repository, revision=adapter.revision)
+            return peft_config
+        except Exception:
+            return None
+    return None
+
+
+def _run_dense_cache_worker(
+    args: argparse.Namespace,
+    model_class: Any,
+    peft_model_class: Any,
+    adapter: AdapterSpec,
+) -> Dict[str, Any]:
     try:
-        return peft_model_class.from_pretrained(
-            base_model,
-            adapter.repository,
-            adapter_name=adapter.name,
-            revision=adapter.revision,
+        dense_cache = {}
+        for cached_adapter in ADAPTERS:
+            base_model = model_class.from_pretrained(BASE_MODEL, revision=BASE_MODEL_REVISION)
+            model = _load_primary_worker_adapter(
+                peft_model_class,
+                base_model,
+                cached_adapter,
+                args._worker_baseline,
+            )
+            merged = _merge_dense_or_not_applicable(args, model, cached_adapter)
+            if isinstance(merged, dict):
+                merged["adapter"] = adapter.name
+                return merged
+            dense_cache[cached_adapter.name] = merged
+        model = dense_cache[adapter.name]
+        model.eval()
+        inputs = _worker_inputs(args._worker_sequence_length, args._worker_batch_size, model.config.vocab_size)
+        switch_latencies = _measure_worker_switch(args, dense_cache, adapter, args._worker_baseline)
+        latencies = _time_forward(
+            args._worker_baseline,
+            adapter.name,
+            {"model": lambda input_ids, attention_mask: model(input_ids=input_ids, attention_mask=attention_mask).logits, **inputs},
+            args._worker_warmup,
+            args._worker_repetitions,
         )
-    except TypeError:
-        return peft_model_class.from_pretrained(base_model, adapter.repository, revision=adapter.revision)
+        torch = _torch()
+        with torch.inference_mode():
+            logits = model(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"]).logits
+        return {
+            "baseline": args._worker_baseline,
+            "adapter": adapter.name,
+            "sequence_length": args._worker_sequence_length,
+            "batch_size": args._worker_batch_size,
+            "status": "ok",
+            "reason": None,
+            "latencies": latencies,
+            "switch_latencies": switch_latencies,
+            "logits": logits.detach().cpu().tolist(),
+            "storage": _worker_storage(model, adapter, args._worker_baseline),
+        }
+    except Exception as exc:  # pragma: no cover - external PEFT behavior.
+        return {
+            "baseline": args._worker_baseline,
+            "adapter": adapter.name,
+            "sequence_length": args._worker_sequence_length,
+            "batch_size": args._worker_batch_size,
+            "status": "failed",
+            "reason": str(exc),
+            "latencies": None,
+            "switch_latencies": None,
+            "logits": None,
+            "storage": _worker_storage(None, adapter, args._worker_baseline),
+        }
 
 
 def _merge_dense_or_not_applicable(args: argparse.Namespace, model: Any, adapter: AdapterSpec) -> Any:
@@ -1176,29 +1271,37 @@ def _merge_dense_or_not_applicable(args: argparse.Namespace, model: Any, adapter
 
 
 def _run_repeated_merge_worker(args: argparse.Namespace, model: Any, inputs: Dict[str, Any], adapter: AdapterSpec) -> Dict[str, Any]:
-    if not hasattr(model, "merge_adapter") or not hasattr(model, "unmerge_adapter"):
+    if not hasattr(model, "merge_adapter") or not hasattr(model, "unmerge_adapter") or not hasattr(model, "set_adapter"):
         return {
             "baseline": args._worker_baseline,
             "adapter": adapter.name,
             "sequence_length": args._worker_sequence_length,
             "batch_size": args._worker_batch_size,
             "status": "not_applicable",
-            "reason": "installed PEFT model does not expose merge_adapter/unmerge_adapter",
+            "reason": "installed PEFT model does not expose set_adapter/merge_adapter/unmerge_adapter",
             "latencies": None,
             "switch_latencies": None,
             "logits": None,
             "storage": _worker_storage(model, adapter, args._worker_baseline),
         }
+    other_adapter = _other_adapter(adapter)
     try:
         for _ in range(args._worker_warmup):
+            model.set_adapter(other_adapter.name)
+            model.unmerge_adapter()
+            model.set_adapter(adapter.name)
             model.merge_adapter()
             model.unmerge_adapter()
         switch_latencies = []
         for _ in range(args._worker_repetitions):
+            model.set_adapter(other_adapter.name)
+            model.unmerge_adapter()
             start = time.perf_counter()
+            model.set_adapter(adapter.name)
             model.merge_adapter()
             model.unmerge_adapter()
             switch_latencies.append(time.perf_counter() - start)
+        model.set_adapter(adapter.name)
         latencies = _time_forward(
             args._worker_baseline,
             adapter.name,
@@ -1238,17 +1341,39 @@ def _run_repeated_merge_worker(args: argparse.Namespace, model: Any, inputs: Dic
 
 def _measure_worker_switch(args: argparse.Namespace, model: Any, adapter: AdapterSpec, baseline: str) -> List[float]:
     if baseline == "upstream_peft_merged_dense_cache":
+        if isinstance(model, dict) and adapter.name in model:
+            other_adapter = _other_adapter(adapter)
+            for _ in range(args._worker_warmup):
+                _ = model[other_adapter.name]
+                _ = model[adapter.name]
+            latencies = []
+            for _ in range(args._worker_repetitions):
+                _ = model[other_adapter.name]
+                start = time.perf_counter()
+                _ = model[adapter.name]
+                latencies.append(time.perf_counter() - start)
+            return latencies
         return _time_switch(baseline, adapter.name, args._worker_warmup, args._worker_repetitions)
     if hasattr(model, "set_adapter"):
+        other_adapter = _other_adapter(adapter)
         for _ in range(args._worker_warmup):
+            model.set_adapter(other_adapter.name)
             model.set_adapter(adapter.name)
         latencies = []
         for _ in range(args._worker_repetitions):
+            model.set_adapter(other_adapter.name)
             start = time.perf_counter()
             model.set_adapter(adapter.name)
             latencies.append(time.perf_counter() - start)
         return latencies
     return _time_switch(baseline, adapter.name, args._worker_warmup, args._worker_repetitions)
+
+
+def _other_adapter(adapter: AdapterSpec) -> AdapterSpec:
+    for other_adapter in ADAPTERS:
+        if other_adapter.name != adapter.name:
+            return other_adapter
+    raise ValueError("multi-adapter switching requires at least two adapters")
 
 
 def _worker_inputs(sequence_length: int, batch_size: int, vocab_size: int) -> Dict[str, Any]:

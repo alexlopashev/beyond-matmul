@@ -18,6 +18,94 @@ def _load_benchmark_module():
 
 
 class PeftMultiAdapterServingTests(unittest.TestCase):
+    def test_worker_model_preloads_both_serving_adapters(self):
+        benchmark = _load_benchmark_module()
+
+        class FakePeftModel:
+            def __init__(self):
+                self.loaded_adapters = []
+
+            @classmethod
+            def from_pretrained(cls, _base_model, repository, *, adapter_name, revision):
+                model = cls()
+                model.loaded_adapters.append((adapter_name, repository, revision))
+                return model
+
+            def load_adapter(self, repository, *, adapter_name, revision):
+                self.loaded_adapters.append((adapter_name, repository, revision))
+
+            def set_adapter(self, _adapter_name):
+                pass
+
+        model = benchmark._load_worker_model(
+            FakePeftModel,
+            object(),
+            benchmark.ADAPTERS[0],
+            "upstream_peft_unmerged",
+        )
+
+        self.assertEqual(
+            model.loaded_adapters,
+            [
+                (adapter.name, adapter.repository, adapter.revision)
+                for adapter in benchmark.ADAPTERS
+            ],
+        )
+
+    def test_worker_switch_measurement_transitions_from_other_adapter(self):
+        benchmark = _load_benchmark_module()
+
+        class FakeModel:
+            def __init__(self):
+                self.set_adapter_calls = []
+
+            def set_adapter(self, adapter_name):
+                self.set_adapter_calls.append(adapter_name)
+
+        args = mock.Mock(_worker_warmup=1, _worker_repetitions=2)
+        model = FakeModel()
+        latencies = benchmark._measure_worker_switch(
+            args,
+            model,
+            benchmark.ADAPTERS[0],
+            "upstream_peft_unmerged",
+        )
+
+        self.assertEqual(
+            model.set_adapter_calls,
+            ["gaisb", "merchant", "gaisb", "merchant", "gaisb", "merchant"],
+        )
+        self.assertEqual(len(latencies), 2)
+        self.assertTrue(all(latency >= 0.0 for latency in latencies))
+
+    def test_dense_cache_switch_measurement_uses_both_cached_adapters(self):
+        benchmark = _load_benchmark_module()
+
+        class RecordingCache(dict):
+            def __init__(self):
+                super().__init__({"merchant": object(), "gaisb": object()})
+                self.accesses = []
+
+            def __getitem__(self, key):
+                self.accesses.append(key)
+                return super().__getitem__(key)
+
+        args = mock.Mock(_worker_warmup=1, _worker_repetitions=2)
+        cache = RecordingCache()
+        latencies = benchmark._measure_worker_switch(
+            args,
+            cache,
+            benchmark.ADAPTERS[0],
+            "upstream_peft_merged_dense_cache",
+        )
+
+        self.assertEqual(
+            cache.accesses,
+            ["gaisb", "merchant", "gaisb", "merchant", "gaisb", "merchant"],
+        )
+        self.assertEqual(len(latencies), 2)
+        self.assertTrue(all(latency >= 0.0 for latency in latencies))
+
     def test_smoke_artifact_matches_contract_shape(self):
         benchmark = _load_benchmark_module()
 
