@@ -66,6 +66,9 @@ jobs:
       - name: Run PEFT Transformers LoRA smoke artifact
         run: mise exec -- uv run python benchmarks/peft_transformers_lora_inference.py --smoke --json-output docs/results/peft_transformers_lora_inference_smoke.json
 
+      - name: Run PEFT multi-adapter serving smoke artifact
+        run: mise exec -- uv run python benchmarks/peft_multi_adapter_serving.py --smoke --json-output docs/results/peft_multi_adapter_serving_smoke.json
+
       - name: Upload fixed-weight benchmark JSON
         uses: actions/upload-artifact@v4
         with:
@@ -95,3 +98,9 @@ jobs:
         with:
           name: peft-transformers-lora-inference-smoke-json
           path: docs/results/peft_transformers_lora_inference_smoke.json
+
+      - name: Upload PEFT multi-adapter serving smoke JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: peft-multi-adapter-serving-smoke-json
+          path: docs/results/peft_multi_adapter_serving_smoke.json
