@@ -94,6 +94,12 @@ Future workload case studies still outside the current artifact:
   broadcast mask contracts, score masking, softmax, KV-cache layout, and
   dynamic sequence behavior are outside the current fixed-weight linear IR
   boundary.
+- A live Conv1d layer-level benchmark for `openai/whisper-tiny` is specified in
+  `docs/live_conv1d_benchmark_contract.md`: it compares
+  `model.encoder.conv1` against an exact dense materialized Toeplitz fallback
+  on deterministic prefixes of a public LibriSpeech audio trace. Until the
+  follow-up harness and JSON artifact land, this is a contract only, not
+  measured performance evidence.
 - A fuller language-model-like embedding plus projection workload artifact;
   the current frontend coverage already includes embedding followed by
   projection over one-hot token inputs.
