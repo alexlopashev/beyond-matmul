@@ -31,6 +31,10 @@ class LocalCiScriptTests(unittest.TestCase):
             "mise exec -- uv run python benchmarks/peft_transformers_lora_inference.py "
             "--smoke --json-output docs/results/peft_transformers_lora_inference_smoke.json"
         )
+        peft_multi_adapter_smoke_json = (
+            "mise exec -- uv run python benchmarks/peft_multi_adapter_serving.py "
+            "--smoke --json-output docs/results/peft_multi_adapter_serving_smoke.json"
+        )
         case_study_json = (
             "mise exec -- uv run python examples/case_study_artifacts.py "
             "--json-output docs/results/workload_case_studies.json"
@@ -46,6 +50,8 @@ class LocalCiScriptTests(unittest.TestCase):
         planner_contract_artifact_path = "path: docs/results/planner_contract_ablation.json"
         peft_smoke_artifact_name = "name: peft-transformers-lora-inference-smoke-json"
         peft_smoke_artifact_path = "path: docs/results/peft_transformers_lora_inference_smoke.json"
+        peft_multi_adapter_smoke_artifact_name = "name: peft-multi-adapter-serving-smoke-json"
+        peft_multi_adapter_smoke_artifact_path = "path: docs/results/peft_multi_adapter_serving_smoke.json"
 
         self.assertLess(workflow.index(coverage_check), workflow.index(coverage_demo))
         self.assertLess(workflow.index(coverage_demo), workflow.index(case_study_json))
@@ -53,7 +59,8 @@ class LocalCiScriptTests(unittest.TestCase):
         self.assertLess(workflow.index(benchmark_json), workflow.index(ablation_json))
         self.assertLess(workflow.index(ablation_json), workflow.index(planner_contract_json))
         self.assertLess(workflow.index(planner_contract_json), workflow.index(peft_smoke_json))
-        self.assertLess(workflow.index(peft_smoke_json), workflow.index(upload_action))
+        self.assertLess(workflow.index(peft_smoke_json), workflow.index(peft_multi_adapter_smoke_json))
+        self.assertLess(workflow.index(peft_multi_adapter_smoke_json), workflow.index(upload_action))
         self.assertIn(case_study_artifact_name, workflow)
         self.assertIn(case_study_artifact_path, workflow)
         self.assertIn(artifact_name, workflow)
@@ -64,6 +71,8 @@ class LocalCiScriptTests(unittest.TestCase):
         self.assertIn(planner_contract_artifact_path, workflow)
         self.assertIn(peft_smoke_artifact_name, workflow)
         self.assertIn(peft_smoke_artifact_path, workflow)
+        self.assertIn(peft_multi_adapter_smoke_artifact_name, workflow)
+        self.assertIn(peft_multi_adapter_smoke_artifact_path, workflow)
 
     def test_ci_local_generates_fixed_weight_json_artifact(self):
         repo_root = Path(__file__).resolve().parents[1]
@@ -96,6 +105,11 @@ class LocalCiScriptTests(unittest.TestCase):
         self.assertIn(
             '"$MISE_BIN" exec -- uv run python benchmarks/peft_transformers_lora_inference.py '
             "--smoke --json-output docs/results/peft_transformers_lora_inference_smoke.json",
+            ci_local,
+        )
+        self.assertIn(
+            '"$MISE_BIN" exec -- uv run python benchmarks/peft_multi_adapter_serving.py '
+            "--smoke --json-output docs/results/peft_multi_adapter_serving_smoke.json",
             ci_local,
         )
 
@@ -167,6 +181,11 @@ class LocalCiScriptTests(unittest.TestCase):
             self.assertIn(
                 "exec -- uv run python benchmarks/peft_transformers_lora_inference.py "
                 "--smoke --json-output docs/results/peft_transformers_lora_inference_smoke.json",
+                mise_calls,
+            )
+            self.assertIn(
+                "exec -- uv run python benchmarks/peft_multi_adapter_serving.py "
+                "--smoke --json-output docs/results/peft_multi_adapter_serving_smoke.json",
                 mise_calls,
             )
 

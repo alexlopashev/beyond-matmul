@@ -79,8 +79,8 @@ uv run python examples/torch_fx_frontend_demo.py
 - `docs/peft_capstone_benchmark_contract.md`: contract for the first PEFT plus
   Transformers capstone benchmark target and JSON artifact
 - `docs/peft_multi_adapter_serving_benchmark_contract.md`: contract for the
-  planned PEFT multi-adapter serving benchmark comparing factor provenance with
-  dense merged serving strategies
+  measured PEFT multi-adapter serving benchmark comparing factor provenance
+  with dense merged serving strategies
 - `docs/peft_fork_setup.md`: setup, sync, branch, and issue-mapping rules for
   the PEFT fork integration branch
 - `docs/peft_low_rank_provenance_design.md`: first PEFT low-rank provenance
@@ -121,6 +121,23 @@ stack and produced `docs/results/peft_transformers_lora_inference.json`.
 The #82 retrospective closed the capstone without creating an upstreaming,
 TorchBench-integration, or broader PEFT expansion issue because the artifact
 supports claim narrowing rather than a performance-readiness claim.
+
+## PEFT Multi-Adapter Serving Status
+
+The follow-up PEFT serving benchmark for issue #98 is implemented as
+`benchmarks/peft_multi_adapter_serving.py`, with a CI smoke artifact and a real
+measured artifact at `docs/results/peft_multi_adapter_serving.json`.
+
+- workload: `facebook/opt-125m` with `merchant` and `gaisb` LoRA adapters
+- baselines: upstream unmerged, dense merged cache, repeated merge/unmerge, and
+  Beyond Matmul factor provenance
+- supported result: all required rows are present; upstream unmerged and Beyond
+  Matmul rows pass correctness, and Beyond Matmul rows record explicit dense
+  fallback metadata
+- unsupported result: dense-cache and repeated merge/unmerge rows fail
+  correctness, `summary.benchmark_ready=false`,
+  `summary.performance_claim=none`, and
+  `summary.memory_or_control_claim=none`
 
 Current completion status: no unresolved priority-zero or priority-one blocker
 is known against the artifact thesis; `docs/completion_audit.md` records the

@@ -56,6 +56,16 @@ available. It is negative evidence for performance: the seq128 rows fail across
 all baselines, \texttt{summary.benchmark\_ready} is false, and
 \texttt{summary.performance\_claim} is \texttt{none}.
 
+The follow-up PEFT multi-adapter serving artifact from issue \#98 records a
+row-complete OPT-125M two-adapter serving matrix. It is useful evidence for
+artifact discipline and fallback visibility: all required adapter, shape, and
+baseline rows are present, upstream unmerged rows and Beyond Matmul rows pass
+correctness, and Beyond Matmul rows report explicit dense fallback metadata.
+It is also negative evidence for benchmark readiness: dense-cache and repeated
+merge/unmerge rows fail correctness, the Beyond Matmul rows fall back because
+of \texttt{non\_fp32\_dtype}, and both performance and memory/control claims
+remain \texttt{none}.
+
 \section{Problem}
 
 Dense matrix multiplication is an excellent implementation target and a robust
@@ -472,6 +482,33 @@ dense fallback. Both seq128 shapes fail across all baselines with
 faster than upstream PEFT, peak memory is not measurable on the CPU run, and
 adapter switching is \texttt{not\_measured\_single\_adapter}.
 
+\subsection{PEFT Multi-Adapter Serving Evaluation}
+
+The follow-up PEFT serving artifact is regenerated with \texttt{mise exec --
+uv run --with transformers --with accelerate --with safetensors --with
+huggingface\_hub python benchmarks/peft\_multi\_adapter\_serving.py
+--json-output docs/results/peft\_multi\_adapter\_serving.json}. The committed
+artifact from issue \#98 records mode \texttt{real}, the contract-defined
+\texttt{facebook/opt-125m} base model at revision
+\texttt{27dcfa74d334bc871f3234de431e71c6eeba5dd6}, the
+\texttt{merchant} and \texttt{gaisb} LoRA adapters, CPU fp32 prefill workload,
+upstream PEFT revision \texttt{7d4fb44318385bd782f49fa30b7fd1ed6e4cc1c2},
+PEFT fork revision \texttt{7ac8d57b100846837c5a3b76c65e1e1954ccc3c8}, and
+the required 10 warmup and 50 measured repetitions.
+
+The artifact includes all 48 required rows. Upstream unmerged PEFT and the
+Beyond Matmul factor-provenance baseline pass correctness for both adapters,
+all sequence lengths, and both batch sizes. The Beyond Matmul rows record
+explicit dense fallback with \texttt{non\_fp32\_dtype} as the reason, so this
+run supports fallback visibility and row-complete serving metadata rather than
+structured low-rank kernel execution. The upstream dense-cache and repeated
+merge/unmerge baselines remain present but fail correctness against the
+upstream unmerged reference on every required row. The artifact therefore
+records \texttt{summary.benchmark\_ready: false},
+\texttt{readiness\_blockers: ["correctness\_checks\_failed"]},
+\texttt{summary.performance\_claim: "none"}, and
+\texttt{summary.memory\_or\_control\_claim: "none"}.
+
 The fixed-mask row is intentionally narrower than full masked attention. It
 applies a fixed causal-band binary mask as a sparse linear map and selects
 \texttt{fixed\_mask\_sparse}, while dense materialization remains the fallback.
@@ -745,6 +782,15 @@ seq64 rows. The unsupported claim is that this is benchmark-ready performance
 evidence: seq128 failures keep the artifact below the contract's readiness
 bar, and the artifact intentionally records no latency, memory, adapter
 switching, training, or universal Transformer speedup conclusion.
+
+The PEFT multi-adapter serving follow-up narrows the claim further. It shows
+that the project can produce a contract-shaped, row-complete external serving
+artifact with adapter-switch measurements, storage metadata, correctness
+summaries, and explicit dense fallback reporting for two pinned adapters. It
+does not show a memory or control win: dense-cache and repeated merge/unmerge
+rows fail correctness, Beyond Matmul rows use dense fallback rather than
+structured low-rank execution, and the artifact keeps performance and
+memory/control claims at \texttt{none}.
 
 \section{Conclusion}
 

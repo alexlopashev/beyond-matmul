@@ -141,6 +141,32 @@ Closed PEFT capstone:
 - The #82 retrospective closed the capstone as a bounded proof and created no
   PEFT upstreaming or broader expansion issue.
 
+Closed PEFT multi-adapter serving follow-up:
+
+- The multi-adapter serving contract is
+  `docs/peft_multi_adapter_serving_benchmark_contract.md`: CPU fp32
+  prefill-only causal LM inference for `facebook/opt-125m` at
+  `27dcfa74d334bc871f3234de431e71c6eeba5dd6`, adapters `merchant` and
+  `gaisb`, sequence lengths `16`, `64`, and `128`, batch sizes `1` and `2`,
+  and four serving baselines.
+- The harness is `benchmarks/peft_multi_adapter_serving.py`; CI exercises the
+  torch-only smoke artifact at
+  `docs/results/peft_multi_adapter_serving_smoke.json`.
+- The measured artifact is
+  `docs/results/peft_multi_adapter_serving.json`. It includes all 48 required
+  rows with the contract timing protocol. Upstream unmerged and Beyond Matmul
+  provenance rows pass correctness for both adapters and all shapes.
+- The result is negative for benchmark readiness: dense-cache and repeated
+  merge/unmerge rows fail correctness, the Beyond Matmul rows report explicit
+  dense fallback with `non_fp32_dtype`, `summary.benchmark_ready=false`,
+  `summary.performance_claim=none`, and
+  `summary.memory_or_control_claim=none`.
+- The artifact supports only the narrower claim that the external PEFT path can
+  produce row-complete multi-adapter serving metadata, switching measurements,
+  and explicit fallback reporting. It does not support memory savings,
+  adapter-switching gains, structured low-rank kernel execution, training,
+  generation loops, GPU kernels, or universal Transformer speedups.
+
 Metrics:
 
 - wall-clock latency
