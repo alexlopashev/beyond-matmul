@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import numbers
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -167,6 +168,20 @@ class LiveConv1dWhisperTests(unittest.TestCase):
             loaded = json.loads(output_path.read_text(encoding="utf-8"))
 
         self.assertEqual(artifact, loaded)
+
+    def test_committed_real_artifact_revision_contains_harness(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        artifact_path = repo_root / "docs" / "results" / "live_conv1d_whisper.json"
+        artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(artifact["mode"], "real")
+        revision = artifact["dependencies"]["beyond_matmul"]["revision"]
+        self.assertIsInstance(revision, str)
+        self.assertEqual(len(revision), 40)
+        subprocess.run(
+            ["git", "-C", str(repo_root), "cat-file", "-e", f"{revision}:benchmarks/live_conv1d_whisper.py"],
+            check=True,
+        )
 
 
 if __name__ == "__main__":

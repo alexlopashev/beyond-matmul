@@ -4,7 +4,7 @@
   "dependencies": {
     "beyond_matmul": {
       "repository": "alexlopashev/beyond-matmul",
-      "revision": "93662fe6567525b719966d5de9b298097f777bb4"
+      "revision": "b7858530b8b639f4004dd273971d9af55982f9db"
     },
     "huggingface_hub": {
       "version": "1.22.0"
@@ -53,13 +53,13 @@
         8
       ],
       "latency_seconds": {
-        "mean": 3.7569138e-05,
-        "median": 3.1104486e-05,
-        "p50": 3.1104486e-05,
-        "p90": 3.7924992e-05,
-        "p95": 4.7192065e-05,
-        "p99": 0.000170764667,
-        "stdev": 3.4768246e-05
+        "mean": 3.2070819e-05,
+        "median": 3.1145522e-05,
+        "p50": 3.1145522e-05,
+        "p90": 3.4266722e-05,
+        "p95": 4.4933084e-05,
+        "p99": 4.6628773e-05,
+        "stdev": 4.513959e-06
       },
       "materialization_seconds": null,
       "materialization_status": "not_applicable_direct_conv1d",
@@ -101,15 +101,15 @@
         8
       ],
       "latency_seconds": {
-        "mean": 3.9968397e-05,
-        "median": 3.6249985e-05,
-        "p50": 3.6249985e-05,
-        "p90": 3.7716364e-05,
-        "p95": 4.1926588e-05,
-        "p99": 0.000159209307,
-        "stdev": 2.8441564e-05
+        "mean": 3.4396658e-05,
+        "median": 3.6020472e-05,
+        "p50": 3.6020472e-05,
+        "p90": 3.633803e-05,
+        "p95": 3.6531407e-05,
+        "p99": 3.7897525e-05,
+        "stdev": 2.219951e-06
       },
-      "materialization_seconds": 1.618288124911,
+      "materialization_seconds": 1.586121,
       "materialization_status": "ok",
       "output_shape": [
         1,
@@ -149,13 +149,13 @@
         16
       ],
       "latency_seconds": {
-        "mean": 2.842667e-05,
-        "median": 2.833351e-05,
-        "p50": 2.833351e-05,
-        "p90": 3.1046197e-05,
-        "p95": 3.7302176e-05,
-        "p99": 4.1585165e-05,
-        "stdev": 3.847347e-06
+        "mean": 4.2635733e-05,
+        "median": 3.0895928e-05,
+        "p50": 3.0895928e-05,
+        "p90": 4.2954262e-05,
+        "p95": 4.4375221e-05,
+        "p99": 0.00026568602,
+        "stdev": 4.8711294e-05
       },
       "materialization_seconds": null,
       "materialization_status": "not_applicable_direct_conv1d",
@@ -197,15 +197,15 @@
         16
       ],
       "latency_seconds": {
-        "mean": 0.000302991704,
-        "median": 0.000295229431,
-        "p50": 0.000295229431,
-        "p90": 0.000304746209,
-        "p95": 0.00030776455,
-        "p99": 0.000474650685,
-        "stdev": 4.4212526e-05
+        "mean": 0.000315562433,
+        "median": 0.000299687497,
+        "p50": 0.000299687497,
+        "p90": 0.000309186871,
+        "p95": 0.000326529355,
+        "p99": 0.000658665291,
+        "stdev": 7.0357942e-05
       },
-      "materialization_seconds": 3.360934707918,
+      "materialization_seconds": 3.366180834011,
       "materialization_status": "ok",
       "output_shape": [
         1,
@@ -245,13 +245,13 @@
         32
       ],
       "latency_seconds": {
-        "mean": 3.3684976e-05,
-        "median": 3.3187505e-05,
-        "p50": 3.3187505e-05,
-        "p90": 3.5108544e-05,
-        "p95": 3.5818748e-05,
-        "p99": 4.4245272e-05,
-        "stdev": 2.528792e-06
+        "mean": 3.4014119e-05,
+        "median": 3.3687451e-05,
+        "p50": 3.3687451e-05,
+        "p90": 3.5579223e-05,
+        "p95": 3.6379113e-05,
+        "p99": 4.3079889e-05,
+        "stdev": 2.200994e-06
       },
       "materialization_seconds": null,
       "materialization_status": "not_applicable_direct_conv1d",
@@ -293,15 +293,15 @@
         32
       ],
       "latency_seconds": {
-        "mean": 0.001265956634,
-        "median": 0.001223271014,
-        "p50": 0.001223271014,
-        "p90": 0.001417649759,
-        "p95": 0.001448826754,
-        "p99": 0.001532045265,
-        "stdev": 9.4438175e-05
+        "mean": 0.001250128234,
+        "median": 0.001199291553,
+        "p50": 0.001199291553,
+        "p90": 0.001398170833,
+        "p95": 0.001467868726,
+        "p99": 0.001545302814,
+        "stdev": 0.000102031597
       },
-      "materialization_seconds": 6.852718667011,
+      "materialization_seconds": 6.755731457961,
       "materialization_status": "ok",
       "output_shape": [
         1,
@@ -320,7 +320,7 @@
       "docs/results/live_conv1d_whisper.json"
     ],
     "command_text": "benchmarks/live_conv1d_whisper.py --json-output docs/results/live_conv1d_whisper.json",
-    "generated_at_utc": "2026-07-08T09:29:29Z",
+    "generated_at_utc": "2026-07-08T10:12:00Z",
     "mode": "real"
   },
   "schema_version": 1,
@@ -335,7 +335,7 @@
   },
   "workload": {
     "input": {
-      "audio_path": "/Users/sasha/Documents/beyond-matmul-95-live-conv1d-benchmark/.cache/live_conv1d_whisper/sample1.flac",
+      "audio_path": "/Users/sasha/Documents/beyond-matmul-95-live-conv1d-benchmark-retry-101/.cache/live_conv1d_whisper/sample1.flac",
       "device": "cpu",
       "dtype": "float32",
       "full_feature_shape": [
