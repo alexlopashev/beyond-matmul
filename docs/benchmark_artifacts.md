@@ -10,7 +10,7 @@
 | `docs/results/planner_contract_ablation.json` | `mise exec -- uv run python benchmarks/planner_contract_ablation.py --json-output docs/results/planner_contract_ablation.json` | Deterministic exactness, bounded-error, reuse, backend-support, and dense fallback planner checks. | Contract coverage only; costs are planner estimates, not runtime measurements. |
 | `docs/results/peft_transformers_lora_inference_smoke.json` | `mise exec -- uv run python benchmarks/peft_transformers_lora_inference.py --smoke --json-output docs/results/peft_transformers_lora_inference_smoke.json` | Contract-shaped PEFT plus Transformers LoRA upstream-vs-fork benchmark smoke artifact. | CI smoke uses a tiny torch-only synthetic path for schema, timing, and correctness checks; real PEFT plus Transformers runs require explicit checkouts and optional dependencies on suitable hardware. |
 | `docs/results/peft_transformers_lora_inference.json` | `mise exec -- uv run --with transformers --with accelerate --with safetensors --with huggingface_hub python benchmarks/peft_transformers_lora_inference.py --json-output docs/results/peft_transformers_lora_inference.json` | Real PEFT plus Transformers LoRA upstream-vs-fork capstone matrix for the contract-defined model, adapter, shapes, and baselines. | Measured local CPU run, not CI smoke. The committed run is a negative/blocked benchmark result: seq16 and seq64 rows pass correctness, seq128 rows fail with `index out of range in self`, `summary.benchmark_ready` is false, and `summary.performance_claim` is `none`. |
-| `docs/results/live_conv1d_whisper.json` | `mise exec -- uv run --with transformers --with librosa --with soundfile --with safetensors --with huggingface_hub python benchmarks/live_conv1d_whisper.py --json-output docs/results/live_conv1d_whisper.json` | Real Whisper encoder Conv1d dense-vs-direct layer benchmark for the contract-defined model revision, audio trace, prefixes, and exact dense Toeplitz fallback. | Measured local CPU run, not CI smoke. Correctness passes for all required rows, but the dense materialized fallback is slower on this run and `summary.performance_claim` is `none`. |
+| `docs/results/live_conv1d_whisper.json` | `mise exec -- uv run --with transformers --with librosa --with soundfile --with safetensors --with huggingface_hub python benchmarks/live_conv1d_whisper.py --json-output docs/results/live_conv1d_whisper.json` | Real Whisper encoder Conv1d dense-vs-direct layer benchmark for the contract-defined model revision, audio trace, prefixes, and exact dense Toeplitz fallback. | Measured local CPU layer run, not CI smoke or end-to-end ASR. Correctness passes for all required rows; dense matrix byte counts expose materialized fallback footprint, not measured peak memory. The dense materialized fallback is slower on this run and `summary.performance_claim` is `none`. |
 
 ## Live Conv1d Whisper Dense-vs-Direct Benchmark
 
@@ -35,13 +35,20 @@ The artifact includes all required rows. Correctness passes for every dense
 fallback row with maximum absolute error `6.198883e-06` and maximum relative
 L2 error `3.84896e-07`, within the CPU fp32 contract tolerances. The dense
 materialized matrices have 1,966,080, 7,864,320, and 31,457,280 float32 entries
-for the 8-, 16-, and 32-frame prefixes respectively, so the artifact records
-the storage growth separately from semantic equivalence.
+for the 8-, 16-, and 32-frame prefixes respectively, or 7,864,320,
+31,457,280, and 125,829,120 float32 bytes. These bytes are the explicit dense
+matrix footprint that a Toeplitz fallback must materialize for the layer, not
+measured process peak memory; each row keeps `peak_memory_status` at
+`not_measured`.
 
 No performance win is claimed. In this measured CPU run, direct Conv1d median
 latency is faster than dense application for every required prefix, and dense
 matrix construction takes measurable one-time time per shape. The artifact
-therefore keeps `summary.performance_claim` set to `none`.
+therefore keeps `summary.performance_claim` set to `none`. This supports only
+the layer-level claim that preserved Conv1d provenance exposes the direct
+channel-aware path while retaining exact dense fallback evidence; it does not
+support decoder generation, word-error-rate, streaming ASR, GPU, Conv2d,
+quantized convolution, or broader CNN-block performance claims.
 
 ## Fixed-Weight Benchmark
 

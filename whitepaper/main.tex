@@ -412,6 +412,37 @@ direct channel-aware lowerings and exact dense fallbacks for the implemented
 1D cases. They do not establish Conv2d support, non-scalar Conv1d parameter
 coverage, quantized convolution contracts, or measured runtime behavior.
 
+\subsection{Live Conv1d Layer Benchmark}
+
+The live Conv1d benchmark is regenerated with \texttt{mise exec -- uv run
+--with transformers --with librosa --with soundfile --with safetensors --with
+huggingface\_hub python benchmarks/live\_conv1d\_whisper.py --json-output
+docs/results/live\_conv1d\_whisper.json}. It measures the
+\texttt{openai/whisper-tiny} encoder \texttt{model.encoder.conv1} layer
+against an exact dense Toeplitz fallback for 8-, 16-, and 32-frame prefixes of
+the contract LibriSpeech audio trace. The contract and artifact are
+\texttt{docs/live\_conv1d\_benchmark\_contract.md} and
+\texttt{docs/results/live\_conv1d\_whisper.json}.
+
+The committed artifact is live layer-level evidence, not an end-to-end ASR
+benchmark. Direct Conv1d and the dense materialized fallback pass the CPU fp32
+correctness tolerance for every required prefix, with maximum absolute error
+\(6.198883 \times 10^{-6}\) and maximum relative L2 error
+\(3.84896 \times 10^{-7}\). The artifact also records the storage required by
+the exact dense fallback: 7,864,320, 31,457,280, and 125,829,120 float32 bytes
+for the 8-, 16-, and 32-frame prefixes, plus materialization times of about
+1.59, 3.37, and 6.76 seconds. Those byte counts are materialized dense-matrix
+footprints, not measured peak-memory readings.
+
+No performance win is claimed. In this measured local CPU run, direct Conv1d
+median apply latency is lower than dense application for every required
+prefix, and \texttt{summary.performance\_claim} remains \texttt{none}. The
+supported claim is therefore that retaining Conv1d provenance keeps the direct
+channel-aware layer path visible while preserving an exact dense fallback and
+making dense materialization cost explicit. It does not establish decoder
+generation speed, word-error-rate effects, streaming ASR behavior, GPU
+kernels, Conv2d, quantized convolution, or broader CNN-block performance.
+
 \subsection{PEFT Capstone Evaluation}
 
 The external PEFT plus Transformers artifact is regenerated with \texttt{mise
@@ -466,14 +497,6 @@ artifacts bound the planner and error-contract claims. Future workload
 families, including quantized convolutional modules, full attention or
 score-dependent mask-aware cases, and broader CNN-style blocks, remain
 limitations until their frontend, IR, tests, and artifacts land.
-A live layer-level Conv1d benchmark now measures the
-\texttt{openai/whisper-tiny} encoder \texttt{model.encoder.conv1} layer
-against an exact dense Toeplitz fallback for 8-, 16-, and 32-frame prefixes of
-the contract audio trace. The generated artifact passes the CPU fp32
-correctness tolerance and records dense materialized sizes and construction
-time. It is negative performance evidence for this local CPU run: direct
-Conv1d is faster than dense application, and the artifact keeps
-\texttt{summary.performance\_claim} at \texttt{none}.
 
 The approximation and planner-contract artifacts bound the negative claims. In
 the approximation ablation, low-rank and sparse top-k candidates pass the
