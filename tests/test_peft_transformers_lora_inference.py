@@ -19,6 +19,11 @@ def _load_benchmark_module():
 
 
 class PeftTransformersLoraInferenceTests(unittest.TestCase):
+    def test_default_sequence_lengths_follow_capstone_contract(self):
+        benchmark = _load_benchmark_module()
+
+        self.assertEqual(benchmark.DEFAULT_SEQUENCE_LENGTHS, [16, 64, 100])
+
     def test_smoke_artifact_matches_contract_shape(self):
         benchmark = _load_benchmark_module()
 

@@ -17,8 +17,10 @@ LoRA adapter:
   logits
 - execution mode: `model.eval()` with `torch.inference_mode()`
 - primary dtype and device: `torch.float32` on CPU
-- required shape grid: sequence lengths `16`, `64`, and `128`; batch sizes `1`
+- required shape grid: sequence lengths `16`, `64`, and `100`; batch sizes `1`
   and `4`
+- sequence bound: `100` is the largest required length because the selected
+  tiny base model is configured for 100 positional embeddings
 - input generation: deterministic synthetic token IDs, generated with seed
   `20260707`, values in `[0, model.config.vocab_size)`, and attention masks of
   ones
@@ -102,7 +104,7 @@ The benchmark artifact is a single JSON object:
     "task": "causal_lm_prefill_logits",
     "dtype": "float32",
     "device": "cpu",
-    "sequence_lengths": [16, 64, 128],
+    "sequence_lengths": [16, 64, 100],
     "batch_sizes": [1, 4],
     "input_seed": 20260707,
     "warmup_repetitions": 10,
