@@ -106,6 +106,114 @@ class PeftMultiAdapterServingTests(unittest.TestCase):
         self.assertEqual(len(latencies), 2)
         self.assertTrue(all(latency >= 0.0 for latency in latencies))
 
+    def test_dense_cache_merges_the_named_adapter(self):
+        benchmark = _load_benchmark_module()
+
+        class FakeConfig:
+            vocab_size = 16
+
+        class FakeLogits:
+            def detach(self):
+                return self
+
+            def cpu(self):
+                return self
+
+            def tolist(self):
+                return [[[0.0]]]
+
+        class FakeOutput:
+            logits = FakeLogits()
+
+        class FakeDenseModel:
+            config = FakeConfig()
+
+            def __call__(self, *, input_ids, attention_mask):
+                del input_ids, attention_mask
+                return FakeOutput()
+
+            def eval(self):
+                pass
+
+        class FakePeftModel:
+            merged_adapters = []
+
+            def __init__(self, adapter_name):
+                self.adapter_name = adapter_name
+                self.active_adapter = None
+
+            @classmethod
+            def from_pretrained(cls, _base_model, _repository, *, adapter_name, revision):
+                del revision
+                return cls(adapter_name)
+
+            def set_adapter(self, adapter_name):
+                self.active_adapter = adapter_name
+
+            def merge_and_unload(self):
+                self.merged_adapters.append((self.adapter_name, self.active_adapter))
+                return FakeDenseModel()
+
+        class FakeBaseModel:
+            @classmethod
+            def from_pretrained(cls, _base_model, *, revision, dtype):
+                del revision, dtype
+                return cls()
+
+        args = mock.Mock(
+            _worker_baseline="upstream_peft_merged_dense_cache",
+            _worker_sequence_length=4,
+            _worker_batch_size=1,
+            _worker_warmup=0,
+            _worker_repetitions=1,
+        )
+
+        with (
+            mock.patch.object(benchmark, "_worker_inputs", return_value={"input_ids": object(), "attention_mask": object()}),
+            mock.patch.object(benchmark, "_measure_worker_switch", return_value=[0.0]),
+            mock.patch.object(benchmark, "_time_forward", return_value=[0.01]),
+            mock.patch.object(benchmark, "_worker_storage", return_value={}),
+            mock.patch.object(benchmark, "_torch"),
+        ):
+            result = benchmark._run_dense_cache_worker(
+                args,
+                FakeBaseModel,
+                FakePeftModel,
+                benchmark.ADAPTERS[0],
+            )
+
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(
+            FakePeftModel.merged_adapters,
+            [(adapter.name, adapter.name) for adapter in benchmark.ADAPTERS],
+        )
+
+    def test_base_worker_model_load_forces_contract_fp32_dtype(self):
+        benchmark = _load_benchmark_module()
+
+        class FakeTorch:
+            float32 = object()
+
+        class FakeBaseModel:
+            load_kwargs = None
+
+            @classmethod
+            def from_pretrained(cls, _base_model, **kwargs):
+                cls.load_kwargs = kwargs
+                return cls()
+
+        with mock.patch.object(benchmark, "_torch", return_value=FakeTorch):
+            model = benchmark._load_base_worker_model(FakeBaseModel)
+
+        self.assertIsInstance(model, FakeBaseModel)
+        self.assertEqual(
+            FakeBaseModel.load_kwargs,
+            {
+                "revision": benchmark.BASE_MODEL_REVISION,
+                "dtype": FakeTorch.float32,
+            },
+        )
+
     def test_smoke_artifact_matches_contract_shape(self):
         benchmark = _load_benchmark_module()
 

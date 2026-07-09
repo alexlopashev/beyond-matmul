@@ -11,7 +11,7 @@
 | `docs/results/peft_transformers_lora_inference_smoke.json` | `mise exec -- uv run python benchmarks/peft_transformers_lora_inference.py --smoke --json-output docs/results/peft_transformers_lora_inference_smoke.json` | Contract-shaped PEFT plus Transformers LoRA upstream-vs-fork benchmark smoke artifact. | CI smoke uses a tiny torch-only synthetic path for schema, timing, and correctness checks; real PEFT plus Transformers runs require explicit checkouts and optional dependencies on suitable hardware. |
 | `docs/results/peft_transformers_lora_inference.json` | `mise exec -- uv run --with transformers --with accelerate --with safetensors --with huggingface_hub python benchmarks/peft_transformers_lora_inference.py --json-output docs/results/peft_transformers_lora_inference.json` | Real PEFT plus Transformers LoRA upstream-vs-fork capstone matrix for the contract-defined model, adapter, shapes, and baselines. | Measured local CPU run, not CI smoke. The refreshed committed run uses valid seq16, seq64, and seq100 rows; all required correctness checks pass and `summary.benchmark_ready` is true, but `summary.performance_claim` remains `none`. |
 | `docs/results/peft_multi_adapter_serving_smoke.json` | `mise exec -- uv run python benchmarks/peft_multi_adapter_serving.py --smoke --json-output docs/results/peft_multi_adapter_serving_smoke.json` | Contract-shaped PEFT multi-adapter serving smoke artifact for schema, switching metadata, fallback metadata, and correctness summaries. | CI smoke uses a tiny torch-only synthetic path; it is not external PEFT performance evidence and keeps `summary.benchmark_ready=false`. |
-| `docs/results/peft_multi_adapter_serving.json` | `mise exec -- uv run --with transformers --with accelerate --with safetensors --with huggingface_hub python benchmarks/peft_multi_adapter_serving.py --json-output docs/results/peft_multi_adapter_serving.json` | Real PEFT multi-adapter serving matrix for the contract-defined OPT-125M base model, two LoRA adapters, switching baselines, dense merged cache, and provenance-preserving factor path. | Measured local CPU run, not CI smoke. The committed run is a negative benchmark result: all required rows are present, unmerged and provenance rows pass correctness, dense-cache and repeated merge/unmerge rows fail correctness, `summary.benchmark_ready` is false, and no latency, memory, or control win is claimed. |
+| `docs/results/peft_multi_adapter_serving.json` | `mise exec -- uv run --with transformers --with accelerate --with safetensors --with huggingface_hub python benchmarks/peft_multi_adapter_serving.py --json-output docs/results/peft_multi_adapter_serving.json` | Real PEFT multi-adapter serving matrix for the contract-defined OPT-125M base model, two LoRA adapters, switching baselines, dense merged cache, and provenance-preserving factor path. | Measured local CPU run, not CI smoke. The committed run is benchmark-ready correctness evidence: all required rows are present, all baselines pass correctness, Beyond Matmul rows expose structured factor provenance, and no latency, memory, or control win is claimed. |
 | `docs/results/live_conv1d_whisper.json` | `mise exec -- uv run --with transformers --with librosa --with soundfile --with safetensors --with huggingface_hub python benchmarks/live_conv1d_whisper.py --json-output docs/results/live_conv1d_whisper.json` | Real Whisper encoder Conv1d dense-vs-direct layer benchmark for the contract-defined model revision, audio trace, prefixes, and exact dense Toeplitz fallback. | Measured local CPU layer run, not CI smoke or end-to-end ASR. Correctness passes for all required rows; dense matrix byte counts expose materialized fallback footprint, not measured peak memory. The dense materialized fallback is slower on this run and `summary.performance_claim` is `none`. |
 
 ## Live Conv1d Whisper Dense-vs-Direct Benchmark
@@ -267,24 +267,25 @@ mise exec -- uv run --with transformers --with accelerate --with safetensors --w
 ```
 
 The committed run records mode `real`, generated time
-`2026-07-08T12:31:44Z`, macOS `26.5.1` on arm64 CPU, Python `3.14.6`, PyTorch
-`2.12.1`, Transformers `5.13.0`, Hugging Face Hub `1.22.0`, upstream PEFT
-revision `7d4fb44318385bd782f49fa30b7fd1ed6e4cc1c2`, fork PEFT revision
+`2026-07-09T15:20:19Z`, macOS `26.5.1` on arm64 CPU, Python `3.14.6`, PyTorch
+`2.12.1`, Transformers `5.13.0`, Hugging Face Hub `1.23.0`, upstream PEFT
+revision `1598ecb8fc504bfcb08b9b232b295414a729d7ed`, fork PEFT revision
 `7ac8d57b100846837c5a3b76c65e1e1954ccc3c8`, and the required 10 warmup and
 50 measured repetitions.
 
 The artifact includes all 48 required adapter, shape, and baseline rows. The
-`upstream_peft_unmerged` and `beyond_matmul_factor_provenance` rows pass
-correctness for both adapters and all shapes. The `beyond_matmul` rows record
-explicit dense fallback with `non_fp32_dtype` as the fallback reason, so this
-run supports fallback/control visibility rather than a structured-kernel
-execution claim.
+`upstream_peft_unmerged`, `upstream_peft_merged_dense_cache`,
+`upstream_peft_repeated_merge_unmerge`, and
+`beyond_matmul_factor_provenance` rows pass correctness for both adapters and
+all shapes. The `beyond_matmul` rows expose structured low-rank provenance
+events without dense fallback, so the artifact is benchmark-ready correctness
+evidence with `summary.benchmark_ready=true`, no negative cases, and no
+readiness blockers. The largest observed error is
+`summary.max_abs_error=0.0000553131103515625` and
+`summary.max_relative_l2_error=0.0000013214124852245438`.
 
-The dense-cache and repeated merge/unmerge baselines remain present but fail
-correctness against the upstream unmerged reference on every required row. The
-largest observed error is `summary.max_abs_error=0.078125` and
-`summary.max_relative_l2_error=0.0020370381762613234`, so
-`summary.benchmark_ready=false` with `correctness_checks_failed`. Latency and
-adapter-switch distributions are still recorded for failed-correctness rows,
-but the artifact keeps `summary.performance_claim` and
-`summary.memory_or_control_claim` set to `none`.
+This fixes the stale dense-merge failures investigated in
+`docs/peft_multi_adapter_dense_merge_investigation.md`. The result still keeps
+`summary.performance_claim` and `summary.memory_or_control_claim` set to
+`none`; passing correctness does not by itself establish a latency, memory, or
+adapter-switching win.
