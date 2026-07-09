@@ -81,6 +81,9 @@ uv run python examples/torch_fx_frontend_demo.py
 - `docs/peft_multi_adapter_serving_benchmark_contract.md`: contract for the
   measured PEFT multi-adapter serving benchmark comparing factor provenance
   with dense merged serving strategies
+- `docs/hardware_backed_production_benchmark_contract.md`: future-work
+  contract for interpreting hardware-backed PEFT production/performance
+  measurements
 - `docs/peft_fork_setup.md`: setup, sync, branch, and issue-mapping rules for
   the PEFT fork integration branch
 - `docs/peft_low_rank_provenance_design.md`: first PEFT low-rank provenance
@@ -134,12 +137,12 @@ measured artifact at `docs/results/peft_multi_adapter_serving.json`.
 - baselines: upstream unmerged, dense merged cache, repeated merge/unmerge, and
   Beyond Matmul factor provenance
 - supported result: all required rows are present; upstream unmerged and Beyond
-  Matmul rows pass correctness, and Beyond Matmul rows record explicit dense
-  fallback metadata
-- unsupported result: dense-cache and repeated merge/unmerge rows fail
-  correctness, `summary.benchmark_ready=false`,
-  `summary.performance_claim=none`, and
-  `summary.memory_or_control_claim=none`
+  Matmul rows pass correctness, dense-cache and repeated merge/unmerge rows
+  also pass after the dtype fix, and Beyond Matmul rows expose structured
+  factor provenance without dense fallback
+- unsupported result: `summary.performance_claim=none` and
+  `summary.memory_or_control_claim=none`; the artifact does not establish a
+  latency win, measured peak-memory reduction, or adapter-switching gain
 
 Current completion status: no unresolved priority-zero or priority-one blocker
 is known against the artifact thesis; `docs/completion_audit.md` records the

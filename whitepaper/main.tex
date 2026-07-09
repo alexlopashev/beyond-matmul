@@ -111,7 +111,9 @@ Out of scope for the first complete artifact:
 \begin{itemize}
   \item training-time weight mutation and gradient semantics;
   \item production GPU kernels;
-  \item claims of hardware-calibrated speedup without benchmark evidence;
+  \item claims of hardware-calibrated speedup without benchmark evidence that
+  satisfies the future contract in
+  \texttt{docs/hardware\_backed\_production\_benchmark\_contract.md};
   \item frontend capture of quantized Torch modules beyond the tested
   per-tensor affine fixed-weight linear contract;
   \item universal Torch operation support in a single pass.
@@ -685,7 +687,12 @@ These artifacts are useful for comparing planner choices and generating paper
 figures, but they are not hardware-calibrated speedup evidence and do not
 stand in for production kernels. Claims about GPU kernels, production runtime
 speedups, or backend-specific scheduling are deliberately out of scope until a
-future backend study adds measured runtime evidence.
+future backend study adds measured runtime evidence. The benchmark contract in
+\texttt{docs/hardware\_backed\_production\_benchmark\_contract.md} defines the
+future PEFT multi-adapter CUDA readiness bar for such evidence, including
+correctness-first interpretation, latency, memory, preprocessing,
+adapter-switching/control, and dense-fallback fields. That contract is not
+itself evidence for a hardware speedup or memory/control win.
 
 Recovery after provenance is lost is weaker than preserving provenance before
 dense lowering. The analyzer confidence values are probe-specific heuristic
@@ -788,6 +795,13 @@ It does not show a memory or control win: the refreshed artifact passes the
 correctness-readiness bar, but it claims no latency threshold win, measured
 peak-memory reduction, or adapter-switching gain, and keeps performance and
 memory/control claims at \texttt{none}.
+
+The next production/performance step is explicitly contractual rather than
+evidentiary. \texttt{docs/hardware\_backed\_production\_benchmark\_contract.md}
+selects the same OPT-125M two-adapter PEFT serving workload as the minimal
+future CUDA target and defines the schema and readiness gates that issues
+\#112 and \#113 must satisfy before any latency, memory, adapter-switching, or
+structured-execution result can support a stronger claim.
 
 \section{Conclusion}
 
