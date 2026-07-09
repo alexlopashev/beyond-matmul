@@ -243,10 +243,12 @@ mise exec -- uv run python benchmarks/peft_multi_adapter_serving.py --smoke --js
 ```
 
 The smoke artifact exercises the schema, adapter list, required baselines,
-switching metadata, storage metadata, correctness summaries, and fallback
-reporting without loading external PEFT or Transformers dependencies. It is a
-contract health check only; `summary.benchmark_ready` remains false for smoke
-artifacts.
+switching metadata, storage metadata, memory/control readiness fields,
+correctness summaries, and fallback reporting without loading external PEFT or
+Transformers dependencies. It is a contract health check only:
+`summary.benchmark_ready=false`, `summary.memory_control_claim_ready=false`,
+and row-level `peak_memory_status="not_measured_synthetic_smoke"` keep smoke
+memory fields unavailable.
 
 ## PEFT Multi-Adapter Serving Measured Run
 
@@ -267,7 +269,7 @@ mise exec -- uv run --with transformers --with accelerate --with safetensors --w
 ```
 
 The committed run records mode `real`, generated time
-`2026-07-09T15:20:19Z`, macOS `26.5.1` on arm64 CPU, Python `3.14.6`, PyTorch
+`2026-07-09T16:25:33Z`, macOS `26.5.1` on arm64 CPU, Python `3.14.6`, PyTorch
 `2.12.1`, Transformers `5.13.0`, Hugging Face Hub `1.23.0`, upstream PEFT
 revision `1598ecb8fc504bfcb08b9b232b295414a729d7ed`, fork PEFT revision
 `7ac8d57b100846837c5a3b76c65e1e1954ccc3c8`, and the required 10 warmup and
@@ -280,12 +282,20 @@ The artifact includes all 48 required adapter, shape, and baseline rows. The
 all shapes. The `beyond_matmul` rows expose structured low-rank provenance
 events without dense fallback, so the artifact is benchmark-ready correctness
 evidence with `summary.benchmark_ready=true`, no negative cases, and no
-readiness blockers. The largest observed error is
+readiness blockers. The real worker subprocesses also record process max RSS
+through `resource.getrusage(...).ru_maxrss` where supported, so
+`summary.all_peak_memory_cases_measured=true`,
+`summary.all_adapter_switch_cases_measured=true`, and
+`summary.memory_control_claim_ready=true` mean the memory/control fields are
+ready to interpret after correctness. These are measured CPU process high-water
+marks and adapter-switch timings, not CUDA allocator measurements or a memory
+win by themselves; row-level process max RSS ranges from `1270546432` to
+`1916780544` bytes in this run. The largest observed error is
 `summary.max_abs_error=0.0000553131103515625` and
 `summary.max_relative_l2_error=0.0000013214124852245438`.
 
 This fixes the stale dense-merge failures investigated in
 `docs/peft_multi_adapter_dense_merge_investigation.md`. The result still keeps
 `summary.performance_claim` and `summary.memory_or_control_claim` set to
-`none`; passing correctness does not by itself establish a latency, memory, or
-adapter-switching win.
+`none`; passing correctness and measuring process memory/control overhead do
+not by themselves establish a latency, memory, or adapter-switching win.

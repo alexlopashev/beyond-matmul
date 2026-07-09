@@ -140,9 +140,13 @@ measured artifact at `docs/results/peft_multi_adapter_serving.json`.
   Matmul rows pass correctness, dense-cache and repeated merge/unmerge rows
   also pass after the dtype fix, and Beyond Matmul rows expose structured
   factor provenance without dense fallback
+- measured instrumentation: real rows record adapter-switch timings and
+  platform-supported process max RSS; smoke rows and unsupported platforms keep
+  explicit unavailable memory statuses
 - unsupported result: `summary.performance_claim=none` and
   `summary.memory_or_control_claim=none`; the artifact does not establish a
-  latency win, measured peak-memory reduction, or adapter-switching gain
+  latency win, process-memory reduction, CUDA peak-memory reduction, or
+  adapter-switching gain
 
 Current completion status: no unresolved priority-zero or priority-one blocker
 is known against the artifact thesis; `docs/completion_audit.md` records the

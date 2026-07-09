@@ -2,9 +2,9 @@
 
 This contract defines the first hardware-backed production/performance target
 for Beyond Matmul. It is a benchmark design target, not benchmark evidence. It
-exists so follow-up implementation work can add memory instrumentation and
-structured PEFT serving paths without inventing claim rules after seeing a
-result.
+exists so follow-up implementation work can extend the current CPU process
+memory/control instrumentation to CUDA allocator measurements and structured
+PEFT serving paths without inventing claim rules after seeing a result.
 
 The target workload is the existing PEFT multi-adapter serving case promoted to
 a measured accelerator contract. The primary performance question is:
