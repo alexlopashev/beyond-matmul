@@ -113,10 +113,12 @@ stack and produced `docs/results/peft_transformers_lora_inference.json`.
 - contract: `docs/peft_capstone_benchmark_contract.md`
 - measurement style: compared upstream PEFT against the fork under pinned
   model, adapter, prompt, batch, dtype, device, warmup, and repetition settings
-- supported result: successful seq16 and seq64 fork rows expose structured
-  LoRA provenance with dense fallback and upstream-output parity
-- unsupported result: seq128 fails across all baselines,
-  `summary.benchmark_ready=false`, and `summary.performance_claim=none`
+- supported result: successful seq16, seq64, and seq100 fork rows expose
+  structured LoRA provenance with dense fallback and upstream-output parity;
+  `summary.benchmark_ready=true`
+- unsupported result: `summary.performance_claim=none`; the refreshed run does
+  not establish a latency win, CPU peak memory remains unmeasured, and adapter
+  switching is outside the single-adapter workload
 
 The #82 retrospective closed the capstone without creating an upstreaming,
 TorchBench-integration, or broader PEFT expansion issue because the artifact

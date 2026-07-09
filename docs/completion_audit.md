@@ -1,10 +1,11 @@
 # Completion Audit
 
-Date: 2026-07-08
+Date: 2026-07-09
 
 This note records the final first-artifact audit for the Beyond Matmul
 whitepaper after the July 8 live Conv1d and PEFT multi-adapter evidence
-refresh. It is a compact companion to `whitepaper/main.tex`,
+refresh plus the July 9 PEFT capstone seq100 correction. It is a compact
+companion to `whitepaper/main.tex`,
 `docs/evidence_matrix.md`, and `docs/benchmark_artifacts.md`, not a
 replacement for those sources of truth.
 
@@ -39,10 +40,15 @@ curation is paper-polish work that does not change the executable evidence.
 ## Open Blocker Audit
 
 Live GitHub issue state on 2026-07-08 showed no unresolved priority-zero or
-priority-one blocker against the current artifact thesis, aside from this
-documentation refresh while it is in flight. After the final-draft work merged,
-the first-artifact completion state became historical context rather than an
-active blocker:
+priority-one blocker against the first-artifact thesis. On 2026-07-09, #109
+corrected the PEFT capstone shape grid from invalid seq128 rows to valid
+seq100 rows and refreshed the measured artifact. The newly opened
+production/performance roadmap issues (#110 through #114) are follow-on work
+for stronger future claims; they do not invalidate the bounded first-artifact
+completion state.
+
+After the final-draft work merged, the first-artifact completion state became
+historical context rather than an active blocker:
 
 - #40 was the final-draft issue for the first public artifact.
 - #41 was the roadmap tracker for that first artifact and should be treated as
@@ -90,15 +96,15 @@ in `docs/peft_capstone_benchmark_contract.md` and summarized in
 `alexlopashev/peft`, and the measured integration branch was
 `beyond-matmul/provenance-lora-inference`.
 
-The result supports a narrow provenance claim: successful seq16 and seq64 fork
-rows expose structured LoRA provenance while keeping dense fallback available
-and matching upstream outputs. It is negative performance-readiness evidence:
-seq128 fails across all baselines, `summary.benchmark_ready` is false,
-`summary.performance_claim` is `none`, CPU peak memory is not measurable in the
-run, and adapter switching is not measured for the single-adapter workload. The
-#82 retrospective created no upstreaming or broader PEFT expansion issue
-because the measured result supports claim narrowing and closure, not larger
-PEFT implementation work.
+The refreshed result supports a narrow provenance claim: successful seq16,
+seq64, and seq100 fork rows expose structured LoRA provenance while keeping
+dense fallback available and matching upstream outputs. It is benchmark-ready
+correctness evidence, but still not performance evidence:
+`summary.benchmark_ready` is true, `summary.performance_claim` is `none`, CPU
+peak memory is not measurable in the run, and adapter switching is not measured
+for the single-adapter workload. The #82 retrospective created no upstreaming
+or broader PEFT expansion issue because the measured result supports claim
+narrowing and closure, not larger PEFT implementation work.
 
 The PEFT multi-adapter serving follow-up extends that boundary with a
 row-complete two-adapter artifact, not a stronger performance claim. The

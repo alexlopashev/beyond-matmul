@@ -52,9 +52,10 @@ TorchBench-style artifact from issue \#80 and PR \#90 records upstream PEFT,
 upstream merged dense, and Beyond Matmul PEFT-fork rows for a pinned
 fixed-LoRA causal-LM workload. It is useful evidence for provenance visibility:
 successful fork rows emit structured LoRA events while dense fallback remains
-available. It is negative evidence for performance: the seq128 rows fail across
-all baselines, \texttt{summary.benchmark\_ready} is false, and
-\texttt{summary.performance\_claim} is \texttt{none}.
+available. The refreshed issue \#109 artifact replaces the invalid seq128 rows
+with seq100, all required rows pass correctness, and
+\texttt{summary.benchmark\_ready} is true. It is still not performance
+evidence: \texttt{summary.performance\_claim} is \texttt{none}.
 
 The follow-up PEFT multi-adapter serving artifact from issue \#98 records a
 row-complete OPT-125M two-adapter serving matrix. It is useful evidence for
@@ -464,23 +465,23 @@ committed artifact from issue \#80 and PR \#90 records mode
 \texttt{hf-internal-testing/tiny-random-OPTForCausalLM} base model,
 \texttt{peft-internal-testing/tiny-OPTForCausalLM-lora} adapter, CPU fp32
 prefill workload, upstream PEFT revision
-\texttt{8d5f7842d9178e51292c2be551e1147ad6f0b5f8}, PEFT fork revision
+\texttt{1598ecb8fc504bfcb08b9b232b295414a729d7ed}, PEFT fork revision
 \texttt{7ac8d57b100846837c5a3b76c65e1e1954ccc3c8}, and Transformers
 \texttt{5.13.0}.
 
-The result is bounded. The artifact includes all required rows and correctness
-passes for seq16 and seq64 across upstream unmerged PEFT, upstream merged
-dense, and the Beyond Matmul PEFT fork. On successful fork rows, the fork emits
+The result is bounded. The refreshed artifact includes all required rows and
+correctness passes for seq16, seq64, and seq100 across upstream unmerged PEFT,
+upstream merged dense, and the Beyond Matmul PEFT fork. On successful fork
+rows, the fork emits
 \texttt{beyond\_matmul\_lora\_provenance} events with rank, factor shapes,
 adapter identity, and explicit dense-fallback availability; this supports the
 claim that the external stack can expose fixed LoRA provenance without removing
-dense fallback. Both seq128 shapes fail across all baselines with
-\texttt{index out of range in self}, so the artifact records
-\texttt{summary.benchmark\_ready: false},
-\texttt{readiness\_blockers: ["correctness\_checks\_failed"]}, and
+dense fallback. The artifact records
+\texttt{summary.benchmark\_ready: true}, no readiness blockers, and
 \texttt{summary.performance\_claim: "none"}. The fork is not claimed to be
-faster than upstream PEFT, peak memory is not measurable on the CPU run, and
-adapter switching is \texttt{not\_measured\_single\_adapter}.
+faster than upstream PEFT across the required grid, peak memory is not
+measurable on the CPU run, and adapter switching is
+\texttt{not\_measured\_single\_adapter}.
 
 \subsection{PEFT Multi-Adapter Serving Evaluation}
 
@@ -778,10 +779,10 @@ hypothesis, but it usefully narrows the research claim. The supported claim is
 that, for the measured fixed-LoRA inference workload, a PEFT fork can preserve
 structured low-rank adapter provenance and report dense fallback availability
 inside a real Transformers stack while matching upstream outputs on seq16 and
-seq64 rows. The unsupported claim is that this is benchmark-ready performance
-evidence: seq128 failures keep the artifact below the contract's readiness
-bar, and the artifact intentionally records no latency, memory, adapter
-switching, training, or universal Transformer speedup conclusion.
+seq64 and seq100 rows. The unsupported claim is that this is performance
+evidence: the refreshed artifact clears the capstone correctness-readiness
+bar, but it intentionally records no latency win, memory win, adapter-switching
+win, training claim, or universal Transformer speedup conclusion.
 
 The PEFT multi-adapter serving follow-up narrows the claim further. It shows
 that the project can produce a contract-shaped, row-complete external serving

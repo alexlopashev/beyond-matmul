@@ -122,17 +122,19 @@ Closed PEFT capstone:
   `docs/peft_capstone_benchmark_contract.md`: CPU fp32 prefill-only causal LM
   inference for `hf-internal-testing/tiny-random-OPTForCausalLM` with
   `peft-internal-testing/tiny-OPTForCausalLM-lora`, sequence lengths `16`,
-  `64`, and `128`, and batch sizes `1` and `4`.
+  `64`, and `100`, and batch sizes `1` and `4`. The seq100 upper row matches
+  the selected tiny model's positional limit.
 - The fork integration design is
   `docs/peft_low_rank_provenance_design.md`. It limits #78 to vanilla PEFT
   LoRA `Linear` inference metadata, dense fallback, and benchmark harness
   reporting before any custom kernel or broad adapter coverage.
 - The measured artifact is
   `docs/results/peft_transformers_lora_inference.json`. It supports the bounded
-  claim that successful seq16 and seq64 fork rows expose structured LoRA
-  provenance while preserving dense fallback and matching upstream outputs.
-- The result is negative for performance readiness: seq128 fails across all
-  baselines, `summary.benchmark_ready=false`,
+  claim that successful seq16, seq64, and seq100 fork rows expose structured
+  LoRA provenance while preserving dense fallback and matching upstream
+  outputs.
+- The result is benchmark-ready correctness evidence but still negative for
+  performance claims: `summary.benchmark_ready=true`,
   `summary.performance_claim=none`, CPU peak memory is not measurable, and
   adapter switching is not measured for the single-adapter workload.
 - Training, generation loops, KV-cache behavior, broad PEFT coverage, GPU
