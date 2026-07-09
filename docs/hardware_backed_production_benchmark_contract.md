@@ -365,6 +365,7 @@ generation throughput, KV-cache behavior, training, broad adapter coverage, or
 universal Transformer acceleration.
 
 The existing CPU PEFT artifacts remain correctness and provenance evidence.
-Follow-up issues may implement instrumentation or structured execution under
-this contract, but no whitepaper claim should move from future work to current
-evidence until a generated artifact satisfies the readiness gates above.
+Follow-up issues may extend the current CPU process instrumentation and CPU
+fp32 structured execution path to CUDA-backed production-kernel measurements,
+but no whitepaper claim should move from future work to current evidence until
+a generated artifact satisfies the readiness gates above.

@@ -279,6 +279,7 @@ The benchmark artifact is a single JSON object:
     "max_abs_error": 0.0,
     "max_relative_l2_error": 0.0,
     "fallback_cases": [],
+    "structured_low_rank_cases": [],
     "negative_cases": [],
     "memory_or_control_claim": "none",
     "performance_claim": "none"
@@ -302,6 +303,10 @@ The first implementation succeeds as a benchmark artifact if:
   preflighted within that limit;
 - all non-`not_applicable` rows pass the correctness tolerance;
 - dense fallback availability is explicit for every provenance-preserving row;
+- Beyond Matmul rows distinguish `lowering.execution_path="structured_low_rank"`
+  from `lowering.execution_path="dense_fallback"`, and
+  `summary.structured_low_rank_cases` lists only rows that pass correctness and
+  satisfy the CPU fp32 structured-event contract;
 - adapter-switch cost excludes model-loading, Hub-download, and process-startup
   overhead;
 - memory and storage fields distinguish adapter payloads from dense merged

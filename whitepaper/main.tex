@@ -62,8 +62,10 @@ row-complete OPT-125M two-adapter serving matrix. It is useful evidence for
 artifact discipline and structured provenance visibility: all required
 adapter, shape, and baseline rows are present; upstream unmerged, dense-cache,
 repeated merge/unmerge, and Beyond Matmul rows pass correctness; and Beyond
-Matmul rows expose structured factor provenance without dense fallback. The
-refreshed artifact is benchmark-ready correctness evidence, but both
+Matmul rows whose \texttt{lowering.execution\_path} is
+\texttt{structured\_low\_rank} expose structured factor execution without
+dense fallback. The refreshed artifact is benchmark-ready correctness
+evidence, but both
 performance and memory/control claims remain \texttt{none}.
 
 \section{Problem}
@@ -501,9 +503,12 @@ the required 10 warmup and 50 measured repetitions.
 The artifact includes all 48 required rows. Upstream unmerged PEFT, upstream
 dense-cache, upstream repeated merge/unmerge, and the Beyond Matmul
 factor-provenance baseline pass correctness for both adapters, all sequence
-lengths, and both batch sizes. The Beyond Matmul rows expose structured
-low-rank provenance without dense fallback, so this run supports row-complete
-serving metadata and structured provenance visibility. The artifact records
+lengths, and both batch sizes. The 12 Beyond Matmul rows listed in
+\texttt{summary.structured\_low\_rank\_cases} report
+\texttt{lowering.execution\_path: "structured\_low\_rank"} after passing the
+CPU fp32 structured-event contract and correctness parity; unsupported rows
+would remain explicit dense fallback cases. This run supports row-complete
+serving metadata and structured execution visibility. The artifact records
 \texttt{summary.benchmark\_ready: true}, no readiness blockers,
 \texttt{summary.memory\_control\_claim\_ready: true},
 \texttt{summary.performance\_claim: "none"}, and
@@ -795,9 +800,10 @@ win, training claim, or universal Transformer speedup conclusion.
 The PEFT multi-adapter serving follow-up narrows the claim further. It shows
 that the project can produce a contract-shaped, row-complete external serving
 artifact with adapter-switch measurements, storage metadata, correctness
-summaries, measured CPU process max-RSS fields, and structured
-factor-provenance reporting for two pinned adapters. It does not show a memory
-or control win: the refreshed artifact passes the correctness and
+summaries, measured CPU process max-RSS fields, and
+\texttt{structured\_low\_rank} execution-path rows for two pinned adapters. It
+does not show a memory or control win: the refreshed artifact passes the
+correctness and
 memory/control instrumentation-readiness bars, but it claims no latency
 threshold win, process-memory reduction, CUDA peak-memory reduction, or
 adapter-switching gain, and keeps performance and memory/control claims at
@@ -807,9 +813,10 @@ The next production/performance step is explicitly contractual rather than
 evidentiary. \texttt{docs/hardware\_backed\_production\_benchmark\_contract.md}
 selects the same OPT-125M two-adapter PEFT serving workload as the minimal
 future CUDA target. Issue \#112 adds CPU process memory/control
-instrumentation; the remaining CUDA allocator and structured-serving gates
-must still be satisfied before any latency, memory, adapter-switching, or
-structured-execution result can support a stronger claim.
+instrumentation, and issue \#113 adds CPU fp32 structured low-rank execution
+selection; CUDA allocator and production-kernel gates must still be satisfied
+before any latency, memory, adapter-switching, or hardware-backed structured
+execution result can support a stronger claim.
 
 \section{Conclusion}
 
