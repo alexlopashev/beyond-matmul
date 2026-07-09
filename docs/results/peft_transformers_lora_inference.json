@@ -4,7 +4,7 @@
   "dependencies": {
     "beyond_matmul": {
       "repository": "alexlopashev/beyond-matmul",
-      "revision": "703a8008a89c5e586149c9fad5b83b652f33bc6a"
+      "revision": "7aa1568c51815ce89850b8dd630b6d57b2290602"
     },
     "peft_fork": {
       "path": "/Users/sasha/Documents/beyond-matmul-109-peft-seq100/.peft_benchmark_checkouts/alexlopashev-peft-beyond-matmul-provenance-lora-inference",

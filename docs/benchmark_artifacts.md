@@ -217,7 +217,7 @@ The committed run records mode `real`, generated time
 `14e64b8ba522284138bfc22e76002ab6c0ce31e2`, upstream PEFT revision
 `1598ecb8fc504bfcb08b9b232b295414a729d7ed`, fork PEFT revision
 `7ac8d57b100846837c5a3b76c65e1e1954ccc3c8`, and Beyond Matmul revision
-`703a8008a89c5e586149c9fad5b83b652f33bc6a`.
+`7aa1568c51815ce89850b8dd630b6d57b2290602`.
 
 The artifact includes all required baseline and shape rows. Correctness passes
 for seq16, seq64, and seq100 rows across upstream unmerged, upstream merged

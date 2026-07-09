@@ -2,6 +2,7 @@ import importlib.util
 import json
 import numbers
 import os
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -23,6 +24,30 @@ class PeftTransformersLoraInferenceTests(unittest.TestCase):
         benchmark = _load_benchmark_module()
 
         self.assertEqual(benchmark.DEFAULT_SEQUENCE_LENGTHS, [16, 64, 100])
+
+    def test_committed_real_artifact_revision_contains_seq100_contract(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        artifact_path = repo_root / "docs" / "results" / "peft_transformers_lora_inference.json"
+        artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+        revision = artifact["dependencies"]["beyond_matmul"]["revision"]
+
+        self.assertIsInstance(revision, str)
+        self.assertEqual(len(revision), 40)
+
+        result = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repo_root),
+                "show",
+                f"{revision}:benchmarks/peft_transformers_lora_inference.py",
+            ],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        self.assertIn("DEFAULT_SEQUENCE_LENGTHS = [16, 64, 100]", result.stdout)
 
     def test_smoke_artifact_matches_contract_shape(self):
         benchmark = _load_benchmark_module()
