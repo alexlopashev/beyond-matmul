@@ -173,6 +173,22 @@ Closed PEFT multi-adapter serving follow-up:
   adapter-switching gains, training, generation loops, GPU kernels, or
   universal Transformer speedups.
 
+Future hardware-backed production/performance contract:
+
+- The contract is
+  `docs/hardware_backed_production_benchmark_contract.md`: a design target for
+  interpreting future CUDA-backed PEFT multi-adapter serving measurements.
+- It keeps the existing `facebook/opt-125m` two-adapter workload as the
+  minimal target and asks whether a structured low-rank serving path can reduce
+  already-loaded adapter switching cost or per-adapter resident memory without
+  correctness failures or material forward-latency regression.
+- The contract distinguishes forward latency, CUDA memory, preprocessing,
+  adapter-switching/control, and dense fallback readiness fields before any
+  performance claim can be interpreted.
+- This is future work only. It is not current hardware evidence and does not
+  move GPU speedups, memory savings, production kernels, or universal
+  Transformer acceleration into the supported claim set.
+
 Metrics:
 
 - wall-clock latency
