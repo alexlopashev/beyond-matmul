@@ -11,7 +11,7 @@
 | `docs/results/peft_transformers_lora_inference_smoke.json` | `mise exec -- uv run python benchmarks/peft_transformers_lora_inference.py --smoke --json-output docs/results/peft_transformers_lora_inference_smoke.json` | Contract-shaped PEFT plus Transformers LoRA upstream-vs-fork benchmark smoke artifact. | CI smoke uses a tiny torch-only synthetic path for schema, timing, and correctness checks; real PEFT plus Transformers runs require explicit checkouts and optional dependencies on suitable hardware. |
 | `docs/results/peft_transformers_lora_inference.json` | `mise exec -- uv run --with transformers --with accelerate --with safetensors --with huggingface_hub python benchmarks/peft_transformers_lora_inference.py --json-output docs/results/peft_transformers_lora_inference.json` | Real PEFT plus Transformers LoRA upstream-vs-fork capstone matrix for the contract-defined model, adapter, shapes, and baselines. | Measured local CPU run, not CI smoke. The refreshed committed run uses valid seq16, seq64, and seq100 rows; all required correctness checks pass and `summary.benchmark_ready` is true, but `summary.performance_claim` remains `none`. |
 | `docs/results/peft_multi_adapter_serving_smoke.json` | `mise exec -- uv run python benchmarks/peft_multi_adapter_serving.py --smoke --json-output docs/results/peft_multi_adapter_serving_smoke.json` | Contract-shaped PEFT multi-adapter serving smoke artifact for schema, switching metadata, fallback metadata, and correctness summaries. | CI smoke uses a tiny torch-only synthetic path; it is not external PEFT performance evidence and keeps `summary.benchmark_ready=false`. |
-| `docs/results/peft_multi_adapter_serving.json` | `mise exec -- uv run --with transformers --with accelerate --with safetensors --with huggingface_hub python benchmarks/peft_multi_adapter_serving.py --json-output docs/results/peft_multi_adapter_serving.json` | Real PEFT multi-adapter serving matrix for the contract-defined OPT-125M base model, two LoRA adapters, switching baselines, dense merged cache, and provenance-preserving factor path. | Measured local CPU run, not CI smoke. The committed run is benchmark-ready correctness evidence: all required rows are present, all baselines pass correctness, Beyond Matmul rows expose structured factor provenance, and no latency, memory, or control win is claimed. |
+| `docs/results/peft_multi_adapter_serving.json` | `mise exec -- uv run --with transformers --with accelerate --with safetensors --with huggingface_hub python benchmarks/peft_multi_adapter_serving.py --json-output docs/results/peft_multi_adapter_serving.json` | Real PEFT multi-adapter serving matrix for the contract-defined OPT-125M base model, two LoRA adapters, switching baselines, dense merged cache, and provenance-preserving factor path. | Measured local CPU run, not CI smoke. The committed run is benchmark-ready correctness evidence: all required rows are present, all baselines pass correctness, 12 Beyond Matmul rows report `execution_path=structured_low_rank`, and no latency, memory, or control win is claimed. |
 | `docs/results/live_conv1d_whisper.json` | `mise exec -- uv run --with transformers --with librosa --with soundfile --with safetensors --with huggingface_hub python benchmarks/live_conv1d_whisper.py --json-output docs/results/live_conv1d_whisper.json` | Real Whisper encoder Conv1d dense-vs-direct layer benchmark for the contract-defined model revision, audio trace, prefixes, and exact dense Toeplitz fallback. | Measured local CPU layer run, not CI smoke or end-to-end ASR. Correctness passes for all required rows; dense matrix byte counts expose materialized fallback footprint, not measured peak memory. The dense materialized fallback is slower on this run and `summary.performance_claim` is `none`. |
 
 ## Live Conv1d Whisper Dense-vs-Direct Benchmark
@@ -244,8 +244,9 @@ mise exec -- uv run python benchmarks/peft_multi_adapter_serving.py --smoke --js
 
 The smoke artifact exercises the schema, adapter list, required baselines,
 switching metadata, storage metadata, memory/control readiness fields,
-correctness summaries, and fallback reporting without loading external PEFT or
-Transformers dependencies. It is a contract health check only:
+correctness summaries, structured-low-rank execution-path reporting, and
+fallback reporting without loading external PEFT or Transformers dependencies.
+It is a contract health check only:
 `summary.benchmark_ready=false`, `summary.memory_control_claim_ready=false`,
 and row-level `peak_memory_status="not_measured_synthetic_smoke"` keep smoke
 memory fields unavailable.
@@ -269,7 +270,7 @@ mise exec -- uv run --with transformers --with accelerate --with safetensors --w
 ```
 
 The committed run records mode `real`, generated time
-`2026-07-09T16:25:33Z`, macOS `26.5.1` on arm64 CPU, Python `3.14.6`, PyTorch
+`2026-07-09T16:54:16Z`, macOS `26.5.1` on arm64 CPU, Python `3.14.6`, PyTorch
 `2.12.1`, Transformers `5.13.0`, Hugging Face Hub `1.23.0`, upstream PEFT
 revision `1598ecb8fc504bfcb08b9b232b295414a729d7ed`, fork PEFT revision
 `7ac8d57b100846837c5a3b76c65e1e1954ccc3c8`, and the required 10 warmup and
@@ -279,9 +280,13 @@ The artifact includes all 48 required adapter, shape, and baseline rows. The
 `upstream_peft_unmerged`, `upstream_peft_merged_dense_cache`,
 `upstream_peft_repeated_merge_unmerge`, and
 `beyond_matmul_factor_provenance` rows pass correctness for both adapters and
-all shapes. The `beyond_matmul` rows expose structured low-rank provenance
-events without dense fallback, so the artifact is benchmark-ready correctness
-evidence with `summary.benchmark_ready=true`, no negative cases, and no
+all shapes. The 12 `beyond_matmul_factor_provenance` rows report
+`lowering.execution_path="structured_low_rank"` and appear in
+`summary.structured_low_rank_cases`; rows that violate correctness or the CPU
+fp32 structured-event contract would instead report
+`lowering.execution_path="dense_fallback"` with explicit fallback reasons. The
+artifact is benchmark-ready correctness evidence with
+`summary.benchmark_ready=true`, no fallback cases, no negative cases, and no
 readiness blockers. The real worker subprocesses also record process max RSS
 through `resource.getrusage(...).ru_maxrss` where supported, so
 `summary.all_peak_memory_cases_measured=true`,
@@ -289,8 +294,8 @@ through `resource.getrusage(...).ru_maxrss` where supported, so
 `summary.memory_control_claim_ready=true` mean the memory/control fields are
 ready to interpret after correctness. These are measured CPU process high-water
 marks and adapter-switch timings, not CUDA allocator measurements or a memory
-win by themselves; row-level process max RSS ranges from `1270546432` to
-`1916780544` bytes in this run. The largest observed error is
+win by themselves; row-level process max RSS ranges from `1271021568` to
+`2113093632` bytes in this run. The largest observed error is
 `summary.max_abs_error=0.0000553131103515625` and
 `summary.max_relative_l2_error=0.0000013214124852245438`.
 

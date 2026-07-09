@@ -4,7 +4,7 @@
   "dependencies": {
     "beyond_matmul": {
       "repository": "alexlopashev/beyond-matmul",
-      "revision": "5d8f613a9b4624ba89c5cb66f84442010f809885"
+      "revision": "eb74cf1e076ac8d617fb3bb70683f3c8c2ec2e6d"
     },
     "huggingface_hub": {
       "revision": null,
@@ -43,13 +43,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000583575829,
-        "median": 0.000549187011,
-        "p50": 0.000549187011,
-        "p90": 0.000656338141,
-        "p95": 0.000866854092,
-        "p99": 0.001054326841,
-        "stdev": 0.000123528579
+        "mean": 0.000582399215,
+        "median": 0.000552124984,
+        "p50": 0.000552124984,
+        "p90": 0.000710000272,
+        "p95": 0.000756458833,
+        "p99": 0.000898211896,
+        "stdev": 9.2924675e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -65,13 +65,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.021151172591,
-        "median": 0.020985416544,
-        "p50": 0.020985416544,
-        "p90": 0.021866854769,
-        "p95": 0.022112520534,
-        "p99": 0.022923535206,
-        "stdev": 0.000514877645
+        "mean": 0.021177747522,
+        "median": 0.021165499988,
+        "p50": 0.021165499988,
+        "p90": 0.021446936845,
+        "p95": 0.021490031062,
+        "p99": 0.021664797094,
+        "stdev": 0.000208693441
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -79,7 +79,7 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": 1277902848,
+      "peak_memory_bytes": 1271316480,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 16,
@@ -94,13 +94,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 8.086e-08,
+        "mean": 7.5016e-08,
         "median": 8.3004e-08,
         "p50": 8.3004e-08,
-        "p90": 1.2503e-07,
+        "p90": 8.8138e-08,
         "p95": 1.2503e-07,
-        "p99": 3.12926e-07,
-        "stdev": 5.4906e-08
+        "p99": 2.70959e-07,
+        "stdev": 4.7055e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -116,13 +116,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.021270589144,
-        "median": 0.021177333547,
-        "p50": 0.021177333547,
-        "p90": 0.021952770266,
-        "p95": 0.022227269033,
-        "p99": 0.022532021842,
-        "stdev": 0.000433912906
+        "mean": 0.021259310762,
+        "median": 0.021262146067,
+        "p50": 0.021262146067,
+        "p90": 0.021562929591,
+        "p95": 0.021642345301,
+        "p99": 0.021765573608,
+        "stdev": 0.000255182372
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -130,7 +130,7 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": 1782497280,
+      "peak_memory_bytes": 1782284288,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 16,
       "status": "ok",
@@ -144,13 +144,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.007462382475,
-        "median": 0.00748131302,
-        "p50": 0.00748131302,
-        "p90": 0.007673482643,
-        "p95": 0.00792927047,
-        "p99": 0.008156176942,
-        "stdev": 0.000248513522
+        "mean": 0.007468579188,
+        "median": 0.007542749983,
+        "p50": 0.007542749983,
+        "p90": 0.007688692049,
+        "p95": 0.007789031399,
+        "p99": 0.008026148421,
+        "stdev": 0.000235802156
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -166,13 +166,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.022054235798,
-        "median": 0.021936249512,
-        "p50": 0.021936249512,
-        "p90": 0.022185541783,
-        "p95": 0.022378162807,
-        "p99": 0.025682514282,
-        "stdev": 0.000874629224
+        "mean": 0.021918167444,
+        "median": 0.021869124961,
+        "p50": 0.021869124961,
+        "p90": 0.022101662518,
+        "p95": 0.022244108195,
+        "p99": 0.024296256198,
+        "stdev": 0.000524933488
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -180,7 +180,7 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": 1270710272,
+      "peak_memory_bytes": 1271676928,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 16,
       "status": "ok",
@@ -194,13 +194,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000579479169,
-        "median": 0.000557437539,
-        "p50": 0.000557437539,
-        "p90": 0.000671379734,
-        "p95": 0.000693023211,
-        "p99": 0.000929983966,
-        "stdev": 9.0414663e-05
+        "mean": 0.000602614142,
+        "median": 0.000557624968,
+        "p50": 0.000557624968,
+        "p90": 0.000666716194,
+        "p95": 0.000926360791,
+        "p99": 0.001020609316,
+        "stdev": 0.00011934027
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -216,21 +216,22 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.021314283372,
-        "median": 0.021148083033,
-        "p50": 0.021148083033,
-        "p90": 0.021577538073,
-        "p95": 0.021710837382,
-        "p99": 0.026265483343,
-        "stdev": 0.001164895218
+        "mean": 0.021194053264,
+        "median": 0.021152812464,
+        "p50": 0.021152812464,
+        "p90": 0.021411725366,
+        "p95": 0.021446289145,
+        "p99": 0.023325094614,
+        "stdev": 0.000601389982
       },
       "lowering": {
         "active_adapter": "merchant",
         "dense_fallback_available": true,
         "dense_fallback_used": false,
+        "execution_path": "structured_low_rank",
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": 1278689280,
+      "peak_memory_bytes": 1271906304,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
@@ -1230,13 +1231,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000596952436,
-        "median": 0.000575333484,
-        "p50": 0.000575333484,
-        "p90": 0.000703982846,
-        "p95": 0.000806962204,
-        "p99": 0.00085648587,
-        "stdev": 9.1221557e-05
+        "mean": 0.000599097603,
+        "median": 0.00055750052,
+        "p50": 0.00055750052,
+        "p90": 0.00069032507,
+        "p95": 0.000899602735,
+        "p99": 0.001026097243,
+        "stdev": 0.000119759586
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -1252,13 +1253,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.021050303425,
-        "median": 0.020962395996,
-        "p50": 0.020962395996,
-        "p90": 0.02157537922,
-        "p95": 0.021994091169,
-        "p99": 0.022875820196,
-        "stdev": 0.00054204162
+        "mean": 0.020934201579,
+        "median": 0.020898916526,
+        "p50": 0.020898916526,
+        "p90": 0.021189387213,
+        "p95": 0.021265548037,
+        "p99": 0.023975151209,
+        "stdev": 0.000859413866
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -1266,7 +1267,7 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": 1271578624,
+      "peak_memory_bytes": 1271382016,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 16,
@@ -1281,13 +1282,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 8.5162e-08,
-        "median": 8.2946e-08,
-        "p50": 8.2946e-08,
-        "p90": 1.29221e-07,
-        "p95": 2.12708e-07,
-        "p99": 3.12928e-07,
-        "stdev": 6.3431e-08
+        "mean": 8.3419e-08,
+        "median": 8.3004e-08,
+        "p50": 8.3004e-08,
+        "p90": 1.24925e-07,
+        "p95": 1.2503e-07,
+        "p99": 3.34302e-07,
+        "stdev": 5.7144e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -1303,13 +1304,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.020369572544,
-        "median": 0.020349895989,
-        "p50": 0.020349895989,
-        "p90": 0.02069002121,
-        "p95": 0.020914678939,
-        "p99": 0.021155295632,
-        "stdev": 0.000270539802
+        "mean": 0.020183777506,
+        "median": 0.020180437539,
+        "p50": 0.020180437539,
+        "p90": 0.020570591919,
+        "p95": 0.020639976824,
+        "p99": 0.020832239587,
+        "stdev": 0.00033486743
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -1317,7 +1318,7 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": 1783103488,
+      "peak_memory_bytes": 1783250944,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 16,
       "status": "ok",
@@ -1331,13 +1332,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.0074750767,
-        "median": 0.007431041973,
-        "p50": 0.007431041973,
-        "p90": 0.007827421243,
-        "p95": 0.008033676574,
-        "p99": 0.008365596379,
-        "stdev": 0.000322231518
+        "mean": 0.007440493405,
+        "median": 0.007511853997,
+        "p50": 0.007511853997,
+        "p90": 0.007674054476,
+        "p95": 0.007728898281,
+        "p99": 0.008137905645,
+        "stdev": 0.000269332657
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -1353,13 +1354,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.021160340006,
-        "median": 0.020969978999,
-        "p50": 0.020969978999,
-        "p90": 0.021389295976,
-        "p95": 0.02145671277,
-        "p99": 0.024953546375,
-        "stdev": 0.000997351895
+        "mean": 0.021105885752,
+        "median": 0.020908895996,
+        "p50": 0.020908895996,
+        "p90": 0.021493883408,
+        "p95": 0.021875805961,
+        "p99": 0.024720066889,
+        "stdev": 0.000893998841
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -1367,7 +1368,7 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": 1270726656,
+      "peak_memory_bytes": 1271758848,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 16,
       "status": "ok",
@@ -1381,13 +1382,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000580234136,
-        "median": 0.000553791469,
-        "p50": 0.000553791469,
-        "p90": 0.000669916428,
-        "p95": 0.000780352444,
-        "p99": 0.000850729113,
-        "stdev": 8.4142026e-05
+        "mean": 0.000607300091,
+        "median": 0.00057120854,
+        "p50": 0.00057120854,
+        "p90": 0.000710582745,
+        "p95": 0.00084280853,
+        "p99": 0.000987991809,
+        "stdev": 0.000113810257
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -1403,21 +1404,22 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.021472560877,
-        "median": 0.021265771007,
-        "p50": 0.021265771007,
-        "p90": 0.02179492499,
-        "p95": 0.022226833116,
-        "p99": 0.027073597633,
-        "stdev": 0.001254219034
+        "mean": 0.02137364587,
+        "median": 0.021193728957,
+        "p50": 0.021193728957,
+        "p90": 0.021570983296,
+        "p95": 0.021745725232,
+        "p99": 0.025453410845,
+        "stdev": 0.000876036627
       },
       "lowering": {
         "active_adapter": "merchant",
         "dense_fallback_available": true,
         "dense_fallback_used": false,
+        "execution_path": "structured_low_rank",
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": 1271824384,
+      "peak_memory_bytes": 1271398400,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
@@ -2417,13 +2419,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000580504981,
-        "median": 0.000558291504,
-        "p50": 0.000558291504,
-        "p90": 0.000648795837,
-        "p95": 0.000701758533,
-        "p99": 0.000901661379,
-        "stdev": 8.3548674e-05
+        "mean": 0.000585120753,
+        "median": 0.000545624993,
+        "p50": 0.000545624993,
+        "p90": 0.00068279939,
+        "p95": 0.00083933954,
+        "p99": 0.000873818584,
+        "stdev": 9.5994539e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -2439,13 +2441,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.030503794118,
-        "median": 0.030182270915,
-        "p50": 0.030182270915,
-        "p90": 0.031327867252,
-        "p95": 0.031509296357,
-        "p99": 0.034532707662,
-        "stdev": 0.001119648391
+        "mean": 0.030347303313,
+        "median": 0.030194895982,
+        "p50": 0.030194895982,
+        "p90": 0.030486929743,
+        "p95": 0.030629943893,
+        "p99": 0.034108621322,
+        "stdev": 0.000979418309
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -2453,7 +2455,7 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": 1271250944,
+      "peak_memory_bytes": 1271365632,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 64,
@@ -2468,13 +2470,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 8.5076e-08,
-        "median": 8.3004e-08,
-        "p50": 8.3004e-08,
-        "p90": 1.2503e-07,
-        "p95": 1.89542e-07,
-        "p99": 3.13709e-07,
-        "stdev": 5.9418e-08
+        "mean": 7.682e-08,
+        "median": 4.2026e-08,
+        "p50": 4.2026e-08,
+        "p90": 8.4052e-08,
+        "p95": 2.16271e-07,
+        "p99": 3.76177e-07,
+        "stdev": 7.4056e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -2490,13 +2492,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.028544583356,
-        "median": 0.028479458415,
-        "p50": 0.028479458415,
-        "p90": 0.029032203672,
-        "p95": 0.029108083702,
-        "p99": 0.029270360325,
-        "stdev": 0.000309563481
+        "mean": 0.028614886638,
+        "median": 0.02863762551,
+        "p50": 0.02863762551,
+        "p90": 0.028961371118,
+        "p95": 0.02902594186,
+        "p99": 0.029153305172,
+        "stdev": 0.00024240541
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -2504,7 +2506,7 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": 1783103488,
+      "peak_memory_bytes": 1782628352,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 64,
       "status": "ok",
@@ -2518,13 +2520,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.007431925072,
-        "median": 0.007530375035,
-        "p50": 0.007530375035,
-        "p90": 0.007602921152,
-        "p95": 0.007715099893,
-        "p99": 0.008041618707,
-        "stdev": 0.000236277533
+        "mean": 0.007481655909,
+        "median": 0.007576292031,
+        "p50": 0.007576292031,
+        "p90": 0.007709245861,
+        "p95": 0.007825675095,
+        "p99": 0.008189587411,
+        "stdev": 0.000279974411
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -2540,13 +2542,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.0301897783,
-        "median": 0.030023645493,
-        "p50": 0.030023645493,
-        "p90": 0.03058648333,
-        "p95": 0.030795210309,
-        "p99": 0.034162797501,
-        "stdev": 0.000935750773
+        "mean": 0.030203771654,
+        "median": 0.030115541478,
+        "p50": 0.030115541478,
+        "p90": 0.030379825539,
+        "p95": 0.030506091664,
+        "p99": 0.034009505709,
+        "stdev": 0.000835969032
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -2554,7 +2556,7 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": 1271152640,
+      "peak_memory_bytes": 1271660544,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 64,
       "status": "ok",
@@ -2568,13 +2570,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.00058244505,
-        "median": 0.000560166955,
-        "p50": 0.000560166955,
-        "p90": 0.000665554497,
-        "p95": 0.000680226798,
-        "p99": 0.000920299706,
-        "stdev": 8.682187e-05
+        "mean": 0.000576631692,
+        "median": 0.000547375006,
+        "p50": 0.000547375006,
+        "p90": 0.000654186984,
+        "p95": 0.000680368452,
+        "p99": 0.000935789985,
+        "stdev": 8.8371623e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -2590,21 +2592,22 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.030477039206,
-        "median": 0.03037993802,
-        "p50": 0.03037993802,
-        "p90": 0.030778408702,
-        "p95": 0.03085617281,
-        "p99": 0.034101897032,
-        "stdev": 0.000847604999
+        "mean": 0.030648415759,
+        "median": 0.030526583549,
+        "p50": 0.030526583549,
+        "p90": 0.030790312425,
+        "p95": 0.030806172529,
+        "p99": 0.034143281996,
+        "stdev": 0.000973106502
       },
       "lowering": {
         "active_adapter": "merchant",
         "dense_fallback_available": true,
         "dense_fallback_used": false,
+        "execution_path": "structured_low_rank",
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": 1271480320,
+      "peak_memory_bytes": 1271939072,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
@@ -3604,13 +3607,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000588490106,
-        "median": 0.000562603993,
-        "p50": 0.000562603993,
-        "p90": 0.000690167001,
-        "p95": 0.000703551737,
-        "p99": 0.000881549297,
-        "stdev": 8.7959437e-05
+        "mean": 0.000587928374,
+        "median": 0.000553937978,
+        "p50": 0.000553937978,
+        "p90": 0.000631912507,
+        "p95": 0.000742860464,
+        "p99": 0.001009718738,
+        "stdev": 9.7911387e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -3626,13 +3629,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.042627108323,
-        "median": 0.042422937986,
-        "p50": 0.042422937986,
-        "p90": 0.042991395772,
-        "p95": 0.043128901871,
-        "p99": 0.046608892409,
-        "stdev": 0.001066435606
+        "mean": 0.043147138322,
+        "median": 0.042980771046,
+        "p50": 0.042980771046,
+        "p90": 0.043381779245,
+        "p95": 0.043725923164,
+        "p99": 0.046814548466,
+        "stdev": 0.000834519273
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -3640,7 +3643,7 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": 1317945344,
+      "peak_memory_bytes": 1319452672,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 64,
@@ -3655,13 +3658,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 8.0161e-08,
-        "median": 8.3004e-08,
-        "p50": 8.3004e-08,
-        "p90": 1.24914e-07,
-        "p95": 1.2503e-07,
-        "p99": 3.98067e-07,
-        "stdev": 7.2518e-08
+        "mean": 7.5921e-08,
+        "median": 6.2457e-08,
+        "p50": 6.2457e-08,
+        "p90": 8.815e-08,
+        "p95": 1.66585e-07,
+        "p99": 3.12928e-07,
+        "stdev": 5.6897e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -3677,13 +3680,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.040629247471,
-        "median": 0.040520437469,
-        "p50": 0.040520437469,
-        "p90": 0.040914962522,
-        "p95": 0.041186837509,
-        "p99": 0.042516924004,
-        "stdev": 0.000518059587
+        "mean": 0.040743841596,
+        "median": 0.04073622945,
+        "p50": 0.04073622945,
+        "p90": 0.041037858103,
+        "p95": 0.041145158181,
+        "p99": 0.041328561123,
+        "stdev": 0.000258182987
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -3691,7 +3694,7 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": 1823031296,
+      "peak_memory_bytes": 1822359552,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 64,
       "status": "ok",
@@ -3705,13 +3708,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.007561252541,
-        "median": 0.00758929149,
-        "p50": 0.00758929149,
-        "p90": 0.007943446084,
-        "p95": 0.008257399965,
-        "p99": 0.008614768765,
-        "stdev": 0.00036099583
+        "mean": 0.00759838507,
+        "median": 0.007657333044,
+        "p50": 0.007657333044,
+        "p90": 0.007836279145,
+        "p95": 0.007885702059,
+        "p99": 0.008243408269,
+        "stdev": 0.000257978949
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -3727,13 +3730,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.042847179889,
-        "median": 0.042699854006,
-        "p50": 0.042699854006,
-        "p90": 0.043212978845,
-        "p95": 0.043272810598,
-        "p99": 0.045457262496,
-        "stdev": 0.000727369193
+        "mean": 0.042809230767,
+        "median": 0.042640770494,
+        "p50": 0.042640770494,
+        "p90": 0.043004096346,
+        "p95": 0.043071310164,
+        "p99": 0.047120819422,
+        "stdev": 0.001174495448
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -3741,7 +3744,7 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": 1323188224,
+      "peak_memory_bytes": 1324253184,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 64,
       "status": "ok",
@@ -3755,13 +3758,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000590892476,
-        "median": 0.000560729473,
-        "p50": 0.000560729473,
-        "p90": 0.000657728873,
-        "p95": 0.000682887784,
-        "p99": 0.000904554178,
-        "stdev": 7.6382634e-05
+        "mean": 0.000593200922,
+        "median": 0.000555458537,
+        "p50": 0.000555458537,
+        "p90": 0.00066668333,
+        "p95": 0.00082691079,
+        "p99": 0.000963030695,
+        "stdev": 0.00010045339
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -3777,21 +3780,22 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.043035817449,
-        "median": 0.042867166456,
-        "p50": 0.042867166456,
-        "p90": 0.043260782992,
-        "p95": 0.043535939546,
-        "p99": 0.047305384836,
-        "stdev": 0.001118272132
+        "mean": 0.043255436651,
+        "median": 0.043090666528,
+        "p50": 0.043090666528,
+        "p90": 0.043603182887,
+        "p95": 0.043881764455,
+        "p99": 0.047424800765,
+        "stdev": 0.001077288268
       },
       "lowering": {
         "active_adapter": "merchant",
         "dense_fallback_available": true,
         "dense_fallback_used": false,
+        "execution_path": "structured_low_rank",
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": 1319059456,
+      "peak_memory_bytes": 1317666816,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
@@ -4791,13 +4795,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000586659203,
-        "median": 0.000559333537,
-        "p50": 0.000559333537,
-        "p90": 0.000660492294,
-        "p95": 0.000694191572,
-        "p99": 0.000950508523,
-        "stdev": 9.0121117e-05
+        "mean": 0.000591605802,
+        "median": 0.000561936991,
+        "p50": 0.000561936991,
+        "p90": 0.000651537441,
+        "p95": 0.000756121182,
+        "p99": 0.000982571887,
+        "stdev": 9.5997267e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -4813,13 +4817,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.043833755867,
-        "median": 0.043684749515,
-        "p50": 0.043684749515,
-        "p90": 0.044248529151,
-        "p95": 0.044603027235,
-        "p99": 0.048087869846,
-        "stdev": 0.001022912739
+        "mean": 0.043493394197,
+        "median": 0.043370604049,
+        "p50": 0.043370604049,
+        "p90": 0.043820067076,
+        "p95": 0.044080867019,
+        "p99": 0.047399484329,
+        "stdev": 0.001049505775
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -4827,7 +4831,7 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": 1317961728,
+      "peak_memory_bytes": 1319632896,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 128,
@@ -4842,13 +4846,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 7.6778e-08,
-        "median": 8.2946e-08,
-        "p50": 8.2946e-08,
-        "p90": 1.2503e-07,
-        "p95": 1.47568e-07,
-        "p99": 2.71377e-07,
-        "stdev": 5.0151e-08
+        "mean": 7.418e-08,
+        "median": 8.3004e-08,
+        "p50": 8.3004e-08,
+        "p90": 8.815e-08,
+        "p95": 1.2503e-07,
+        "p99": 2.91456e-07,
+        "stdev": 5.081e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -4864,13 +4868,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.04151078409,
-        "median": 0.04152810399,
-        "p50": 0.04152810399,
-        "p90": 0.041843795299,
-        "p95": 0.041917001875,
-        "p99": 0.042488660081,
-        "stdev": 0.000354215807
+        "mean": 0.041567428275,
+        "median": 0.041461770539,
+        "p50": 0.041461770539,
+        "p90": 0.041821949952,
+        "p95": 0.041969201801,
+        "p99": 0.043497160707,
+        "stdev": 0.000455217405
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -4878,7 +4882,7 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": 1782890496,
+      "peak_memory_bytes": 1782317056,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 128,
       "status": "ok",
@@ -4892,13 +4896,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.007467834125,
-        "median": 0.007545166474,
-        "p50": 0.007545166474,
-        "p90": 0.007657263102,
-        "p95": 0.007680700067,
-        "p99": 0.008069289217,
-        "stdev": 0.000242467403
+        "mean": 0.00749209414,
+        "median": 0.007583895989,
+        "p50": 0.007583895989,
+        "p90": 0.007725916675,
+        "p95": 0.007758356549,
+        "p99": 0.00802511979,
+        "stdev": 0.000251675839
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -4914,13 +4918,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.043765100904,
-        "median": 0.043602083053,
-        "p50": 0.043602083053,
-        "p90": 0.04417137095,
-        "p95": 0.044704422366,
-        "p99": 0.048700439263,
-        "stdev": 0.001231201412
+        "mean": 0.043151836621,
+        "median": 0.043157770473,
+        "p50": 0.043157770473,
+        "p90": 0.043571203516,
+        "p95": 0.043674522551,
+        "p99": 0.04392200176,
+        "stdev": 0.000327537367
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -4928,7 +4932,7 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": 1323417600,
+      "peak_memory_bytes": 1323515904,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 128,
       "status": "ok",
@@ -4942,13 +4946,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000582574224,
-        "median": 0.00054808351,
-        "p50": 0.00054808351,
-        "p90": 0.000660153886,
-        "p95": 0.000772148295,
-        "p99": 0.000868810827,
-        "stdev": 8.2937954e-05
+        "mean": 0.000587961718,
+        "median": 0.000552729529,
+        "p50": 0.000552729529,
+        "p90": 0.000656546094,
+        "p95": 0.000840300159,
+        "p99": 0.000935759234,
+        "stdev": 9.6720095e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -4964,21 +4968,22 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.043836395873,
-        "median": 0.043577145494,
-        "p50": 0.043577145494,
-        "p90": 0.04438332431,
-        "p95": 0.045160399942,
-        "p99": 0.047997501538,
-        "stdev": 0.001025267128
+        "mean": 0.043879760918,
+        "median": 0.043677291542,
+        "p50": 0.043677291542,
+        "p90": 0.044217945822,
+        "p95": 0.045500883443,
+        "p99": 0.04773155891,
+        "stdev": 0.000981675574
       },
       "lowering": {
         "active_adapter": "merchant",
         "dense_fallback_available": true,
         "dense_fallback_used": false,
+        "execution_path": "structured_low_rank",
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": 1318731776,
+      "peak_memory_bytes": 1319452672,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
@@ -5978,13 +5983,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000597451744,
-        "median": 0.000567020499,
-        "p50": 0.000567020499,
-        "p90": 0.000684050098,
-        "p95": 0.000730904489,
-        "p99": 0.000891910691,
-        "stdev": 8.5587096e-05
+        "mean": 0.000608937414,
+        "median": 0.000568708463,
+        "p50": 0.000568708463,
+        "p90": 0.000802466588,
+        "p95": 0.000884231221,
+        "p99": 0.000952641407,
+        "stdev": 0.000112664027
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -6000,13 +6005,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.070694501658,
-        "median": 0.070279416977,
-        "p50": 0.070279416977,
-        "p90": 0.071632970741,
-        "p95": 0.073023191938,
-        "p99": 0.076534044419,
-        "stdev": 0.001375872407
+        "mean": 0.070668812599,
+        "median": 0.070499103982,
+        "p50": 0.070499103982,
+        "p90": 0.071023509093,
+        "p95": 0.071153420728,
+        "p99": 0.074673624649,
+        "stdev": 0.001090134938
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -6014,7 +6019,7 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": 1610055680,
+      "peak_memory_bytes": 1610661888,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 128,
@@ -6029,13 +6034,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 7.9966e-08,
+        "mean": 8.2466e-08,
         "median": 8.3004e-08,
         "p50": 8.3004e-08,
-        "p90": 8.4052e-08,
-        "p95": 1.2503e-07,
-        "p99": 3.33064e-07,
-        "stdev": 5.6373e-08
+        "p90": 1.2503e-07,
+        "p95": 1.66585e-07,
+        "p99": 2.91573e-07,
+        "stdev": 5.2937e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -6051,13 +6056,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.082784053292,
-        "median": 0.074144853977,
-        "p50": 0.074144853977,
-        "p90": 0.104677770857,
-        "p95": 0.127752997912,
-        "p99": 0.160671749521,
-        "stdev": 0.021994780475
+        "mean": 0.068180620775,
+        "median": 0.068122333498,
+        "p50": 0.068122333498,
+        "p90": 0.068630787206,
+        "p95": 0.068774349737,
+        "p99": 0.069574470996,
+        "stdev": 0.000447063346
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -6065,7 +6070,7 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": 1916780544,
+      "peak_memory_bytes": 2113093632,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 128,
       "status": "ok",
@@ -6079,13 +6084,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.007530222547,
-        "median": 0.007544041437,
-        "p50": 0.007544041437,
-        "p90": 0.00811105395,
-        "p95": 0.008311087842,
-        "p99": 0.008417387044,
-        "stdev": 0.000353947264
+        "mean": 0.007571879181,
+        "median": 0.007508916489,
+        "p50": 0.007508916489,
+        "p90": 0.007763262105,
+        "p95": 0.008416789916,
+        "p99": 0.008647921033,
+        "stdev": 0.00032723708
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -6101,13 +6106,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.071222720915,
-        "median": 0.070492958475,
-        "p50": 0.070492958475,
-        "p90": 0.071228220721,
-        "p95": 0.075404627156,
-        "p99": 0.084638122681,
-        "stdev": 0.003214709467
+        "mean": 0.070350232483,
+        "median": 0.070365875494,
+        "p50": 0.070365875494,
+        "p90": 0.070664687525,
+        "p95": 0.070709606278,
+        "p99": 0.070955406686,
+        "stdev": 0.000245458713
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -6115,7 +6120,7 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": 1618395136,
+      "peak_memory_bytes": 1615577088,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 128,
       "status": "ok",
@@ -6129,13 +6134,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.00058217583,
-        "median": 0.000566458504,
-        "p50": 0.000566458504,
-        "p90": 0.000607062841,
-        "p95": 0.000677154202,
-        "p99": 0.000783796088,
-        "stdev": 4.9485764e-05
+        "mean": 0.000595666682,
+        "median": 0.00056083349,
+        "p50": 0.00056083349,
+        "p90": 0.000778850308,
+        "p95": 0.000824537332,
+        "p99": 0.000839893529,
+        "stdev": 9.307509e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -6151,21 +6156,22 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.074220293283,
-        "median": 0.072262124449,
-        "p50": 0.072262124449,
-        "p90": 0.077797849744,
-        "p95": 0.079746228823,
-        "p99": 0.094194292255,
-        "stdev": 0.00472297241
+        "mean": 0.071271097488,
+        "median": 0.071217728953,
+        "p50": 0.071217728953,
+        "p90": 0.071591945563,
+        "p95": 0.071678448102,
+        "p99": 0.072691930202,
+        "stdev": 0.000391133032
       },
       "lowering": {
         "active_adapter": "merchant",
         "dense_fallback_available": true,
         "dense_fallback_used": false,
+        "execution_path": "structured_low_rank",
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": 1616986112,
+      "peak_memory_bytes": 1610743808,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
@@ -7165,13 +7171,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000563959216,
-        "median": 0.000544146053,
-        "p50": 0.000544146053,
-        "p90": 0.000579067308,
-        "p95": 0.000629887538,
-        "p99": 0.000910123825,
-        "stdev": 7.4359784e-05
+        "mean": 0.000582221653,
+        "median": 0.000544833019,
+        "p50": 0.000544833019,
+        "p90": 0.000691667211,
+        "p95": 0.000773904088,
+        "p99": 0.000855969521,
+        "stdev": 8.2440979e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -7187,13 +7193,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.021632645708,
-        "median": 0.021444250015,
-        "p50": 0.021444250015,
-        "p90": 0.022729799687,
-        "p95": 0.023185714532,
-        "p99": 0.023972191021,
-        "stdev": 0.000767008357
+        "mean": 0.021042698263,
+        "median": 0.020939229056,
+        "p50": 0.020939229056,
+        "p90": 0.021305149479,
+        "p95": 0.021401775011,
+        "p99": 0.023981602986,
+        "stdev": 0.000820320102
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -7201,7 +7207,7 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": 1271185408,
+      "peak_memory_bytes": 1271332864,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 16,
@@ -7216,13 +7222,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 6.4257e-08,
-        "median": 4.2026e-08,
-        "p50": 4.2026e-08,
-        "p90": 8.4052e-08,
-        "p95": 1.06526e-07,
-        "p99": 2.29467e-07,
-        "stdev": 4.0071e-08
+        "mean": 7.3481e-08,
+        "median": 6.2515e-08,
+        "p50": 6.2515e-08,
+        "p90": 8.8138e-08,
+        "p95": 1.24978e-07,
+        "p99": 2.92392e-07,
+        "stdev": 5.1636e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -7238,13 +7244,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.022403584924,
-        "median": 0.022111042053,
-        "p50": 0.022111042053,
-        "p90": 0.023430729203,
-        "p95": 0.024922010291,
-        "p99": 0.025416810877,
-        "stdev": 0.000977164535
+        "mean": 0.021374003419,
+        "median": 0.021255354455,
+        "p50": 0.021255354455,
+        "p90": 0.021907525288,
+        "p95": 0.022601827042,
+        "p99": 0.023653698097,
+        "stdev": 0.000620076044
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -7252,7 +7258,7 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": 1781891072,
+      "peak_memory_bytes": 1782759424,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 16,
       "status": "ok",
@@ -7266,13 +7272,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.008987969079,
-        "median": 0.008629916469,
-        "p50": 0.008629916469,
-        "p90": 0.009154262801,
-        "p95": 0.00978365374,
-        "p99": 0.017723380543,
-        "stdev": 0.001971002656
+        "mean": 0.007326331653,
+        "median": 0.007381979492,
+        "p50": 0.007381979492,
+        "p90": 0.007548683917,
+        "p95": 0.007863208052,
+        "p99": 0.007976340894,
+        "stdev": 0.000257096931
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -7288,13 +7294,1201 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.022509930769,
-        "median": 0.022155729006,
-        "p50": 0.022155729006,
-        "p90": 0.023440499674,
-        "p95": 0.023885393608,
-        "p99": 0.028295956102,
-        "stdev": 0.001321711894
+        "mean": 0.021770547582,
+        "median": 0.021767958475,
+        "p50": 0.021767958475,
+        "p90": 0.021999741392,
+        "p95": 0.022174627142,
+        "p99": 0.022895765986,
+        "stdev": 0.000335502211
+      },
+      "lowering": {
+        "active_adapter": "gaisb",
+        "dense_fallback_available": true,
+        "dense_fallback_used": true,
+        "kind": "peft_repeated_merge_unmerge"
+      },
+      "peak_memory_bytes": 1271218176,
+      "peak_memory_status": "measured_process_maxrss",
+      "sequence_length": 16,
+      "status": "ok",
+      "storage": {
+        "adapter_config_bytes": null,
+        "adapter_payload_bytes": 2376641,
+        "dense_cache_bytes_per_adapter": 0,
+        "resident_adapter_bytes": null
+      }
+    },
+    {
+      "adapter": "gaisb",
+      "adapter_switch_seconds": {
+        "mean": 0.000570178223,
+        "median": 0.000539458473,
+        "p50": 0.000539458473,
+        "p90": 0.000625720492,
+        "p95": 0.000647487299,
+        "p99": 0.000831892916,
+        "stdev": 7.1642545e-05
+      },
+      "adapter_switch_status": "measured_loaded_adapters",
+      "baseline": "beyond_matmul_factor_provenance",
+      "batch_size": 1,
+      "case": "gaisb_seq16_batch1",
+      "correctness": {
+        "max_abs_error": 0.0,
+        "max_abs_tolerance": 0.0001,
+        "passed": true,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": 0.0,
+        "relative_l2_tolerance": 1e-05,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": {
+        "mean": 0.021280939169,
+        "median": 0.021221541509,
+        "p50": 0.021221541509,
+        "p90": 0.021723604808,
+        "p95": 0.021950795432,
+        "p99": 0.023255554002,
+        "stdev": 0.000522941778
+      },
+      "lowering": {
+        "active_adapter": "gaisb",
+        "dense_fallback_available": true,
+        "dense_fallback_used": false,
+        "execution_path": "structured_low_rank",
+        "kind": "provenance_lora_factors"
+      },
+      "peak_memory_bytes": 1271103488,
+      "peak_memory_status": "measured_process_maxrss",
+      "peft_provenance_events": [
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.0.self_attn.q_proj",
+          "module_path": "model.decoder.layers.0.self_attn.q_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.0.self_attn.v_proj",
+          "module_path": "model.decoder.layers.0.self_attn.v_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.1.self_attn.q_proj",
+          "module_path": "model.decoder.layers.1.self_attn.q_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.1.self_attn.v_proj",
+          "module_path": "model.decoder.layers.1.self_attn.v_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.10.self_attn.q_proj",
+          "module_path": "model.decoder.layers.10.self_attn.q_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.10.self_attn.v_proj",
+          "module_path": "model.decoder.layers.10.self_attn.v_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.11.self_attn.q_proj",
+          "module_path": "model.decoder.layers.11.self_attn.q_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.11.self_attn.v_proj",
+          "module_path": "model.decoder.layers.11.self_attn.v_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.2.self_attn.q_proj",
+          "module_path": "model.decoder.layers.2.self_attn.q_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.2.self_attn.v_proj",
+          "module_path": "model.decoder.layers.2.self_attn.v_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.3.self_attn.q_proj",
+          "module_path": "model.decoder.layers.3.self_attn.q_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.3.self_attn.v_proj",
+          "module_path": "model.decoder.layers.3.self_attn.v_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.4.self_attn.q_proj",
+          "module_path": "model.decoder.layers.4.self_attn.q_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.4.self_attn.v_proj",
+          "module_path": "model.decoder.layers.4.self_attn.v_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.5.self_attn.q_proj",
+          "module_path": "model.decoder.layers.5.self_attn.q_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.5.self_attn.v_proj",
+          "module_path": "model.decoder.layers.5.self_attn.v_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.6.self_attn.q_proj",
+          "module_path": "model.decoder.layers.6.self_attn.q_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.6.self_attn.v_proj",
+          "module_path": "model.decoder.layers.6.self_attn.v_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.7.self_attn.q_proj",
+          "module_path": "model.decoder.layers.7.self_attn.q_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.7.self_attn.v_proj",
+          "module_path": "model.decoder.layers.7.self_attn.v_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.8.self_attn.q_proj",
+          "module_path": "model.decoder.layers.8.self_attn.q_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.8.self_attn.v_proj",
+          "module_path": "model.decoder.layers.8.self_attn.v_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.9.self_attn.q_proj",
+          "module_path": "model.decoder.layers.9.self_attn.q_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        },
+        {
+          "a_device": "cpu",
+          "a_dtype": "torch.float32",
+          "a_shape": [
+            16,
+            768
+          ],
+          "adapter": "gaisb",
+          "b_device": "cpu",
+          "b_dtype": "torch.float32",
+          "b_shape": [
+            768,
+            16
+          ],
+          "base_module": "Linear",
+          "dense_fallback_available": true,
+          "dense_fallback_used": false,
+          "device": "cpu",
+          "dtype": "torch.float32",
+          "fallback_reason": null,
+          "fan_in_fan_out": false,
+          "in_features": 768,
+          "input_shape": [
+            1,
+            16,
+            768
+          ],
+          "kind": "beyond_matmul_lora_provenance",
+          "lora_alpha": 32,
+          "lora_bias": false,
+          "lora_variant": null,
+          "module_name": "base_model.model.model.decoder.layers.9.self_attn.v_proj",
+          "module_path": "model.decoder.layers.9.self_attn.v_proj",
+          "out_features": 768,
+          "path": "structured_low_rank",
+          "rank": 16,
+          "scaling": 2.0,
+          "schema_version": 1,
+          "use_dora": false,
+          "use_rslora": false
+        }
+      ],
+      "sequence_length": 16,
+      "status": "ok",
+      "storage": {
+        "adapter_config_bytes": null,
+        "adapter_payload_bytes": 2376641,
+        "dense_cache_bytes_per_adapter": 0,
+        "resident_adapter_bytes": 2376641
+      }
+    },
+    {
+      "adapter": "gaisb",
+      "adapter_switch_seconds": {
+        "mean": 0.000581122404,
+        "median": 0.000547895965,
+        "p50": 0.000547895965,
+        "p90": 0.000643453503,
+        "p95": 0.000653237646,
+        "p99": 0.000988132939,
+        "stdev": 8.9545222e-05
+      },
+      "adapter_switch_status": "measured_loaded_adapters",
+      "baseline": "upstream_peft_unmerged",
+      "batch_size": 2,
+      "case": "gaisb_seq16_batch2",
+      "correctness": {
+        "max_abs_error": 0.0,
+        "max_abs_tolerance": 0.0001,
+        "passed": true,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": 0.0,
+        "relative_l2_tolerance": 1e-05,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": {
+        "mean": 0.021046587538,
+        "median": 0.02100560395,
+        "p50": 0.02100560395,
+        "p90": 0.02135952079,
+        "p95": 0.021461195493,
+        "p99": 0.023572556638,
+        "stdev": 0.000651036512
+      },
+      "lowering": {
+        "active_adapter": "gaisb",
+        "dense_fallback_available": true,
+        "dense_fallback_used": false,
+        "kind": "peft_unmerged_adapter"
+      },
+      "peak_memory_bytes": 1271775232,
+      "peak_memory_status": "measured_process_maxrss",
+      "peft_provenance_events": [],
+      "sequence_length": 16,
+      "status": "ok",
+      "storage": {
+        "adapter_config_bytes": null,
+        "adapter_payload_bytes": 2376641,
+        "dense_cache_bytes_per_adapter": 0,
+        "resident_adapter_bytes": 2376641
+      }
+    },
+    {
+      "adapter": "gaisb",
+      "adapter_switch_seconds": {
+        "mean": 7.8464e-08,
+        "median": 8.3004e-08,
+        "p50": 8.3004e-08,
+        "p90": 1.24925e-07,
+        "p95": 1.4808e-07,
+        "p99": 3.13403e-07,
+        "stdev": 5.5774e-08
+      },
+      "adapter_switch_status": "measured_dense_cache_pointer_swap",
+      "baseline": "upstream_peft_merged_dense_cache",
+      "batch_size": 2,
+      "case": "gaisb_seq16_batch2",
+      "correctness": {
+        "max_abs_error": 5.340576171875e-05,
+        "max_abs_tolerance": 0.0001,
+        "passed": true,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": 9.987054070422497e-07,
+        "relative_l2_tolerance": 1e-05,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": {
+        "mean": 0.020423498389,
+        "median": 0.020305395999,
+        "p50": 0.020305395999,
+        "p90": 0.020744241006,
+        "p95": 0.020942233037,
+        "p99": 0.02384113978,
+        "stdev": 0.000908900493
+      },
+      "lowering": {
+        "active_adapter": "gaisb",
+        "dense_fallback_available": true,
+        "dense_fallback_used": true,
+        "kind": "peft_merged_dense_cache"
+      },
+      "peak_memory_bytes": 1783267328,
+      "peak_memory_status": "measured_process_maxrss",
+      "sequence_length": 16,
+      "status": "ok",
+      "storage": {
+        "adapter_config_bytes": null,
+        "adapter_payload_bytes": 2376641,
+        "dense_cache_bytes_per_adapter": 500000000,
+        "resident_adapter_bytes": 500957184
+      }
+    },
+    {
+      "adapter": "gaisb",
+      "adapter_switch_seconds": {
+        "mean": 0.007497609227,
+        "median": 0.007499312516,
+        "p50": 0.007499312516,
+        "p90": 0.007681141503,
+        "p95": 0.007802270295,
+        "p99": 0.008097472588,
+        "stdev": 0.000217488266
+      },
+      "adapter_switch_status": "measured_loaded_adapters",
+      "baseline": "upstream_peft_repeated_merge_unmerge",
+      "batch_size": 2,
+      "case": "gaisb_seq16_batch2",
+      "correctness": {
+        "max_abs_error": 5.53131103515625e-05,
+        "max_abs_tolerance": 0.0001,
+        "passed": true,
+        "reference_baseline": "upstream_peft_unmerged",
+        "relative_l2_error": 9.054701993581891e-07,
+        "relative_l2_tolerance": 1e-05,
+        "tolerance_profile": "cpu_fp32"
+      },
+      "latency_seconds": {
+        "mean": 0.021270881721,
+        "median": 0.021149770997,
+        "p50": 0.021149770997,
+        "p90": 0.021799704561,
+        "p95": 0.022175610624,
+        "p99": 0.023038312073,
+        "stdev": 0.000512986409
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -7316,1200 +8510,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000572080908,
-        "median": 0.000548771059,
-        "p50": 0.000548771059,
-        "p90": 0.000573362201,
-        "p95": 0.000732583005,
-        "p99": 0.000965436368,
-        "stdev": 9.2005689e-05
-      },
-      "adapter_switch_status": "measured_loaded_adapters",
-      "baseline": "beyond_matmul_factor_provenance",
-      "batch_size": 1,
-      "case": "gaisb_seq16_batch1",
-      "correctness": {
-        "max_abs_error": 0.0,
-        "max_abs_tolerance": 0.0001,
-        "passed": true,
-        "reference_baseline": "upstream_peft_unmerged",
-        "relative_l2_error": 0.0,
-        "relative_l2_tolerance": 1e-05,
-        "tolerance_profile": "cpu_fp32"
-      },
-      "latency_seconds": {
-        "mean": 0.021763808369,
-        "median": 0.021510145976,
-        "p50": 0.021510145976,
-        "p90": 0.023081662226,
-        "p95": 0.023646237236,
-        "p99": 0.024311241707,
-        "stdev": 0.000836999073
-      },
-      "lowering": {
-        "active_adapter": "gaisb",
-        "dense_fallback_available": true,
-        "dense_fallback_used": false,
-        "kind": "provenance_lora_factors"
-      },
-      "peak_memory_bytes": 1270890496,
-      "peak_memory_status": "measured_process_maxrss",
-      "peft_provenance_events": [
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.0.self_attn.q_proj",
-          "module_path": "model.decoder.layers.0.self_attn.q_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.0.self_attn.v_proj",
-          "module_path": "model.decoder.layers.0.self_attn.v_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.1.self_attn.q_proj",
-          "module_path": "model.decoder.layers.1.self_attn.q_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.1.self_attn.v_proj",
-          "module_path": "model.decoder.layers.1.self_attn.v_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.10.self_attn.q_proj",
-          "module_path": "model.decoder.layers.10.self_attn.q_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.10.self_attn.v_proj",
-          "module_path": "model.decoder.layers.10.self_attn.v_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.11.self_attn.q_proj",
-          "module_path": "model.decoder.layers.11.self_attn.q_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.11.self_attn.v_proj",
-          "module_path": "model.decoder.layers.11.self_attn.v_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.2.self_attn.q_proj",
-          "module_path": "model.decoder.layers.2.self_attn.q_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.2.self_attn.v_proj",
-          "module_path": "model.decoder.layers.2.self_attn.v_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.3.self_attn.q_proj",
-          "module_path": "model.decoder.layers.3.self_attn.q_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.3.self_attn.v_proj",
-          "module_path": "model.decoder.layers.3.self_attn.v_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.4.self_attn.q_proj",
-          "module_path": "model.decoder.layers.4.self_attn.q_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.4.self_attn.v_proj",
-          "module_path": "model.decoder.layers.4.self_attn.v_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.5.self_attn.q_proj",
-          "module_path": "model.decoder.layers.5.self_attn.q_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.5.self_attn.v_proj",
-          "module_path": "model.decoder.layers.5.self_attn.v_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.6.self_attn.q_proj",
-          "module_path": "model.decoder.layers.6.self_attn.q_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.6.self_attn.v_proj",
-          "module_path": "model.decoder.layers.6.self_attn.v_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.7.self_attn.q_proj",
-          "module_path": "model.decoder.layers.7.self_attn.q_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.7.self_attn.v_proj",
-          "module_path": "model.decoder.layers.7.self_attn.v_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.8.self_attn.q_proj",
-          "module_path": "model.decoder.layers.8.self_attn.q_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.8.self_attn.v_proj",
-          "module_path": "model.decoder.layers.8.self_attn.v_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.9.self_attn.q_proj",
-          "module_path": "model.decoder.layers.9.self_attn.q_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        },
-        {
-          "a_device": "cpu",
-          "a_dtype": "torch.float32",
-          "a_shape": [
-            16,
-            768
-          ],
-          "adapter": "gaisb",
-          "b_device": "cpu",
-          "b_dtype": "torch.float32",
-          "b_shape": [
-            768,
-            16
-          ],
-          "base_module": "Linear",
-          "dense_fallback_available": true,
-          "dense_fallback_used": false,
-          "device": "cpu",
-          "dtype": "torch.float32",
-          "fallback_reason": null,
-          "fan_in_fan_out": false,
-          "in_features": 768,
-          "input_shape": [
-            1,
-            16,
-            768
-          ],
-          "kind": "beyond_matmul_lora_provenance",
-          "lora_alpha": 32,
-          "lora_bias": false,
-          "lora_variant": null,
-          "module_name": "base_model.model.model.decoder.layers.9.self_attn.v_proj",
-          "module_path": "model.decoder.layers.9.self_attn.v_proj",
-          "out_features": 768,
-          "path": "structured_low_rank",
-          "rank": 16,
-          "scaling": 2.0,
-          "schema_version": 1,
-          "use_dora": false,
-          "use_rslora": false
-        }
-      ],
-      "sequence_length": 16,
-      "status": "ok",
-      "storage": {
-        "adapter_config_bytes": null,
-        "adapter_payload_bytes": 2376641,
-        "dense_cache_bytes_per_adapter": 0,
-        "resident_adapter_bytes": 2376641
-      }
-    },
-    {
-      "adapter": "gaisb",
-      "adapter_switch_seconds": {
-        "mean": 0.000558599134,
-        "median": 0.000539187575,
-        "p50": 0.000539187575,
-        "p90": 0.000558971148,
-        "p95": 0.000703208172,
-        "p99": 0.000892868293,
-        "stdev": 7.7648835e-05
-      },
-      "adapter_switch_status": "measured_loaded_adapters",
-      "baseline": "upstream_peft_unmerged",
-      "batch_size": 2,
-      "case": "gaisb_seq16_batch2",
-      "correctness": {
-        "max_abs_error": 0.0,
-        "max_abs_tolerance": 0.0001,
-        "passed": true,
-        "reference_baseline": "upstream_peft_unmerged",
-        "relative_l2_error": 0.0,
-        "relative_l2_tolerance": 1e-05,
-        "tolerance_profile": "cpu_fp32"
-      },
-      "latency_seconds": {
-        "mean": 0.021666217512,
-        "median": 0.021117917029,
-        "p50": 0.021117917029,
-        "p90": 0.023456958041,
-        "p95": 0.024284608138,
-        "p99": 0.028748040841,
-        "stdev": 0.001713029624
-      },
-      "lowering": {
-        "active_adapter": "gaisb",
-        "dense_fallback_available": true,
-        "dense_fallback_used": false,
-        "kind": "peft_unmerged_adapter"
-      },
-      "peak_memory_bytes": 1271119872,
-      "peak_memory_status": "measured_process_maxrss",
-      "peft_provenance_events": [],
-      "sequence_length": 16,
-      "status": "ok",
-      "storage": {
-        "adapter_config_bytes": null,
-        "adapter_payload_bytes": 2376641,
-        "dense_cache_bytes_per_adapter": 0,
-        "resident_adapter_bytes": 2376641
-      }
-    },
-    {
-      "adapter": "gaisb",
-      "adapter_switch_seconds": {
-        "mean": 6.0007e-08,
-        "median": 4.2026e-08,
-        "p50": 4.2026e-08,
-        "p90": 8.3004e-08,
-        "p95": 1.0659e-07,
-        "p99": 2.29864e-07,
-        "stdev": 4.0095e-08
-      },
-      "adapter_switch_status": "measured_dense_cache_pointer_swap",
-      "baseline": "upstream_peft_merged_dense_cache",
-      "batch_size": 2,
-      "case": "gaisb_seq16_batch2",
-      "correctness": {
-        "max_abs_error": 5.340576171875e-05,
-        "max_abs_tolerance": 0.0001,
-        "passed": true,
-        "reference_baseline": "upstream_peft_unmerged",
-        "relative_l2_error": 9.987054070422497e-07,
-        "relative_l2_tolerance": 1e-05,
-        "tolerance_profile": "cpu_fp32"
-      },
-      "latency_seconds": {
-        "mean": 0.020965729116,
-        "median": 0.020785708446,
-        "p50": 0.020785708446,
-        "p90": 0.022045575618,
-        "p95": 0.022180060239,
-        "p99": 0.023637891327,
-        "stdev": 0.000783725391
-      },
-      "lowering": {
-        "active_adapter": "gaisb",
-        "dense_fallback_available": true,
-        "dense_fallback_used": true,
-        "kind": "peft_merged_dense_cache"
-      },
-      "peak_memory_bytes": 1781612544,
-      "peak_memory_status": "measured_process_maxrss",
-      "sequence_length": 16,
-      "status": "ok",
-      "storage": {
-        "adapter_config_bytes": null,
-        "adapter_payload_bytes": 2376641,
-        "dense_cache_bytes_per_adapter": 500000000,
-        "resident_adapter_bytes": 500957184
-      }
-    },
-    {
-      "adapter": "gaisb",
-      "adapter_switch_seconds": {
-        "mean": 0.00749342334,
-        "median": 0.007374583045,
-        "p50": 0.007374583045,
-        "p90": 0.007725354831,
-        "p95": 0.008053360449,
-        "p99": 0.008793002616,
-        "stdev": 0.000331554893
-      },
-      "adapter_switch_status": "measured_loaded_adapters",
-      "baseline": "upstream_peft_repeated_merge_unmerge",
-      "batch_size": 2,
-      "case": "gaisb_seq16_batch2",
-      "correctness": {
-        "max_abs_error": 5.53131103515625e-05,
-        "max_abs_tolerance": 0.0001,
-        "passed": true,
-        "reference_baseline": "upstream_peft_unmerged",
-        "relative_l2_error": 9.054701993581891e-07,
-        "relative_l2_tolerance": 1e-05,
-        "tolerance_profile": "cpu_fp32"
-      },
-      "latency_seconds": {
-        "mean": 0.021811289222,
-        "median": 0.021180458483,
-        "p50": 0.021180458483,
-        "p90": 0.023516720359,
-        "p95": 0.025042102463,
-        "p99": 0.026465670345,
-        "stdev": 0.001428241934
-      },
-      "lowering": {
-        "active_adapter": "gaisb",
-        "dense_fallback_available": true,
-        "dense_fallback_used": true,
-        "kind": "peft_repeated_merge_unmerge"
-      },
-      "peak_memory_bytes": 1270857728,
-      "peak_memory_status": "measured_process_maxrss",
-      "sequence_length": 16,
-      "status": "ok",
-      "storage": {
-        "adapter_config_bytes": null,
-        "adapter_payload_bytes": 2376641,
-        "dense_cache_bytes_per_adapter": 0,
-        "resident_adapter_bytes": null
-      }
-    },
-    {
-      "adapter": "gaisb",
-      "adapter_switch_seconds": {
-        "mean": 0.000567906538,
-        "median": 0.000542290974,
-        "p50": 0.000542290974,
-        "p90": 0.00059746675,
-        "p95": 0.000698995561,
-        "p99": 0.000926669417,
-        "stdev": 8.0353739e-05
+        "mean": 0.000592504195,
+        "median": 0.000550270954,
+        "p50": 0.000550270954,
+        "p90": 0.000701691653,
+        "p95": 0.000831097376,
+        "p99": 0.000903534109,
+        "stdev": 9.8102472e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -8525,21 +8532,22 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.021723734958,
-        "median": 0.021619437495,
-        "p50": 0.021619437495,
-        "p90": 0.022538345458,
-        "p95": 0.022856924863,
-        "p99": 0.023813565894,
-        "stdev": 0.000668783854
+        "mean": 0.021353469167,
+        "median": 0.021304082999,
+        "p50": 0.021304082999,
+        "p90": 0.02171203749,
+        "p95": 0.021899299824,
+        "p99": 0.023651437676,
+        "stdev": 0.00055906364
       },
       "lowering": {
         "active_adapter": "gaisb",
         "dense_fallback_available": true,
         "dense_fallback_used": false,
+        "execution_path": "structured_low_rank",
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": 1270546432,
+      "peak_memory_bytes": 1271136256,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
@@ -9539,13 +9547,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000690674195,
-        "median": 0.000582187495,
-        "p50": 0.000582187495,
-        "p90": 0.000917649677,
-        "p95": 0.001155339635,
-        "p99": 0.001619896386,
-        "stdev": 0.000241912661
+        "mean": 0.000587678349,
+        "median": 0.000547666452,
+        "p50": 0.000547666452,
+        "p90": 0.000669116667,
+        "p95": 0.000881012512,
+        "p99": 0.000916809916,
+        "stdev": 9.9853646e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -9561,13 +9569,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.031214418344,
-        "median": 0.030862187501,
-        "p50": 0.030862187501,
-        "p90": 0.032515646075,
-        "p95": 0.034237591049,
-        "p99": 0.035026971311,
-        "stdev": 0.001242267267
+        "mean": 0.030371091692,
+        "median": 0.030278583523,
+        "p50": 0.030278583523,
+        "p90": 0.030570708995,
+        "p95": 0.030667872936,
+        "p99": 0.032640811804,
+        "stdev": 0.000604602989
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -9575,7 +9583,7 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": 1271382016,
+      "peak_memory_bytes": 1271283712,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 64,
@@ -9590,13 +9598,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 6.17e-08,
+        "mean": 7.0734e-08,
         "median": 4.2026e-08,
         "p50": 4.2026e-08,
-        "p90": 8.3935e-08,
-        "p95": 8.3999e-08,
-        "p99": 2.29467e-07,
-        "stdev": 4.0111e-08
+        "p90": 8.4052e-08,
+        "p95": 1.48144e-07,
+        "p99": 2.92276e-07,
+        "stdev": 5.2851e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -9612,13 +9620,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.029336982612,
-        "median": 0.02887718752,
-        "p50": 0.02887718752,
-        "p90": 0.031070599938,
-        "p95": 0.032151993783,
-        "p99": 0.032428351318,
-        "stdev": 0.001070250712
+        "mean": 0.029036680723,
+        "median": 0.028840582992,
+        "p50": 0.028840582992,
+        "p90": 0.030152529094,
+        "p95": 0.030443008564,
+        "p99": 0.031134149581,
+        "stdev": 0.000732307752
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -9626,7 +9634,7 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": 1782628352,
+      "peak_memory_bytes": 1782595584,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 64,
       "status": "ok",
@@ -9640,13 +9648,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.007609762489,
-        "median": 0.0075026665,
-        "p50": 0.0075026665,
-        "p90": 0.008179416601,
-        "p95": 0.008426285657,
-        "p99": 0.009298344331,
-        "stdev": 0.000459780192
+        "mean": 0.007523180838,
+        "median": 0.007542520529,
+        "p50": 0.007542520529,
+        "p90": 0.0077279791,
+        "p95": 0.007834542159,
+        "p99": 0.008226192344,
+        "stdev": 0.000246539369
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -9662,13 +9670,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.030938528404,
-        "median": 0.030734187458,
-        "p50": 0.030734187458,
-        "p90": 0.032352075295,
-        "p95": 0.032816637348,
-        "p99": 0.032920021816,
-        "stdev": 0.000760482271
+        "mean": 0.030552028345,
+        "median": 0.030405062542,
+        "p50": 0.030405062542,
+        "p90": 0.030782145786,
+        "p95": 0.031019633572,
+        "p99": 0.034288506508,
+        "stdev": 0.000923418354
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -9676,7 +9684,7 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": 1271218176,
+      "peak_memory_bytes": 1271169024,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 64,
       "status": "ok",
@@ -9690,13 +9698,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000606019988,
-        "median": 0.000561708468,
-        "p50": 0.000561708468,
-        "p90": 0.000792599679,
-        "p95": 0.000827706361,
-        "p99": 0.000860824889,
-        "stdev": 9.7089145e-05
+        "mean": 0.000628523314,
+        "median": 0.000579499989,
+        "p50": 0.000579499989,
+        "p90": 0.000802683341,
+        "p95": 0.000933021487,
+        "p99": 0.001037479106,
+        "stdev": 0.000124058493
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -9712,21 +9720,22 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.036298888312,
-        "median": 0.036016020516,
-        "p50": 0.036016020516,
-        "p90": 0.039561562112,
-        "p95": 0.040323745995,
-        "p99": 0.043111495839,
-        "stdev": 0.002605367558
+        "mean": 0.030938487458,
+        "median": 0.03074752097,
+        "p50": 0.03074752097,
+        "p90": 0.031792579452,
+        "p95": 0.03283106889,
+        "p99": 0.03429983984,
+        "stdev": 0.000938537847
       },
       "lowering": {
         "active_adapter": "gaisb",
         "dense_fallback_available": true,
         "dense_fallback_used": false,
+        "execution_path": "structured_low_rank",
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": 1270792192,
+      "peak_memory_bytes": 1272692736,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
@@ -10726,13 +10735,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000596363356,
-        "median": 0.00055547955,
-        "p50": 0.00055547955,
-        "p90": 0.000713837589,
-        "p95": 0.000815059,
-        "p99": 0.000927063721,
-        "stdev": 9.6547643e-05
+        "mean": 0.000585795816,
+        "median": 0.000555521052,
+        "p50": 0.000555521052,
+        "p90": 0.000638753723,
+        "p95": 0.000772289111,
+        "p99": 0.000839360714,
+        "stdev": 7.1430045e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -10748,13 +10757,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.043373159161,
-        "median": 0.042766625527,
-        "p50": 0.042766625527,
-        "p90": 0.045577203855,
-        "p95": 0.046316247707,
-        "p99": 0.049215984818,
-        "stdev": 0.001647901344
+        "mean": 0.043328274137,
+        "median": 0.042880895955,
+        "p50": 0.042880895955,
+        "p90": 0.044796228933,
+        "p95": 0.045571485366,
+        "p99": 0.04898858499,
+        "stdev": 0.001456778479
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -10762,7 +10771,7 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": 1321271296,
+      "peak_memory_bytes": 1318158336,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 64,
@@ -10777,13 +10786,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 6.2524e-08,
-        "median": 4.2026e-08,
-        "p50": 4.2026e-08,
-        "p90": 1.24925e-07,
-        "p95": 1.2503e-07,
-        "p99": 1.88373e-07,
-        "stdev": 3.6595e-08
+        "mean": 8.6434e-08,
+        "median": 8.3004e-08,
+        "p50": 8.3004e-08,
+        "p90": 1.2503e-07,
+        "p95": 1.66532e-07,
+        "p99": 3.12869e-07,
+        "stdev": 5.5893e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -10799,13 +10808,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.0412265617,
-        "median": 0.040991749964,
-        "p50": 0.040991749964,
-        "p90": 0.042453199707,
-        "p95": 0.042849279504,
-        "p99": 0.043780854584,
-        "stdev": 0.000825615791
+        "mean": 0.042603916707,
+        "median": 0.041681832983,
+        "p50": 0.041681832983,
+        "p90": 0.044869600271,
+        "p95": 0.046976587782,
+        "p99": 0.050315020736,
+        "stdev": 0.002127875349
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -10813,7 +10822,7 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": 1822605312,
+      "peak_memory_bytes": 1823080448,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 64,
       "status": "ok",
@@ -10827,13 +10836,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.007678713321,
-        "median": 0.007551311981,
-        "p50": 0.007551311981,
-        "p90": 0.008275063103,
-        "p95": 0.00844109368,
-        "p99": 0.00927662541,
-        "stdev": 0.000481456994
+        "mean": 0.007584260786,
+        "median": 0.007519479492,
+        "p50": 0.007519479492,
+        "p90": 0.008317887189,
+        "p95": 0.008478087804,
+        "p99": 0.008854716241,
+        "stdev": 0.000423742428
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -10849,13 +10858,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.043255004971,
-        "median": 0.043058541487,
-        "p50": 0.043058541487,
-        "p90": 0.044000124966,
-        "p95": 0.045020829095,
-        "p99": 0.046435526261,
-        "stdev": 0.000870093783
+        "mean": 0.044737269985,
+        "median": 0.043394937471,
+        "p50": 0.043394937471,
+        "p90": 0.047919395531,
+        "p95": 0.052797779592,
+        "p99": 0.056989060007,
+        "stdev": 0.003448980955
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -10863,7 +10872,7 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": 1324171264,
+      "peak_memory_bytes": 1325727744,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 64,
       "status": "ok",
@@ -10877,13 +10886,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000579284178,
-        "median": 0.000540729496,
-        "p50": 0.000540729496,
-        "p90": 0.000615291682,
-        "p95": 0.00086675802,
-        "p99": 0.000997544146,
-        "stdev": 0.000113856079
+        "mean": 0.000599886719,
+        "median": 0.000570228964,
+        "p50": 0.000570228964,
+        "p90": 0.000612312846,
+        "p95": 0.00082308522,
+        "p99": 0.001010388288,
+        "stdev": 0.000100358183
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -10899,21 +10908,22 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.04413518918,
-        "median": 0.043582437502,
-        "p50": 0.043582437502,
-        "p90": 0.046054887481,
-        "p95": 0.047596139356,
-        "p99": 0.049754187241,
-        "stdev": 0.001616261729
+        "mean": 0.044879897526,
+        "median": 0.044122895983,
+        "p50": 0.044122895983,
+        "p90": 0.047037512204,
+        "p95": 0.04869592124,
+        "p99": 0.052708765172,
+        "stdev": 0.002173282991
       },
       "lowering": {
         "active_adapter": "gaisb",
         "dense_fallback_available": true,
         "dense_fallback_used": false,
+        "execution_path": "structured_low_rank",
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": 1319878656,
+      "peak_memory_bytes": 1318912000,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
@@ -11913,13 +11923,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000572686638,
-        "median": 0.000538832974,
-        "p50": 0.000538832974,
-        "p90": 0.000620483304,
-        "p95": 0.000651414576,
-        "p99": 0.000932628731,
-        "stdev": 8.0256789e-05
+        "mean": 0.000583565847,
+        "median": 0.000555270526,
+        "p50": 0.000555270526,
+        "p90": 0.000653395569,
+        "p95": 0.000822589564,
+        "p99": 0.000854027935,
+        "stdev": 8.3235406e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -11935,13 +11945,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.044609872471,
-        "median": 0.04422370845,
-        "p50": 0.04422370845,
-        "p90": 0.046450408373,
-        "p95": 0.047098722943,
-        "p99": 0.047898813174,
-        "stdev": 0.001164425712
+        "mean": 0.046603682558,
+        "median": 0.044715583441,
+        "p50": 0.044715583441,
+        "p90": 0.049048137176,
+        "p95": 0.051891941641,
+        "p99": 0.063941040431,
+        "stdev": 0.004323982511
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -11949,7 +11959,7 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": 1318944768,
+      "peak_memory_bytes": 1322942464,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 128,
@@ -11964,13 +11974,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 6.74e-08,
+        "mean": 6.078e-08,
         "median": 4.2026e-08,
         "p50": 4.2026e-08,
-        "p90": 8.815e-08,
-        "p95": 1.2503e-07,
-        "p99": 2.70959e-07,
-        "stdev": 4.845e-08
+        "p90": 8.3004e-08,
+        "p95": 8.358e-08,
+        "p99": 2.71377e-07,
+        "stdev": 4.6554e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -11986,13 +11996,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.042907796642,
-        "median": 0.042647312512,
-        "p50": 0.042647312512,
-        "p90": 0.043904720771,
-        "p95": 0.044421373087,
-        "p99": 0.046407116414,
-        "stdev": 0.000982732398
+        "mean": 0.042579479038,
+        "median": 0.042226645455,
+        "p50": 0.042226645455,
+        "p90": 0.044198283216,
+        "p95": 0.044468450005,
+        "p99": 0.045566951953,
+        "stdev": 0.000991548857
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -12000,7 +12010,7 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": 1822687232,
+      "peak_memory_bytes": 1822998528,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 128,
       "status": "ok",
@@ -12014,13 +12024,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.007293780833,
-        "median": 0.007256291457,
-        "p50": 0.007256291457,
-        "p90": 0.007472946192,
-        "p95": 0.0077582044,
-        "p99": 0.008214004046,
-        "stdev": 0.000256437182
+        "mean": 0.007634087431,
+        "median": 0.007628520485,
+        "p50": 0.007628520485,
+        "p90": 0.008414141648,
+        "p95": 0.008700245427,
+        "p99": 0.008897260093,
+        "stdev": 0.000498294313
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -12036,13 +12046,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.04366141421,
-        "median": 0.043388354534,
-        "p50": 0.043388354534,
-        "p90": 0.045613958046,
-        "p95": 0.045897797809,
-        "p99": 0.046503408261,
-        "stdev": 0.000977868064
+        "mean": 0.045138861684,
+        "median": 0.044386542053,
+        "p50": 0.044386542053,
+        "p90": 0.047362375585,
+        "p95": 0.049351875274,
+        "p99": 0.05027991389,
+        "stdev": 0.001849984109
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -12050,7 +12060,7 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": 1323433984,
+      "peak_memory_bytes": 1324630016,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 128,
       "status": "ok",
@@ -12064,13 +12074,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000563383428,
-        "median": 0.000540166977,
-        "p50": 0.000540166977,
-        "p90": 0.000586492289,
-        "p95": 0.000680079224,
-        "p99": 0.000880394613,
-        "stdev": 7.1598153e-05
+        "mean": 0.00060289246,
+        "median": 0.000567667012,
+        "p50": 0.000567667012,
+        "p90": 0.000810883066,
+        "p95": 0.000843956223,
+        "p99": 0.000882399093,
+        "stdev": 9.2885372e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -12086,21 +12096,22 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.043827646687,
-        "median": 0.043433771003,
-        "p50": 0.043433771003,
-        "p90": 0.045248145319,
-        "p95": 0.046513637697,
-        "p99": 0.049031546736,
-        "stdev": 0.001376433928
+        "mean": 0.046302529217,
+        "median": 0.044827104022,
+        "p50": 0.044827104022,
+        "p90": 0.047718429263,
+        "p95": 0.052360393951,
+        "p99": 0.070121197545,
+        "stdev": 0.005252174114
       },
       "lowering": {
         "active_adapter": "gaisb",
         "dense_fallback_available": true,
         "dense_fallback_used": false,
+        "execution_path": "structured_low_rank",
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": 1318830080,
+      "peak_memory_bytes": 1325613056,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
@@ -13100,13 +13111,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.00061741503,
-        "median": 0.000583166548,
-        "p50": 0.000583166548,
-        "p90": 0.000715308753,
-        "p95": 0.000766904629,
-        "p99": 0.001009402546,
-        "stdev": 9.9173711e-05
+        "mean": 0.000575379212,
+        "median": 0.000547374948,
+        "p50": 0.000547374948,
+        "p90": 0.00061339559,
+        "p95": 0.000781495456,
+        "p99": 0.000831584452,
+        "stdev": 7.4391228e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -13122,13 +13133,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.073666246624,
-        "median": 0.072590728989,
-        "p50": 0.072590728989,
-        "p90": 0.076435962459,
-        "p95": 0.07812226644,
-        "p99": 0.089124352057,
-        "stdev": 0.004180981611
+        "mean": 0.071987719107,
+        "median": 0.071482396044,
+        "p50": 0.071482396044,
+        "p90": 0.073926262837,
+        "p95": 0.075198510091,
+        "p99": 0.076218263825,
+        "stdev": 0.001411341944
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -13136,7 +13147,7 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": 1614807040,
+      "peak_memory_bytes": 1611726848,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 128,
@@ -13151,13 +13162,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 7.2562e-08,
+        "mean": 7.5866e-08,
         "median": 4.2026e-08,
         "p50": 4.2026e-08,
         "p90": 1.2503e-07,
-        "p95": 1.2503e-07,
-        "p99": 2.7174e-07,
-        "stdev": 5.1084e-08
+        "p95": 1.93797e-07,
+        "p99": 3.12947e-07,
+        "stdev": 6.0455e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -13173,13 +13184,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.069258878483,
-        "median": 0.068932854454,
-        "p50": 0.068932854454,
-        "p90": 0.071427745628,
-        "p95": 0.071676181525,
-        "p99": 0.072393736376,
-        "stdev": 0.00120340037
+        "mean": 0.074735185758,
+        "median": 0.073213749507,
+        "p50": 0.073213749507,
+        "p90": 0.083602886868,
+        "p95": 0.086412145593,
+        "p99": 0.089233623535,
+        "stdev": 0.006087126682
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -13187,7 +13198,7 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": 1360461824,
+      "peak_memory_bytes": 1782579200,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 128,
       "status": "ok",
@@ -13201,13 +13212,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.007545551697,
-        "median": 0.007523249951,
-        "p50": 0.007523249951,
-        "p90": 0.00828370034,
-        "p95": 0.008463527507,
-        "p99": 0.008684614328,
-        "stdev": 0.000425125818
+        "mean": 0.007660365123,
+        "median": 0.007604583516,
+        "p50": 0.007604583516,
+        "p90": 0.008264862734,
+        "p95": 0.008472178836,
+        "p99": 0.009029407599,
+        "stdev": 0.000460113415
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -13223,13 +13234,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.072132950015,
-        "median": 0.071396437474,
-        "p50": 0.071396437474,
-        "p90": 0.074599391746,
-        "p95": 0.075273418747,
-        "p99": 0.076062841853,
-        "stdev": 0.001579955703
+        "mean": 0.072698270821,
+        "median": 0.071615958994,
+        "p50": 0.071615958994,
+        "p90": 0.075485916331,
+        "p95": 0.076686510438,
+        "p99": 0.085581131509,
+        "stdev": 0.003080054585
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -13237,7 +13248,7 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": 1615888384,
+      "peak_memory_bytes": 1616396288,
       "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 128,
       "status": "ok",
@@ -13251,13 +13262,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000588425884,
-        "median": 0.000561062538,
-        "p50": 0.000561062538,
-        "p90": 0.000635045639,
-        "p95": 0.000752624852,
-        "p99": 0.000917580082,
-        "stdev": 8.230527e-05
+        "mean": 0.000590087562,
+        "median": 0.000563062495,
+        "p50": 0.000563062495,
+        "p90": 0.000635125022,
+        "p95": 0.000802606205,
+        "p99": 0.000847777266,
+        "stdev": 7.514465e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -13273,21 +13284,22 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.072559241676,
-        "median": 0.071622958523,
-        "p50": 0.071622958523,
-        "p90": 0.074786320841,
-        "p95": 0.076379923249,
-        "p99": 0.084573515189,
-        "stdev": 0.002843571922
+        "mean": 0.072366016658,
+        "median": 0.071568979009,
+        "p50": 0.071568979009,
+        "p90": 0.074308679136,
+        "p95": 0.075334933551,
+        "p99": 0.080778711832,
+        "stdev": 0.002116776046
       },
       "lowering": {
         "active_adapter": "gaisb",
         "dense_fallback_available": true,
         "dense_fallback_used": false,
+        "execution_path": "structured_low_rank",
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": 1610186752,
+      "peak_memory_bytes": 1611251712,
       "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
@@ -14287,13 +14299,17 @@
   ],
   "run": {
     "command": [
-      "/Users/sasha/.cache/uv/builds-v0/.tmpjWvapJ/bin/python",
-      "/Users/sasha/Documents/beyond-matmul-112-peft-memory-control-instrumentation/benchmarks/peft_multi_adapter_serving.py",
+      "/Users/sasha/.cache/uv/builds-v0/.tmpvrV7Jx/bin/python",
+      "/Users/sasha/Documents/beyond-matmul-113-structured-low-rank-peft/benchmarks/peft_multi_adapter_serving.py",
+      "--upstream-peft-path",
+      "/Users/sasha/Documents/beyond-matmul-112-peft-memory-control-instrumentation/.peft_benchmark_checkouts/huggingface-peft-main",
+      "--fork-peft-path",
+      "/Users/sasha/Documents/beyond-matmul-112-peft-memory-control-instrumentation/.peft_benchmark_checkouts/alexlopashev-peft-beyond-matmul-provenance-lora-inference",
       "--json-output",
       "docs/results/peft_multi_adapter_serving.json"
     ],
-    "command_text": "/Users/sasha/.cache/uv/builds-v0/.tmpjWvapJ/bin/python /Users/sasha/Documents/beyond-matmul-112-peft-memory-control-instrumentation/benchmarks/peft_multi_adapter_serving.py --json-output docs/results/peft_multi_adapter_serving.json",
-    "generated_at_utc": "2026-07-09T16:25:33Z",
+    "command_text": "/Users/sasha/.cache/uv/builds-v0/.tmpvrV7Jx/bin/python /Users/sasha/Documents/beyond-matmul-113-structured-low-rank-peft/benchmarks/peft_multi_adapter_serving.py --upstream-peft-path /Users/sasha/Documents/beyond-matmul-112-peft-memory-control-instrumentation/.peft_benchmark_checkouts/huggingface-peft-main --fork-peft-path /Users/sasha/Documents/beyond-matmul-112-peft-memory-control-instrumentation/.peft_benchmark_checkouts/alexlopashev-peft-beyond-matmul-provenance-lora-inference --json-output docs/results/peft_multi_adapter_serving.json",
+    "generated_at_utc": "2026-07-09T16:54:16Z",
     "mode": "real"
   },
   "schema_version": 1,
@@ -14313,7 +14329,117 @@
     "memory_or_control_claim": "none",
     "negative_cases": [],
     "performance_claim": "none",
-    "readiness_blockers": []
+    "readiness_blockers": [],
+    "structured_low_rank_cases": [
+      {
+        "adapter": "merchant",
+        "baseline": "beyond_matmul_factor_provenance",
+        "case": "merchant_seq16_batch1",
+        "correctness_passed": true,
+        "execution_path": "structured_low_rank",
+        "kind": "provenance_lora_factors",
+        "status": "ok"
+      },
+      {
+        "adapter": "merchant",
+        "baseline": "beyond_matmul_factor_provenance",
+        "case": "merchant_seq16_batch2",
+        "correctness_passed": true,
+        "execution_path": "structured_low_rank",
+        "kind": "provenance_lora_factors",
+        "status": "ok"
+      },
+      {
+        "adapter": "merchant",
+        "baseline": "beyond_matmul_factor_provenance",
+        "case": "merchant_seq64_batch1",
+        "correctness_passed": true,
+        "execution_path": "structured_low_rank",
+        "kind": "provenance_lora_factors",
+        "status": "ok"
+      },
+      {
+        "adapter": "merchant",
+        "baseline": "beyond_matmul_factor_provenance",
+        "case": "merchant_seq64_batch2",
+        "correctness_passed": true,
+        "execution_path": "structured_low_rank",
+        "kind": "provenance_lora_factors",
+        "status": "ok"
+      },
+      {
+        "adapter": "merchant",
+        "baseline": "beyond_matmul_factor_provenance",
+        "case": "merchant_seq128_batch1",
+        "correctness_passed": true,
+        "execution_path": "structured_low_rank",
+        "kind": "provenance_lora_factors",
+        "status": "ok"
+      },
+      {
+        "adapter": "merchant",
+        "baseline": "beyond_matmul_factor_provenance",
+        "case": "merchant_seq128_batch2",
+        "correctness_passed": true,
+        "execution_path": "structured_low_rank",
+        "kind": "provenance_lora_factors",
+        "status": "ok"
+      },
+      {
+        "adapter": "gaisb",
+        "baseline": "beyond_matmul_factor_provenance",
+        "case": "gaisb_seq16_batch1",
+        "correctness_passed": true,
+        "execution_path": "structured_low_rank",
+        "kind": "provenance_lora_factors",
+        "status": "ok"
+      },
+      {
+        "adapter": "gaisb",
+        "baseline": "beyond_matmul_factor_provenance",
+        "case": "gaisb_seq16_batch2",
+        "correctness_passed": true,
+        "execution_path": "structured_low_rank",
+        "kind": "provenance_lora_factors",
+        "status": "ok"
+      },
+      {
+        "adapter": "gaisb",
+        "baseline": "beyond_matmul_factor_provenance",
+        "case": "gaisb_seq64_batch1",
+        "correctness_passed": true,
+        "execution_path": "structured_low_rank",
+        "kind": "provenance_lora_factors",
+        "status": "ok"
+      },
+      {
+        "adapter": "gaisb",
+        "baseline": "beyond_matmul_factor_provenance",
+        "case": "gaisb_seq64_batch2",
+        "correctness_passed": true,
+        "execution_path": "structured_low_rank",
+        "kind": "provenance_lora_factors",
+        "status": "ok"
+      },
+      {
+        "adapter": "gaisb",
+        "baseline": "beyond_matmul_factor_provenance",
+        "case": "gaisb_seq128_batch1",
+        "correctness_passed": true,
+        "execution_path": "structured_low_rank",
+        "kind": "provenance_lora_factors",
+        "status": "ok"
+      },
+      {
+        "adapter": "gaisb",
+        "baseline": "beyond_matmul_factor_provenance",
+        "case": "gaisb_seq128_batch2",
+        "correctness_passed": true,
+        "execution_path": "structured_low_rank",
+        "kind": "provenance_lora_factors",
+        "status": "ok"
+      }
+    ]
   },
   "workload": {
     "adapters": [

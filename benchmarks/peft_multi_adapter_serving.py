@@ -40,6 +40,8 @@ FORK_REPOSITORY = "alexlopashev/peft"
 CORRECTNESS_MAX_ABS_TOLERANCE = 1e-4
 CORRECTNESS_RELATIVE_L2_TOLERANCE = 1e-5
 BASE_MODEL_FP32_BYTES_APPROX = 125_000_000 * 4
+STRUCTURED_LOW_RANK_DEVICE = "cpu"
+STRUCTURED_LOW_RANK_DTYPE = "torch.float32"
 BASELINES = [
     "upstream_peft_unmerged",
     "upstream_peft_merged_dense_cache",
@@ -326,6 +328,11 @@ def _collect_synthetic_case(
         timing_inputs = {**inputs, "model": model}
         latencies = list(time_forward(baseline, adapter.name, timing_inputs, warmup_repetitions, measured_repetitions))
         switch_latencies = list(time_switch(baseline, adapter.name, warmup_repetitions, measured_repetitions))
+        peft_provenance_events = (
+            _synthetic_structured_low_rank_events(adapter, sequence_length, batch_size)
+            if baseline == "beyond_matmul_factor_provenance"
+            else None
+        )
         rows.append(
             _result_row(
                 baseline=baseline,
@@ -336,6 +343,7 @@ def _collect_synthetic_case(
                 switch_latencies=switch_latencies,
                 logits=logits,
                 reference_logits=reference_logits,
+                peft_provenance_events=peft_provenance_events,
             )
         )
     return rows
@@ -387,6 +395,43 @@ def _synthetic_inputs(sequence_length: int, batch_size: int, vocab_size: int) ->
     return {"input_ids": input_ids, "attention_mask": attention_mask}
 
 
+def _synthetic_structured_low_rank_events(
+    adapter: AdapterSpec,
+    sequence_length: int,
+    batch_size: int,
+) -> List[Dict[str, Any]]:
+    return [
+        {
+            "kind": "beyond_matmul_lora_provenance",
+            "path": "structured_low_rank",
+            "adapter": adapter.name,
+            "module_path": "synthetic.lora_projection",
+            "base_module": "Linear",
+            "rank": 2,
+            "in_features": 16,
+            "out_features": 16,
+            "input_shape": [batch_size, sequence_length, 16],
+            "a_shape": [2, 16],
+            "b_shape": [16, 2],
+            "scaling": 1.0,
+            "dtype": STRUCTURED_LOW_RANK_DTYPE,
+            "device": STRUCTURED_LOW_RANK_DEVICE,
+            "a_dtype": STRUCTURED_LOW_RANK_DTYPE,
+            "a_device": STRUCTURED_LOW_RANK_DEVICE,
+            "b_dtype": STRUCTURED_LOW_RANK_DTYPE,
+            "b_device": STRUCTURED_LOW_RANK_DEVICE,
+            "fan_in_fan_out": False,
+            "lora_bias": False,
+            "use_dora": False,
+            "lora_variant": None,
+            "dense_fallback_available": True,
+            "dense_fallback_used": False,
+            "fallback_reason": None,
+            "schema_version": 1,
+        }
+    ]
+
+
 def _result_row(
     *,
     baseline: str,
@@ -408,6 +453,7 @@ def _result_row(
     if status == "ok" and not correctness["passed"]:
         status = "failed_correctness"
         reason = reason or "correctness tolerance failed"
+    structured_execution_allowed = status == "ok" and correctness["passed"]
     row = {
         "case": _case_name(adapter.name, sequence_length, batch_size),
         "adapter": adapter.name,
@@ -424,7 +470,12 @@ def _result_row(
         "peak_memory_status": peak_memory_status,
         "storage": _storage_metadata(baseline, adapter, storage),
         "correctness": correctness,
-        "lowering": _lowering_metadata(baseline, adapter.name, peft_provenance_events=peft_provenance_events),
+        "lowering": _lowering_metadata(
+            baseline,
+            adapter.name,
+            peft_provenance_events=peft_provenance_events,
+            structured_execution_allowed=structured_execution_allowed,
+        ),
     }
     if peft_provenance_events is not None:
         row["peft_provenance_events"] = list(peft_provenance_events)
@@ -607,6 +658,7 @@ def _artifact_summary(
         "max_abs_error": _max_correctness_metric(results, "max_abs_error"),
         "max_relative_l2_error": _max_correctness_metric(results, "relative_l2_error"),
         "fallback_cases": _fallback_cases(results),
+        "structured_low_rank_cases": _structured_low_rank_cases(results),
         "negative_cases": _negative_cases(results),
         "memory_or_control_claim": "none",
         "performance_claim": "none",
@@ -697,6 +749,28 @@ def _fallback_cases(results: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 "status": row["status"],
                 "kind": lowering["kind"],
                 "fallback_reasons": fallback_reasons,
+                "correctness_passed": row["correctness"]["passed"],
+            }
+        )
+    return cases
+
+
+def _structured_low_rank_cases(results: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    cases = []
+    for row in results:
+        if row["baseline"] != "beyond_matmul_factor_provenance":
+            continue
+        lowering = row["lowering"]
+        if lowering.get("execution_path") != "structured_low_rank":
+            continue
+        cases.append(
+            {
+                "case": row["case"],
+                "adapter": row["adapter"],
+                "baseline": row["baseline"],
+                "status": row["status"],
+                "kind": lowering["kind"],
+                "execution_path": lowering["execution_path"],
                 "correctness_passed": row["correctness"]["passed"],
             }
         )
@@ -819,6 +893,7 @@ def _lowering_metadata(
     adapter_name: str,
     *,
     peft_provenance_events: Sequence[Dict[str, Any]] | None = None,
+    structured_execution_allowed: bool = True,
 ) -> Dict[str, Any]:
     if baseline == "upstream_peft_unmerged":
         return {
@@ -842,35 +917,45 @@ def _lowering_metadata(
             "dense_fallback_used": True,
         }
     if peft_provenance_events is not None:
-        return _provenance_lowering_metadata_from_events(adapter_name, peft_provenance_events)
+        return _provenance_lowering_metadata_from_events(
+            adapter_name,
+            peft_provenance_events,
+            structured_execution_allowed=structured_execution_allowed,
+        )
     return {
-        "kind": "provenance_lora_factors",
+        "kind": "peft_dense_fallback",
         "active_adapter": adapter_name,
         "dense_fallback_available": True,
-        "dense_fallback_used": False,
+        "dense_fallback_used": True,
+        "execution_path": "dense_fallback",
+        "fallback_reasons": ["no_fork_provenance_events"],
     }
 
 
 def _provenance_lowering_metadata_from_events(
     adapter_name: str,
     peft_provenance_events: Sequence[Dict[str, Any]],
+    *,
+    structured_execution_allowed: bool,
 ) -> Dict[str, Any]:
+    events = list(peft_provenance_events)
     structured_events = [
-        event for event in peft_provenance_events if event.get("path") == "structured_low_rank"
+        event for event in events if event.get("path") == "structured_low_rank"
     ]
-    fallback_reasons = sorted(
-        {
-            event["fallback_reason"]
-            for event in peft_provenance_events
-            if event.get("fallback_reason") is not None
-        }
-    )
-    if structured_events:
+    fallback_reasons = _event_fallback_reasons(events)
+    for event in structured_events:
+        fallback_reasons.extend(_structured_low_rank_contract_rejections(event))
+    if not structured_execution_allowed:
+        fallback_reasons.append("correctness_failed")
+    if not events:
+        fallback_reasons.append("no_fork_provenance_events")
+    if structured_events and len(structured_events) == len(events) and not fallback_reasons:
         lowering = {
             "kind": "provenance_lora_factors",
             "active_adapter": adapter_name,
             "dense_fallback_available": True,
             "dense_fallback_used": False,
+            "execution_path": "structured_low_rank",
         }
     else:
         lowering = {
@@ -878,12 +963,42 @@ def _provenance_lowering_metadata_from_events(
             "active_adapter": adapter_name,
             "dense_fallback_available": True,
             "dense_fallback_used": True,
+            "execution_path": "dense_fallback",
         }
         if not fallback_reasons:
-            fallback_reasons = ["no_fork_provenance_events"]
+            fallback_reasons = ["non_structured_provenance_event"]
     if fallback_reasons:
-        lowering["fallback_reasons"] = fallback_reasons
+        lowering["fallback_reasons"] = sorted(set(fallback_reasons))
     return lowering
+
+
+def _event_fallback_reasons(events: Sequence[Dict[str, Any]]) -> List[str]:
+    return [
+        event["fallback_reason"]
+        for event in events
+        if event.get("fallback_reason") is not None
+    ]
+
+
+def _structured_low_rank_contract_rejections(event: Dict[str, Any]) -> List[str]:
+    reasons = []
+    dtype_fields = ("dtype", "a_dtype", "b_dtype")
+    device_fields = ("device", "a_device", "b_device")
+    if any(event.get(field) != STRUCTURED_LOW_RANK_DTYPE for field in dtype_fields):
+        reasons.append("non_fp32_dtype")
+    if any(event.get(field) != STRUCTURED_LOW_RANK_DEVICE for field in device_fields):
+        reasons.append("non_cpu_device")
+    if event.get("base_module") != "Linear":
+        reasons.append("unsupported_base_module")
+    if event.get("fan_in_fan_out"):
+        reasons.append("unsupported_layout")
+    if event.get("lora_bias"):
+        reasons.append("lora_bias")
+    if event.get("use_dora"):
+        reasons.append("use_dora")
+    if event.get("lora_variant") is not None:
+        reasons.append("unsupported_lora_variant")
+    return reasons
 
 
 def _dependency_metadata(
@@ -1120,6 +1235,7 @@ def _non_ok_result_row(payload: Dict[str, Any], adapter: AdapterSpec) -> Dict[st
             payload["baseline"],
             adapter.name,
             peft_provenance_events=payload.get("peft_provenance_events"),
+            structured_execution_allowed=False,
         ),
         "reason": payload.get("reason") or payload["status"],
     }

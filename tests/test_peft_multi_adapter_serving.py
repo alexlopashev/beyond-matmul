@@ -343,6 +343,7 @@ class PeftMultiAdapterServingTests(unittest.TestCase):
         self.assertEqual(len(provenance), 2)
         for row in provenance:
             self.assertEqual(row["lowering"]["kind"], "provenance_lora_factors")
+            self.assertEqual(row["lowering"]["execution_path"], "structured_low_rank")
             self.assertTrue(row["lowering"]["dense_fallback_available"])
             self.assertFalse(row["lowering"]["dense_fallback_used"])
             self.assertEqual(row["lowering"]["active_adapter"], row["adapter"])
@@ -361,9 +362,137 @@ class PeftMultiAdapterServingTests(unittest.TestCase):
         self.assertFalse(first["summary"]["benchmark_ready"])
         self.assertEqual(first["summary"]["readiness_blockers"], ["synthetic_smoke_not_benchmark_evidence"])
         self.assertEqual(first["summary"]["fallback_cases"], [])
+        self.assertEqual(
+            first["summary"]["structured_low_rank_cases"],
+            [
+                {
+                    "case": "merchant_seq4_batch1",
+                    "adapter": "merchant",
+                    "baseline": "beyond_matmul_factor_provenance",
+                    "status": "ok",
+                    "kind": "provenance_lora_factors",
+                    "execution_path": "structured_low_rank",
+                    "correctness_passed": True,
+                },
+                {
+                    "case": "gaisb_seq4_batch1",
+                    "adapter": "gaisb",
+                    "baseline": "beyond_matmul_factor_provenance",
+                    "status": "ok",
+                    "kind": "provenance_lora_factors",
+                    "execution_path": "structured_low_rank",
+                    "correctness_passed": True,
+                },
+            ],
+        )
         self.assertEqual(first["summary"]["negative_cases"], [])
         self.assertEqual(first["summary"]["memory_or_control_claim"], "none")
         self.assertEqual(first["summary"]["performance_claim"], "none")
+
+    def test_structured_low_rank_requires_fp32_cpu_contract(self):
+        benchmark = _load_benchmark_module()
+
+        row = benchmark._result_row(
+            baseline="beyond_matmul_factor_provenance",
+            adapter=benchmark.ADAPTERS[0],
+            sequence_length=4,
+            batch_size=1,
+            latencies=[0.01],
+            switch_latencies=[0.001],
+            logits=[[[0.0, 1.0]]],
+            reference_logits=[[[0.0, 1.0]]],
+            peft_provenance_events=[
+                {
+                    "kind": "beyond_matmul_lora_provenance",
+                    "path": "structured_low_rank",
+                    "adapter": "merchant",
+                    "device": "cpu",
+                    "dtype": "torch.float16",
+                    "a_device": "cpu",
+                    "a_dtype": "torch.float16",
+                    "b_device": "cpu",
+                    "b_dtype": "torch.float16",
+                    "base_module": "Linear",
+                    "fan_in_fan_out": False,
+                }
+            ],
+        )
+
+        self.assertTrue(row["correctness"]["passed"])
+        self.assertEqual(row["lowering"]["kind"], "peft_dense_fallback")
+        self.assertEqual(row["lowering"]["execution_path"], "dense_fallback")
+        self.assertTrue(row["lowering"]["dense_fallback_used"])
+        self.assertEqual(row["lowering"]["fallback_reasons"], ["non_fp32_dtype"])
+
+    def test_structured_low_rank_requires_correctness_parity(self):
+        benchmark = _load_benchmark_module()
+
+        row = benchmark._result_row(
+            baseline="beyond_matmul_factor_provenance",
+            adapter=benchmark.ADAPTERS[0],
+            sequence_length=4,
+            batch_size=1,
+            latencies=[0.01],
+            switch_latencies=[0.001],
+            logits=[[[1.0, 2.0]]],
+            reference_logits=[[[0.0, 1.0]]],
+            peft_provenance_events=[
+                {
+                    "kind": "beyond_matmul_lora_provenance",
+                    "path": "structured_low_rank",
+                    "adapter": "merchant",
+                    "device": "cpu",
+                    "dtype": "torch.float32",
+                    "a_device": "cpu",
+                    "a_dtype": "torch.float32",
+                    "b_device": "cpu",
+                    "b_dtype": "torch.float32",
+                    "base_module": "Linear",
+                    "fan_in_fan_out": False,
+                }
+            ],
+        )
+
+        self.assertEqual(row["status"], "failed_correctness")
+        self.assertEqual(row["lowering"]["kind"], "peft_dense_fallback")
+        self.assertEqual(row["lowering"]["execution_path"], "dense_fallback")
+        self.assertTrue(row["lowering"]["dense_fallback_used"])
+        self.assertEqual(row["lowering"]["fallback_reasons"], ["correctness_failed"])
+
+    def test_structured_low_rank_rejects_unsupported_device_and_layout(self):
+        benchmark = _load_benchmark_module()
+
+        row = benchmark._result_row(
+            baseline="beyond_matmul_factor_provenance",
+            adapter=benchmark.ADAPTERS[0],
+            sequence_length=4,
+            batch_size=1,
+            latencies=[0.01],
+            switch_latencies=[0.001],
+            logits=[[[0.0, 1.0]]],
+            reference_logits=[[[0.0, 1.0]]],
+            peft_provenance_events=[
+                {
+                    "kind": "beyond_matmul_lora_provenance",
+                    "path": "structured_low_rank",
+                    "adapter": "merchant",
+                    "device": "cuda:0",
+                    "dtype": "torch.float32",
+                    "a_device": "cuda:0",
+                    "a_dtype": "torch.float32",
+                    "b_device": "cuda:0",
+                    "b_dtype": "torch.float32",
+                    "base_module": "Linear",
+                    "fan_in_fan_out": True,
+                }
+            ],
+        )
+
+        self.assertTrue(row["correctness"]["passed"])
+        self.assertEqual(row["lowering"]["kind"], "peft_dense_fallback")
+        self.assertEqual(row["lowering"]["execution_path"], "dense_fallback")
+        self.assertTrue(row["lowering"]["dense_fallback_used"])
+        self.assertEqual(row["lowering"]["fallback_reasons"], ["non_cpu_device", "unsupported_layout"])
 
     def test_context_limit_preflight_records_blocker_rows(self):
         benchmark = _load_benchmark_module()

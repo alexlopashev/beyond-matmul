@@ -160,7 +160,8 @@ Closed PEFT multi-adapter serving follow-up:
   repeated merge/unmerge, and Beyond Matmul provenance rows pass correctness
   for both adapters and all shapes.
 - The result is benchmark-ready correctness evidence: the Beyond Matmul rows
-  expose structured factor provenance without dense fallback,
+  listed in `summary.structured_low_rank_cases` expose
+  `lowering.execution_path=structured_low_rank` without dense fallback,
   `summary.benchmark_ready=true`,
   `summary.memory_control_claim_ready=true`,
   `summary.performance_claim=none`, and `summary.memory_or_control_claim=none`.
@@ -170,7 +171,9 @@ Closed PEFT multi-adapter serving follow-up:
   bug.
 - The artifact supports only the narrower claim that the external PEFT path can
   produce row-complete multi-adapter serving metadata, switching measurements,
-  process max-RSS fields, and structured factor provenance. It does not support
+  process max-RSS fields, and CPU fp32 structured low-rank execution-path
+  evidence for the rows that pass correctness and backend contracts. It does
+  not support
   process-memory savings, CUDA peak-memory savings, adapter-switching gains,
   training, generation loops, GPU kernels, or universal Transformer speedups.
 

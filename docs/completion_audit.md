@@ -116,8 +116,9 @@ for `docs/peft_multi_adapter_serving_benchmark_contract.md` and summarized in
 The result supports metadata-level serving evidence: all 48 required rows are
 present; upstream unmerged PEFT, dense-cache, repeated merge/unmerge, and
 Beyond Matmul factor-provenance rows pass correctness; Beyond Matmul rows
-expose structured factor provenance without dense fallback; and adapter,
-shape, correctness, storage, latency, switching metadata, and
+listed in `summary.structured_low_rank_cases` report
+`lowering.execution_path=structured_low_rank` without dense fallback; and
+adapter, shape, correctness, storage, latency, switching metadata, and
 platform-supported process max RSS are recorded. The stale dense-merge failures
 were traced in
 `docs/peft_multi_adapter_dense_merge_investigation.md` to harness dtype
