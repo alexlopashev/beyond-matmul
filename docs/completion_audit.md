@@ -114,13 +114,16 @@ for `docs/peft_multi_adapter_serving_benchmark_contract.md` and summarized in
 `whitepaper/main.tex`.
 
 The result supports metadata-level serving evidence: all 48 required rows are
-present; upstream unmerged PEFT and Beyond Matmul factor-provenance rows pass
-correctness; Beyond Matmul rows report explicit dense fallback with
-`non_fp32_dtype`; and adapter, shape, fallback, correctness, storage, latency,
-and switching metadata are recorded. It does not support a memory, latency, or
-adapter-switching gain: dense-cache and repeated merge/unmerge rows fail
-correctness, the Beyond Matmul rows use dense fallback rather than structured
-low-rank kernel execution, CPU peak memory is not measured, and
+present; upstream unmerged PEFT, dense-cache, repeated merge/unmerge, and
+Beyond Matmul factor-provenance rows pass correctness; Beyond Matmul rows
+expose structured factor provenance without dense fallback; and adapter,
+shape, correctness, storage, latency, and switching metadata are recorded. The
+stale dense-merge failures were traced in
+`docs/peft_multi_adapter_dense_merge_investigation.md` to harness dtype
+mismatch against the CPU fp32 contract plus dense-cache adapter activation. The
+refreshed result is benchmark-ready correctness evidence, but it does not
+support a memory, latency, or adapter-switching gain: CPU peak memory is not
+measured, no threshold win is claimed, and
 `summary.performance_claim` plus `summary.memory_or_control_claim` remain
 `none`.
 

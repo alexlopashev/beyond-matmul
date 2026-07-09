@@ -50,6 +50,11 @@ values in `[0, model.config.vocab_size)`, and attention masks of ones. The
 required timing protocol is `10` warmup forwards and `50` measured repetitions
 per adapter, baseline, and shape.
 
+The real worker must force the pinned base model to `torch.float32` when loading
+Transformers weights. Relying on auto dtype selection can silently materialize
+the OPT base as fp16 on CPU, which makes PEFT dense merge paths fail this
+contract's fp32 correctness tolerance.
+
 ## Regeneration Command
 
 The implementation issue should add the harness at

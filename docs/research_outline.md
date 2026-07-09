@@ -156,18 +156,22 @@ Closed PEFT multi-adapter serving follow-up:
   `docs/results/peft_multi_adapter_serving_smoke.json`.
 - The measured artifact is
   `docs/results/peft_multi_adapter_serving.json`. It includes all 48 required
-  rows with the contract timing protocol. Upstream unmerged and Beyond Matmul
-  provenance rows pass correctness for both adapters and all shapes.
-- The result is negative for benchmark readiness: dense-cache and repeated
-  merge/unmerge rows fail correctness, the Beyond Matmul rows report explicit
-  dense fallback with `non_fp32_dtype`, `summary.benchmark_ready=false`,
-  `summary.performance_claim=none`, and
+  rows with the contract timing protocol. Upstream unmerged, dense-cache,
+  repeated merge/unmerge, and Beyond Matmul provenance rows pass correctness
+  for both adapters and all shapes.
+- The result is benchmark-ready correctness evidence: the Beyond Matmul rows
+  expose structured factor provenance without dense fallback,
+  `summary.benchmark_ready=true`, `summary.performance_claim=none`, and
   `summary.memory_or_control_claim=none`.
+- The stale dense-merge failures were traced in
+  `docs/peft_multi_adapter_dense_merge_investigation.md` to harness dtype
+  mismatch against the CPU fp32 contract plus a dense-cache adapter activation
+  bug.
 - The artifact supports only the narrower claim that the external PEFT path can
   produce row-complete multi-adapter serving metadata, switching measurements,
-  and explicit fallback reporting. It does not support memory savings,
-  adapter-switching gains, structured low-rank kernel execution, training,
-  generation loops, GPU kernels, or universal Transformer speedups.
+  and structured factor provenance. It does not support memory savings,
+  adapter-switching gains, training, generation loops, GPU kernels, or
+  universal Transformer speedups.
 
 Metrics:
 

@@ -1078,7 +1078,7 @@ def _real_worker(args: argparse.Namespace) -> None:
             _write_json(args._worker_json_output, payload)
             return
 
-        base_model = AutoModelForCausalLM.from_pretrained(BASE_MODEL, revision=BASE_MODEL_REVISION)
+        base_model = _load_base_worker_model(AutoModelForCausalLM)
         model = _load_worker_model(PeftModel, base_model, adapter, args._worker_baseline)
         model.eval()
         inputs = _worker_inputs(args._worker_sequence_length, args._worker_batch_size, model.config.vocab_size)
@@ -1135,6 +1135,15 @@ def _load_worker_model(peft_model_class: Any, base_model: Any, adapter: AdapterS
     if hasattr(model, "set_adapter"):
         model.set_adapter(adapter.name)
     return model
+
+
+def _load_base_worker_model(model_class: Any) -> Any:
+    torch = _torch()
+    return model_class.from_pretrained(
+        BASE_MODEL,
+        revision=BASE_MODEL_REVISION,
+        dtype=torch.float32,
+    )
 
 
 def _load_primary_worker_adapter(peft_model_class: Any, base_model: Any, adapter: AdapterSpec, baseline: str) -> Any:
@@ -1197,13 +1206,15 @@ def _run_dense_cache_worker(
     try:
         dense_cache = {}
         for cached_adapter in ADAPTERS:
-            base_model = model_class.from_pretrained(BASE_MODEL, revision=BASE_MODEL_REVISION)
+            base_model = _load_base_worker_model(model_class)
             model = _load_primary_worker_adapter(
                 peft_model_class,
                 base_model,
                 cached_adapter,
                 args._worker_baseline,
             )
+            if hasattr(model, "set_adapter"):
+                model.set_adapter(cached_adapter.name)
             merged = _merge_dense_or_not_applicable(args, model, cached_adapter)
             if isinstance(merged, dict):
                 merged["adapter"] = adapter.name
