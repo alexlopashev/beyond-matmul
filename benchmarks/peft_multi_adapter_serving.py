@@ -401,6 +401,8 @@ def _result_row(
     reason: str | None = None,
     storage: Dict[str, Any] | None = None,
     peft_provenance_events: Sequence[Dict[str, Any]] | None = None,
+    peak_memory_bytes: int | None = None,
+    peak_memory_status: str = "not_measured_synthetic_smoke",
 ) -> Dict[str, Any]:
     correctness = _correctness_metrics(logits, reference_logits)
     if status == "ok" and not correctness["passed"]:
@@ -418,8 +420,8 @@ def _result_row(
             _latency_stats(switch_latencies) if switch_latencies is not None else None
         ),
         "adapter_switch_status": _adapter_switch_status(baseline, switch_latencies=switch_latencies, status=status),
-        "peak_memory_bytes": None,
-        "peak_memory_status": "not_measurable_on_cpu",
+        "peak_memory_bytes": peak_memory_bytes,
+        "peak_memory_status": peak_memory_status,
         "storage": _storage_metadata(baseline, adapter, storage),
         "correctness": correctness,
         "lowering": _lowering_metadata(baseline, adapter.name, peft_provenance_events=peft_provenance_events),
@@ -471,7 +473,7 @@ def _blocked_result_row(
         "adapter_switch_seconds": None,
         "adapter_switch_status": "not_measured_blocked",
         "peak_memory_bytes": None,
-        "peak_memory_status": "not_measurable_on_cpu",
+        "peak_memory_status": "not_measured_blocked",
         "storage": _storage_metadata(baseline, adapter, None),
         "correctness": _empty_correctness(passed=False),
         "lowering": _lowering_metadata(baseline, adapter.name),
@@ -571,6 +573,8 @@ def _artifact_summary(
     )
     all_switching_cases_present = _all_switching_cases_present(results)
     all_dense_fallback_cases_explicit = _all_dense_fallback_cases_explicit(results)
+    all_peak_memory_cases_measured = _all_peak_memory_cases_measured(results)
+    all_adapter_switch_cases_measured = _all_adapter_switch_cases_measured(results)
     readiness_blockers = _readiness_blockers(
         mode=mode,
         context_limit=context_limit,
@@ -580,11 +584,24 @@ def _artifact_summary(
         all_switching_cases_present=all_switching_cases_present,
         all_dense_fallback_cases_explicit=all_dense_fallback_cases_explicit,
     )
+    memory_control_readiness_blockers = _memory_control_readiness_blockers(
+        mode=mode,
+        context_limit=context_limit,
+        results=results,
+        all_required_cases_present=all_required_cases_present,
+        all_correctness_checks_passed=all_correctness_checks_passed,
+        all_peak_memory_cases_measured=all_peak_memory_cases_measured,
+        all_adapter_switch_cases_measured=all_adapter_switch_cases_measured,
+    )
     return {
         "all_required_cases_present": all_required_cases_present,
         "all_correctness_checks_passed": all_correctness_checks_passed,
         "all_switching_cases_present": all_switching_cases_present,
         "all_dense_fallback_cases_explicit": all_dense_fallback_cases_explicit,
+        "all_peak_memory_cases_measured": all_peak_memory_cases_measured,
+        "all_adapter_switch_cases_measured": all_adapter_switch_cases_measured,
+        "memory_control_claim_ready": not memory_control_readiness_blockers,
+        "memory_control_readiness_blockers": memory_control_readiness_blockers,
         "benchmark_ready": not readiness_blockers,
         "readiness_blockers": readiness_blockers,
         "max_abs_error": _max_correctness_metric(results, "max_abs_error"),
@@ -621,6 +638,34 @@ def _readiness_blockers(
         blockers.append("switching_cases_missing")
     if not all_dense_fallback_cases_explicit:
         blockers.append("dense_fallback_cases_not_explicit")
+    return blockers
+
+
+def _memory_control_readiness_blockers(
+    *,
+    mode: str,
+    context_limit: int | None,
+    results: Sequence[Dict[str, Any]],
+    all_required_cases_present: bool,
+    all_correctness_checks_passed: bool,
+    all_peak_memory_cases_measured: bool,
+    all_adapter_switch_cases_measured: bool,
+) -> List[str]:
+    blockers = []
+    if mode != "real":
+        blockers.append("synthetic_smoke_not_benchmark_evidence")
+    if context_limit is None:
+        blockers.append("model_context_limit_unresolved")
+    if any(row["status"] == "blocked" and "context limit" in row.get("reason", "") for row in results):
+        blockers.append("context_limit_exceeded")
+    if not all_required_cases_present:
+        blockers.append("required_cases_missing")
+    if not all_correctness_checks_passed:
+        blockers.append("correctness_checks_failed")
+    if not all_peak_memory_cases_measured:
+        blockers.append("peak_memory_cases_unavailable")
+    if not all_adapter_switch_cases_measured:
+        blockers.append("adapter_switch_cases_unavailable")
     return blockers
 
 
@@ -698,6 +743,28 @@ def _all_switching_cases_present(results: Sequence[Dict[str, Any]]) -> bool:
         if row["status"] == "ok" and row["adapter_switch_seconds"] is None:
             return False
         if row["adapter_switch_status"] is None:
+            return False
+    return True
+
+
+def _all_peak_memory_cases_measured(results: Sequence[Dict[str, Any]]) -> bool:
+    for row in results:
+        if row["status"] in {"blocked", "not_applicable", "failed"}:
+            continue
+        if row.get("peak_memory_status") != "measured_process_maxrss":
+            return False
+        if not isinstance(row.get("peak_memory_bytes"), int) or row["peak_memory_bytes"] < 0:
+            return False
+    return True
+
+
+def _all_adapter_switch_cases_measured(results: Sequence[Dict[str, Any]]) -> bool:
+    for row in results:
+        if row["status"] in {"blocked", "not_applicable", "failed"}:
+            continue
+        if row.get("adapter_switch_seconds") is None:
+            return False
+        if not str(row.get("adapter_switch_status", "")).startswith("measured_"):
             return False
     return True
 
@@ -1007,6 +1074,7 @@ def _worker_payload_to_row(payload: Dict[str, Any], reference_logits: Any) -> Di
     adapter = _adapter_by_name(payload["adapter"])
     if payload["status"] != "ok":
         return _non_ok_result_row(payload, adapter)
+    peak_memory = _peak_memory_from_payload(payload, default_status="unavailable_worker_payload")
     return _result_row(
         baseline=payload["baseline"],
         adapter=adapter,
@@ -1020,23 +1088,32 @@ def _worker_payload_to_row(payload: Dict[str, Any], reference_logits: Any) -> Di
         reason=payload.get("reason"),
         storage=payload.get("storage"),
         peft_provenance_events=payload.get("peft_provenance_events"),
+        peak_memory_bytes=peak_memory["peak_memory_bytes"],
+        peak_memory_status=peak_memory["peak_memory_status"],
     )
 
 
 def _non_ok_result_row(payload: Dict[str, Any], adapter: AdapterSpec) -> Dict[str, Any]:
     passed = payload["status"] == "not_applicable"
+    status = payload["status"]
+    peak_memory = _peak_memory_from_payload(payload, default_status=_default_peak_memory_status(status))
+    switch_latencies = payload.get("switch_latencies")
     row = {
         "case": _case_name(adapter.name, payload["sequence_length"], payload["batch_size"]),
         "adapter": adapter.name,
         "baseline": payload["baseline"],
-        "status": payload["status"],
+        "status": status,
         "sequence_length": payload["sequence_length"],
         "batch_size": payload["batch_size"],
-        "latency_seconds": None,
-        "adapter_switch_seconds": None,
-        "adapter_switch_status": "not_measured_not_applicable",
-        "peak_memory_bytes": None,
-        "peak_memory_status": "not_measurable_on_cpu",
+        "latency_seconds": _latency_stats(payload["latencies"]) if payload.get("latencies") is not None else None,
+        "adapter_switch_seconds": _latency_stats(switch_latencies) if switch_latencies is not None else None,
+        "adapter_switch_status": _adapter_switch_status(
+            payload["baseline"],
+            switch_latencies=switch_latencies,
+            status=status,
+        ),
+        "peak_memory_bytes": peak_memory["peak_memory_bytes"],
+        "peak_memory_status": peak_memory["peak_memory_status"],
         "storage": _storage_metadata(payload["baseline"], adapter, payload.get("storage")),
         "correctness": _empty_correctness(passed=passed),
         "lowering": _lowering_metadata(
@@ -1049,6 +1126,50 @@ def _non_ok_result_row(payload: Dict[str, Any], adapter: AdapterSpec) -> Dict[st
     if "peft_provenance_events" in payload:
         row["peft_provenance_events"] = payload["peft_provenance_events"]
     return row
+
+
+def _peak_memory_from_payload(payload: Dict[str, Any], *, default_status: str) -> Dict[str, Any]:
+    peak_memory_bytes = payload.get("peak_memory_bytes")
+    peak_memory_status = payload.get("peak_memory_status") or default_status
+    if peak_memory_status == "measured_process_maxrss" and (
+        not isinstance(peak_memory_bytes, int) or peak_memory_bytes < 0
+    ):
+        return {"peak_memory_bytes": None, "peak_memory_status": "unavailable_invalid_measurement"}
+    if peak_memory_status != "measured_process_maxrss":
+        peak_memory_bytes = None
+    return {"peak_memory_bytes": peak_memory_bytes, "peak_memory_status": peak_memory_status}
+
+
+def _default_peak_memory_status(status: str) -> str:
+    if status == "blocked":
+        return "not_measured_blocked"
+    if status == "not_applicable":
+        return "not_measured_not_applicable"
+    if status == "failed":
+        return "not_measured_failed"
+    return "unavailable_worker_payload"
+
+
+def _process_peak_memory_sample(
+    resource_module: Any | None = None,
+    *,
+    platform_name: str | None = None,
+) -> Dict[str, Any]:
+    if resource_module is None:
+        try:
+            import resource as resource_module
+        except ImportError:
+            return {"peak_memory_bytes": None, "peak_memory_status": "unavailable_platform_api"}
+    try:
+        usage = resource_module.getrusage(resource_module.RUSAGE_SELF)
+        raw_peak = getattr(usage, "ru_maxrss", None)
+    except (AttributeError, OSError, ValueError):
+        return {"peak_memory_bytes": None, "peak_memory_status": "unavailable_platform_api"}
+    if not isinstance(raw_peak, int) or raw_peak <= 0:
+        return {"peak_memory_bytes": None, "peak_memory_status": "unavailable_platform_api"}
+    resolved_platform = platform_name or sys.platform
+    peak_memory_bytes = raw_peak if resolved_platform == "darwin" else raw_peak * 1024
+    return {"peak_memory_bytes": int(peak_memory_bytes), "peak_memory_status": "measured_process_maxrss"}
 
 
 def _adapter_by_name(name: str) -> AdapterSpec:
@@ -1109,6 +1230,7 @@ def _real_worker(args: argparse.Namespace) -> None:
             "logits": logits.detach().cpu().tolist(),
             "peft_provenance_events": _collect_peft_provenance_events(model),
             "storage": _worker_storage(model, adapter, args._worker_baseline),
+            **_process_peak_memory_sample(),
         }
     except Exception as exc:  # pragma: no cover - depends on optional external dependencies.
         payload = {
@@ -1122,6 +1244,7 @@ def _real_worker(args: argparse.Namespace) -> None:
             "switch_latencies": None,
             "logits": None,
             "storage": _worker_storage(None, adapter, args._worker_baseline),
+            **_process_peak_memory_sample(),
         }
     _write_json(args._worker_json_output, payload)
 
@@ -1245,6 +1368,7 @@ def _run_dense_cache_worker(
             "switch_latencies": switch_latencies,
             "logits": logits.detach().cpu().tolist(),
             "storage": _worker_storage(model, adapter, args._worker_baseline),
+            **_process_peak_memory_sample(),
         }
     except Exception as exc:  # pragma: no cover - external PEFT behavior.
         return {
@@ -1258,6 +1382,7 @@ def _run_dense_cache_worker(
             "switch_latencies": None,
             "logits": None,
             "storage": _worker_storage(None, adapter, args._worker_baseline),
+            **_process_peak_memory_sample(),
         }
 
 
@@ -1278,6 +1403,7 @@ def _merge_dense_or_not_applicable(args: argparse.Namespace, model: Any, adapter
             "switch_latencies": None,
             "logits": None,
             "storage": _worker_storage(model, adapter, args._worker_baseline),
+            **_process_peak_memory_sample(),
         }
 
 
@@ -1294,6 +1420,7 @@ def _run_repeated_merge_worker(args: argparse.Namespace, model: Any, inputs: Dic
             "switch_latencies": None,
             "logits": None,
             "storage": _worker_storage(model, adapter, args._worker_baseline),
+            **_process_peak_memory_sample(),
         }
     other_adapter = _other_adapter(adapter)
     try:
@@ -1334,6 +1461,7 @@ def _run_repeated_merge_worker(args: argparse.Namespace, model: Any, inputs: Dic
             "switch_latencies": switch_latencies,
             "logits": logits.detach().cpu().tolist(),
             "storage": _worker_storage(model, adapter, args._worker_baseline),
+            **_process_peak_memory_sample(),
         }
     except Exception as exc:  # pragma: no cover - external PEFT behavior.
         return {
@@ -1347,6 +1475,7 @@ def _run_repeated_merge_worker(args: argparse.Namespace, model: Any, inputs: Dic
             "switch_latencies": None,
             "logits": None,
             "storage": _worker_storage(model, adapter, args._worker_baseline),
+            **_process_peak_memory_sample(),
         }
 
 

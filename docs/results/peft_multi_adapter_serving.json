@@ -4,21 +4,21 @@
   "dependencies": {
     "beyond_matmul": {
       "repository": "alexlopashev/beyond-matmul",
-      "revision": "43696f4f9378c6e1016b0a18208b8561765a2e6c"
+      "revision": "5d8f613a9b4624ba89c5cb66f84442010f809885"
     },
     "huggingface_hub": {
       "revision": null,
       "version": "1.23.0"
     },
     "peft_fork": {
-      "path": "/Users/sasha/Documents/beyond-matmul-109-peft-seq100/.peft_benchmark_checkouts/alexlopashev-peft-beyond-matmul-provenance-lora-inference",
+      "path": "/Users/sasha/Documents/beyond-matmul-112-peft-memory-control-instrumentation/.peft_benchmark_checkouts/alexlopashev-peft-beyond-matmul-provenance-lora-inference",
       "repository": "alexlopashev/peft",
       "requested_ref": "beyond-matmul/provenance-lora-inference",
       "revision": "7ac8d57b100846837c5a3b76c65e1e1954ccc3c8",
       "version": null
     },
     "peft_upstream": {
-      "path": "/Users/sasha/Documents/beyond-matmul-109-peft-seq100/.peft_benchmark_checkouts/huggingface-peft-main",
+      "path": "/Users/sasha/Documents/beyond-matmul-112-peft-memory-control-instrumentation/.peft_benchmark_checkouts/huggingface-peft-main",
       "repository": "huggingface/peft",
       "requested_ref": "main",
       "revision": "1598ecb8fc504bfcb08b9b232b295414a729d7ed",
@@ -43,13 +43,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000588391712,
-        "median": 0.000567499548,
-        "p50": 0.000567499548,
-        "p90": 0.000660303899,
-        "p95": 0.000753181148,
-        "p99": 0.00085157488,
-        "stdev": 7.6606783e-05
+        "mean": 0.000583575829,
+        "median": 0.000549187011,
+        "p50": 0.000549187011,
+        "p90": 0.000656338141,
+        "p95": 0.000866854092,
+        "p99": 0.001054326841,
+        "stdev": 0.000123528579
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -65,13 +65,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.024438384059,
-        "median": 0.024443458009,
-        "p50": 0.024443458009,
-        "p90": 0.025069200015,
-        "p95": 0.02543202503,
-        "p99": 0.027024699535,
-        "stdev": 0.000752022811
+        "mean": 0.021151172591,
+        "median": 0.020985416544,
+        "p50": 0.020985416544,
+        "p90": 0.021866854769,
+        "p95": 0.022112520534,
+        "p99": 0.022923535206,
+        "stdev": 0.000514877645
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -79,8 +79,8 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1277902848,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 16,
       "status": "ok",
@@ -94,13 +94,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 8.5076e-08,
+        "mean": 8.086e-08,
         "median": 8.3004e-08,
         "p50": 8.3004e-08,
         "p90": 1.2503e-07,
-        "p95": 1.93733e-07,
-        "p99": 3.54804e-07,
-        "stdev": 6.7006e-08
+        "p95": 1.2503e-07,
+        "p99": 3.12926e-07,
+        "stdev": 5.4906e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -116,13 +116,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.024473877465,
-        "median": 0.024308979046,
-        "p50": 0.024308979046,
-        "p90": 0.025083287479,
-        "p95": 0.025241106434,
-        "p99": 0.026019587837,
-        "stdev": 0.000461711805
+        "mean": 0.021270589144,
+        "median": 0.021177333547,
+        "p50": 0.021177333547,
+        "p90": 0.021952770266,
+        "p95": 0.022227269033,
+        "p99": 0.022532021842,
+        "stdev": 0.000433912906
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -130,8 +130,8 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1782497280,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 16,
       "status": "ok",
       "storage": {
@@ -144,13 +144,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.008581469981,
-        "median": 0.008468083455,
-        "p50": 0.008468083455,
-        "p90": 0.00934032019,
-        "p95": 0.009396899887,
-        "p99": 0.009504608676,
-        "stdev": 0.000393847545
+        "mean": 0.007462382475,
+        "median": 0.00748131302,
+        "p50": 0.00748131302,
+        "p90": 0.007673482643,
+        "p95": 0.00792927047,
+        "p99": 0.008156176942,
+        "stdev": 0.000248513522
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -166,13 +166,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.025365915818,
-        "median": 0.025209166517,
-        "p50": 0.025209166517,
-        "p90": 0.026091329032,
-        "p95": 0.026548989239,
-        "p99": 0.027365706986,
-        "stdev": 0.00062936978
+        "mean": 0.022054235798,
+        "median": 0.021936249512,
+        "p50": 0.021936249512,
+        "p90": 0.022185541783,
+        "p95": 0.022378162807,
+        "p99": 0.025682514282,
+        "stdev": 0.000874629224
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -180,8 +180,8 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1270710272,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 16,
       "status": "ok",
       "storage": {
@@ -194,13 +194,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000625520879,
-        "median": 0.000596145983,
-        "p50": 0.000596145983,
-        "p90": 0.000773662829,
-        "p95": 0.000802162639,
-        "p99": 0.000905714822,
-        "stdev": 9.260903e-05
+        "mean": 0.000579479169,
+        "median": 0.000557437539,
+        "p50": 0.000557437539,
+        "p90": 0.000671379734,
+        "p95": 0.000693023211,
+        "p99": 0.000929983966,
+        "stdev": 9.0414663e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -216,13 +216,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.025815655859,
-        "median": 0.025636416511,
-        "p50": 0.025636416511,
-        "p90": 0.02651882522,
-        "p95": 0.027278683503,
-        "p99": 0.028333498699,
-        "stdev": 0.000731850931
+        "mean": 0.021314283372,
+        "median": 0.021148083033,
+        "p50": 0.021148083033,
+        "p90": 0.021577538073,
+        "p95": 0.021710837382,
+        "p99": 0.026265483343,
+        "stdev": 0.001164895218
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -230,8 +230,8 @@
         "dense_fallback_used": false,
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1278689280,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
           "a_device": "cpu",
@@ -1230,13 +1230,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000595564973,
-        "median": 0.000570416509,
-        "p50": 0.000570416509,
-        "p90": 0.000668228767,
-        "p95": 0.000743906054,
-        "p99": 0.000904259087,
-        "stdev": 7.8691503e-05
+        "mean": 0.000596952436,
+        "median": 0.000575333484,
+        "p50": 0.000575333484,
+        "p90": 0.000703982846,
+        "p95": 0.000806962204,
+        "p99": 0.00085648587,
+        "stdev": 9.1221557e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -1252,13 +1252,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.024754845037,
-        "median": 0.024589562498,
-        "p50": 0.024589562498,
-        "p90": 0.026109012566,
-        "p95": 0.026718973287,
-        "p99": 0.027480440008,
-        "stdev": 0.000964517081
+        "mean": 0.021050303425,
+        "median": 0.020962395996,
+        "p50": 0.020962395996,
+        "p90": 0.02157537922,
+        "p95": 0.021994091169,
+        "p99": 0.022875820196,
+        "stdev": 0.00054204162
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -1266,8 +1266,8 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1271578624,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 16,
       "status": "ok",
@@ -1281,13 +1281,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 7.7677e-08,
-        "median": 6.2515e-08,
-        "p50": 6.2515e-08,
-        "p90": 1.2503e-07,
-        "p95": 1.71259e-07,
-        "p99": 2.72788e-07,
-        "stdev": 5.4098e-08
+        "mean": 8.5162e-08,
+        "median": 8.2946e-08,
+        "p50": 8.2946e-08,
+        "p90": 1.29221e-07,
+        "p95": 2.12708e-07,
+        "p99": 3.12928e-07,
+        "stdev": 6.3431e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -1303,13 +1303,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.023987713279,
-        "median": 0.023856458021,
-        "p50": 0.023856458021,
-        "p90": 0.024381866714,
-        "p95": 0.02535388121,
-        "p99": 0.025905049914,
-        "stdev": 0.000531659585
+        "mean": 0.020369572544,
+        "median": 0.020349895989,
+        "p50": 0.020349895989,
+        "p90": 0.02069002121,
+        "p95": 0.020914678939,
+        "p99": 0.021155295632,
+        "stdev": 0.000270539802
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -1317,8 +1317,8 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1783103488,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 16,
       "status": "ok",
       "storage": {
@@ -1331,13 +1331,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.009495662455,
-        "median": 0.008694979013,
-        "p50": 0.008694979013,
-        "p90": 0.010359324748,
-        "p95": 0.012325530953,
-        "p99": 0.021725207047,
-        "stdev": 0.002973636734
+        "mean": 0.0074750767,
+        "median": 0.007431041973,
+        "p50": 0.007431041973,
+        "p90": 0.007827421243,
+        "p95": 0.008033676574,
+        "p99": 0.008365596379,
+        "stdev": 0.000322231518
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -1353,13 +1353,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.025034179217,
-        "median": 0.024921625038,
-        "p50": 0.024921625038,
-        "p90": 0.025694733707,
-        "p95": 0.025954251876,
-        "p99": 0.026866847064,
-        "stdev": 0.00055955927
+        "mean": 0.021160340006,
+        "median": 0.020969978999,
+        "p50": 0.020969978999,
+        "p90": 0.021389295976,
+        "p95": 0.02145671277,
+        "p99": 0.024953546375,
+        "stdev": 0.000997351895
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -1367,8 +1367,8 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1270726656,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 16,
       "status": "ok",
       "storage": {
@@ -1381,13 +1381,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000575549118,
-        "median": 0.000558541506,
-        "p50": 0.000558541506,
-        "p90": 0.000651450036,
-        "p95": 0.000667697861,
-        "p99": 0.000797119186,
-        "stdev": 5.6749631e-05
+        "mean": 0.000580234136,
+        "median": 0.000553791469,
+        "p50": 0.000553791469,
+        "p90": 0.000669916428,
+        "p95": 0.000780352444,
+        "p99": 0.000850729113,
+        "stdev": 8.4142026e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -1403,13 +1403,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.025809474958,
-        "median": 0.025515062443,
-        "p50": 0.025515062443,
-        "p90": 0.027689033363,
-        "p95": 0.028484349843,
-        "p99": 0.030348608525,
-        "stdev": 0.001329309755
+        "mean": 0.021472560877,
+        "median": 0.021265771007,
+        "p50": 0.021265771007,
+        "p90": 0.02179492499,
+        "p95": 0.022226833116,
+        "p99": 0.027073597633,
+        "stdev": 0.001254219034
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -1417,8 +1417,8 @@
         "dense_fallback_used": false,
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1271824384,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
           "a_device": "cpu",
@@ -2417,13 +2417,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000627930677,
-        "median": 0.00059537444,
-        "p50": 0.00059537444,
-        "p90": 0.00070070806,
-        "p95": 0.000860585168,
-        "p99": 0.001130296206,
-        "stdev": 0.000125900832
+        "mean": 0.000580504981,
+        "median": 0.000558291504,
+        "p50": 0.000558291504,
+        "p90": 0.000648795837,
+        "p95": 0.000701758533,
+        "p99": 0.000901661379,
+        "stdev": 8.3548674e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -2439,13 +2439,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.034541604086,
-        "median": 0.034337395977,
-        "p50": 0.034337395977,
-        "p90": 0.035009766638,
-        "p95": 0.035771818535,
-        "p99": 0.038363580486,
-        "stdev": 0.000953593028
+        "mean": 0.030503794118,
+        "median": 0.030182270915,
+        "p50": 0.030182270915,
+        "p90": 0.031327867252,
+        "p95": 0.031509296357,
+        "p99": 0.034532707662,
+        "stdev": 0.001119648391
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -2453,8 +2453,8 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1271250944,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 64,
       "status": "ok",
@@ -2468,13 +2468,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 8.4068e-08,
+        "mean": 8.5076e-08,
         "median": 8.3004e-08,
         "p50": 8.3004e-08,
         "p90": 1.2503e-07,
-        "p95": 1.90118e-07,
-        "p99": 2.91573e-07,
-        "stdev": 5.5036e-08
+        "p95": 1.89542e-07,
+        "p99": 3.13709e-07,
+        "stdev": 5.9418e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -2490,13 +2490,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.03256852834,
-        "median": 0.032602958498,
-        "p50": 0.032602958498,
-        "p90": 0.032937412488,
-        "p95": 0.033081468946,
-        "p99": 0.033353877945,
-        "stdev": 0.000390216317
+        "mean": 0.028544583356,
+        "median": 0.028479458415,
+        "p50": 0.028479458415,
+        "p90": 0.029032203672,
+        "p95": 0.029108083702,
+        "p99": 0.029270360325,
+        "stdev": 0.000309563481
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -2504,8 +2504,8 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1783103488,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 64,
       "status": "ok",
       "storage": {
@@ -2518,13 +2518,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.008551102416,
-        "median": 0.008426812012,
-        "p50": 0.008426812012,
-        "p90": 0.009500471072,
-        "p95": 0.009697220492,
-        "p99": 0.010109286186,
-        "stdev": 0.000522867848
+        "mean": 0.007431925072,
+        "median": 0.007530375035,
+        "p50": 0.007530375035,
+        "p90": 0.007602921152,
+        "p95": 0.007715099893,
+        "p99": 0.008041618707,
+        "stdev": 0.000236277533
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -2540,13 +2540,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.034409131675,
-        "median": 0.034443291544,
-        "p50": 0.034443291544,
-        "p90": 0.034841254156,
-        "p95": 0.035105748259,
-        "p99": 0.036172847484,
-        "stdev": 0.000635572685
+        "mean": 0.0301897783,
+        "median": 0.030023645493,
+        "p50": 0.030023645493,
+        "p90": 0.03058648333,
+        "p95": 0.030795210309,
+        "p99": 0.034162797501,
+        "stdev": 0.000935750773
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -2554,8 +2554,8 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1271152640,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 64,
       "status": "ok",
       "storage": {
@@ -2568,13 +2568,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000601705867,
-        "median": 0.000577145955,
-        "p50": 0.000577145955,
-        "p90": 0.000664049736,
-        "p95": 0.000748939259,
-        "p99": 0.000820428918,
-        "stdev": 6.6813674e-05
+        "mean": 0.00058244505,
+        "median": 0.000560166955,
+        "p50": 0.000560166955,
+        "p90": 0.000665554497,
+        "p95": 0.000680226798,
+        "p99": 0.000920299706,
+        "stdev": 8.682187e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -2590,13 +2590,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.035102715057,
-        "median": 0.035002395976,
-        "p50": 0.035002395976,
-        "p90": 0.035587383586,
-        "p95": 0.036166999984,
-        "p99": 0.038188876106,
-        "stdev": 0.000812609552
+        "mean": 0.030477039206,
+        "median": 0.03037993802,
+        "p50": 0.03037993802,
+        "p90": 0.030778408702,
+        "p95": 0.03085617281,
+        "p99": 0.034101897032,
+        "stdev": 0.000847604999
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -2604,8 +2604,8 @@
         "dense_fallback_used": false,
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1271480320,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
           "a_device": "cpu",
@@ -3604,13 +3604,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.00061533082,
-        "median": 0.00057704153,
-        "p50": 0.00057704153,
-        "p90": 0.000686188159,
-        "p95": 0.000912202394,
-        "p99": 0.000993409398,
-        "stdev": 0.000108178992
+        "mean": 0.000588490106,
+        "median": 0.000562603993,
+        "p50": 0.000562603993,
+        "p90": 0.000690167001,
+        "p95": 0.000703551737,
+        "p99": 0.000881549297,
+        "stdev": 8.7959437e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -3626,13 +3626,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.048042795055,
-        "median": 0.048064937524,
-        "p50": 0.048064937524,
-        "p90": 0.048782137712,
-        "p95": 0.048850874836,
-        "p99": 0.050480357369,
-        "stdev": 0.000874211281
+        "mean": 0.042627108323,
+        "median": 0.042422937986,
+        "p50": 0.042422937986,
+        "p90": 0.042991395772,
+        "p95": 0.043128901871,
+        "p99": 0.046608892409,
+        "stdev": 0.001066435606
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -3640,8 +3640,8 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1317945344,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 64,
       "status": "ok",
@@ -3655,13 +3655,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 1.10117e-07,
+        "mean": 8.0161e-08,
         "median": 8.3004e-08,
         "p50": 8.3004e-08,
-        "p90": 2.49955e-07,
-        "p95": 2.96225e-07,
-        "p99": 5.6455e-07,
-        "stdev": 1.14737e-07
+        "p90": 1.24914e-07,
+        "p95": 1.2503e-07,
+        "p99": 3.98067e-07,
+        "stdev": 7.2518e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -3677,13 +3677,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.045202034221,
-        "median": 0.045405500045,
-        "p50": 0.045405500045,
-        "p90": 0.046038504178,
-        "p95": 0.04615643099,
-        "p99": 0.046447751606,
-        "stdev": 0.000783975084
+        "mean": 0.040629247471,
+        "median": 0.040520437469,
+        "p50": 0.040520437469,
+        "p90": 0.040914962522,
+        "p95": 0.041186837509,
+        "p99": 0.042516924004,
+        "stdev": 0.000518059587
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -3691,8 +3691,8 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1823031296,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 64,
       "status": "ok",
       "storage": {
@@ -3705,13 +3705,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.008458085838,
-        "median": 0.008402124979,
-        "p50": 0.008402124979,
-        "p90": 0.008855278848,
-        "p95": 0.009301581216,
-        "p99": 0.009512624112,
-        "stdev": 0.000343277322
+        "mean": 0.007561252541,
+        "median": 0.00758929149,
+        "p50": 0.00758929149,
+        "p90": 0.007943446084,
+        "p95": 0.008257399965,
+        "p99": 0.008614768765,
+        "stdev": 0.00036099583
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -3727,13 +3727,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.04907442088,
-        "median": 0.048474520969,
-        "p50": 0.048474520969,
-        "p90": 0.051057629229,
-        "p95": 0.051669231418,
-        "p99": 0.057249403826,
-        "stdev": 0.002192746161
+        "mean": 0.042847179889,
+        "median": 0.042699854006,
+        "p50": 0.042699854006,
+        "p90": 0.043212978845,
+        "p95": 0.043272810598,
+        "p99": 0.045457262496,
+        "stdev": 0.000727369193
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -3741,8 +3741,8 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1323188224,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 64,
       "status": "ok",
       "storage": {
@@ -3755,13 +3755,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000619336534,
-        "median": 0.000584999972,
-        "p50": 0.000584999972,
-        "p90": 0.00069916686,
-        "p95": 0.000832018431,
-        "p99": 0.000954950353,
-        "stdev": 9.4279274e-05
+        "mean": 0.000590892476,
+        "median": 0.000560729473,
+        "p50": 0.000560729473,
+        "p90": 0.000657728873,
+        "p95": 0.000682887784,
+        "p99": 0.000904554178,
+        "stdev": 7.6382634e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -3777,13 +3777,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.048518095023,
-        "median": 0.048616916523,
-        "p50": 0.048616916523,
-        "p90": 0.049156166741,
-        "p95": 0.049334983801,
-        "p99": 0.052441392622,
-        "stdev": 0.001218782897
+        "mean": 0.043035817449,
+        "median": 0.042867166456,
+        "p50": 0.042867166456,
+        "p90": 0.043260782992,
+        "p95": 0.043535939546,
+        "p99": 0.047305384836,
+        "stdev": 0.001118272132
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -3791,8 +3791,8 @@
         "dense_fallback_used": false,
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1319059456,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
           "a_device": "cpu",
@@ -4791,13 +4791,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000619832575,
-        "median": 0.000589437492,
-        "p50": 0.000589437492,
-        "p90": 0.000724979735,
-        "p95": 0.000768225116,
-        "p99": 0.000797432824,
-        "stdev": 7.406804e-05
+        "mean": 0.000586659203,
+        "median": 0.000559333537,
+        "p50": 0.000559333537,
+        "p90": 0.000660492294,
+        "p95": 0.000694191572,
+        "p99": 0.000950508523,
+        "stdev": 9.0121117e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -4813,13 +4813,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.048898917576,
-        "median": 0.048886333476,
-        "p50": 0.048886333476,
-        "p90": 0.049605183234,
-        "p95": 0.049707917153,
-        "p99": 0.052774315941,
-        "stdev": 0.001157737586
+        "mean": 0.043833755867,
+        "median": 0.043684749515,
+        "p50": 0.043684749515,
+        "p90": 0.044248529151,
+        "p95": 0.044603027235,
+        "p99": 0.048087869846,
+        "stdev": 0.001022912739
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -4827,8 +4827,8 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1317961728,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 128,
       "status": "ok",
@@ -4842,13 +4842,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 9.2399e-08,
-        "median": 8.3004e-08,
-        "p50": 8.3004e-08,
-        "p90": 1.71154e-07,
-        "p95": 2.54199e-07,
-        "p99": 3.75814e-07,
-        "stdev": 7.605e-08
+        "mean": 7.6778e-08,
+        "median": 8.2946e-08,
+        "p50": 8.2946e-08,
+        "p90": 1.2503e-07,
+        "p95": 1.47568e-07,
+        "p99": 2.71377e-07,
+        "stdev": 5.0151e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -4864,13 +4864,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.046230217475,
-        "median": 0.046493854024,
-        "p50": 0.046493854024,
-        "p90": 0.047118937201,
-        "p95": 0.047266374883,
-        "p99": 0.047382225038,
-        "stdev": 0.000837381636
+        "mean": 0.04151078409,
+        "median": 0.04152810399,
+        "p50": 0.04152810399,
+        "p90": 0.041843795299,
+        "p95": 0.041917001875,
+        "p99": 0.042488660081,
+        "stdev": 0.000354215807
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -4878,8 +4878,8 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1782890496,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 128,
       "status": "ok",
       "storage": {
@@ -4892,13 +4892,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.008399572519,
-        "median": 0.008387166541,
-        "p50": 0.008387166541,
-        "p90": 0.008638795593,
-        "p95": 0.008745306579,
-        "p99": 0.008841097853,
-        "stdev": 0.000173486352
+        "mean": 0.007467834125,
+        "median": 0.007545166474,
+        "p50": 0.007545166474,
+        "p90": 0.007657263102,
+        "p95": 0.007680700067,
+        "p99": 0.008069289217,
+        "stdev": 0.000242467403
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -4914,13 +4914,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.04881650917,
-        "median": 0.048754292016,
-        "p50": 0.048754292016,
-        "p90": 0.049239554151,
-        "p95": 0.049673928681,
-        "p99": 0.052049850011,
-        "stdev": 0.000808314541
+        "mean": 0.043765100904,
+        "median": 0.043602083053,
+        "p50": 0.043602083053,
+        "p90": 0.04417137095,
+        "p95": 0.044704422366,
+        "p99": 0.048700439263,
+        "stdev": 0.001231201412
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -4928,8 +4928,8 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1323417600,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 128,
       "status": "ok",
       "storage": {
@@ -4942,13 +4942,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.00062984003,
-        "median": 0.000601667038,
-        "p50": 0.000601667038,
-        "p90": 0.000719512219,
-        "p95": 0.000772403652,
-        "p99": 0.000894515824,
-        "stdev": 8.2949065e-05
+        "mean": 0.000582574224,
+        "median": 0.00054808351,
+        "p50": 0.00054808351,
+        "p90": 0.000660153886,
+        "p95": 0.000772148295,
+        "p99": 0.000868810827,
+        "stdev": 8.2937954e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -4964,13 +4964,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.049150811627,
-        "median": 0.049023291969,
-        "p50": 0.049023291969,
-        "p90": 0.04952671628,
-        "p95": 0.049655891123,
-        "p99": 0.052759678694,
-        "stdev": 0.00100199805
+        "mean": 0.043836395873,
+        "median": 0.043577145494,
+        "p50": 0.043577145494,
+        "p90": 0.04438332431,
+        "p95": 0.045160399942,
+        "p99": 0.047997501538,
+        "stdev": 0.001025267128
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -4978,8 +4978,8 @@
         "dense_fallback_used": false,
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1318731776,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
           "a_device": "cpu",
@@ -5978,13 +5978,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000609144105,
-        "median": 0.000577937521,
-        "p50": 0.000577937521,
-        "p90": 0.000670695538,
-        "p95": 0.00080639373,
-        "p99": 0.000992622292,
-        "stdev": 9.9371704e-05
+        "mean": 0.000597451744,
+        "median": 0.000567020499,
+        "p50": 0.000567020499,
+        "p90": 0.000684050098,
+        "p95": 0.000730904489,
+        "p99": 0.000891910691,
+        "stdev": 8.5587096e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -6000,13 +6000,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.077491429043,
-        "median": 0.077604104008,
-        "p50": 0.077604104008,
-        "p90": 0.07830326308,
-        "p95": 0.078636299912,
-        "p99": 0.08270411417,
-        "stdev": 0.001539686585
+        "mean": 0.070694501658,
+        "median": 0.070279416977,
+        "p50": 0.070279416977,
+        "p90": 0.071632970741,
+        "p95": 0.073023191938,
+        "p99": 0.076534044419,
+        "stdev": 0.001375872407
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -6014,8 +6014,8 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1610055680,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 128,
       "status": "ok",
@@ -6029,13 +6029,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 8.1519e-08,
+        "mean": 7.9966e-08,
         "median": 8.3004e-08,
         "p50": 8.3004e-08,
-        "p90": 1.2503e-07,
-        "p95": 1.4808e-07,
-        "p99": 2.9281e-07,
-        "stdev": 5.148e-08
+        "p90": 8.4052e-08,
+        "p95": 1.2503e-07,
+        "p99": 3.33064e-07,
+        "stdev": 5.6373e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -6051,13 +6051,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.075082654976,
-        "median": 0.07525554148,
-        "p50": 0.07525554148,
-        "p90": 0.075853041408,
-        "p95": 0.076217614295,
-        "p99": 0.076736099917,
-        "stdev": 0.000896559538
+        "mean": 0.082784053292,
+        "median": 0.074144853977,
+        "p50": 0.074144853977,
+        "p90": 0.104677770857,
+        "p95": 0.127752997912,
+        "p99": 0.160671749521,
+        "stdev": 0.021994780475
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -6065,8 +6065,8 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1916780544,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 128,
       "status": "ok",
       "storage": {
@@ -6079,13 +6079,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.008778992475,
-        "median": 0.008342374989,
-        "p50": 0.008342374989,
-        "p90": 0.009985170176,
-        "p95": 0.010850129247,
-        "p99": 0.011796092164,
-        "stdev": 0.000932842546
+        "mean": 0.007530222547,
+        "median": 0.007544041437,
+        "p50": 0.007544041437,
+        "p90": 0.00811105395,
+        "p95": 0.008311087842,
+        "p99": 0.008417387044,
+        "stdev": 0.000353947264
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -6101,13 +6101,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.077933752623,
-        "median": 0.078089396004,
-        "p50": 0.078089396004,
-        "p90": 0.078919450345,
-        "p95": 0.079151129059,
-        "p99": 0.079575634731,
-        "stdev": 0.00107397131
+        "mean": 0.071222720915,
+        "median": 0.070492958475,
+        "p50": 0.070492958475,
+        "p90": 0.071228220721,
+        "p95": 0.075404627156,
+        "p99": 0.084638122681,
+        "stdev": 0.003214709467
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -6115,8 +6115,8 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1618395136,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 128,
       "status": "ok",
       "storage": {
@@ -6129,13 +6129,13 @@
     {
       "adapter": "merchant",
       "adapter_switch_seconds": {
-        "mean": 0.000606923387,
-        "median": 0.000572625489,
-        "p50": 0.000572625489,
-        "p90": 0.000697736919,
-        "p95": 0.000751079177,
-        "p99": 0.000906371843,
-        "stdev": 8.2284103e-05
+        "mean": 0.00058217583,
+        "median": 0.000566458504,
+        "p50": 0.000566458504,
+        "p90": 0.000607062841,
+        "p95": 0.000677154202,
+        "p99": 0.000783796088,
+        "stdev": 4.9485764e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -6151,13 +6151,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.078542630938,
-        "median": 0.07853489602,
-        "p50": 0.07853489602,
-        "p90": 0.07923043808,
-        "p95": 0.079452181538,
-        "p99": 0.079882236808,
-        "stdev": 0.0005163079
+        "mean": 0.074220293283,
+        "median": 0.072262124449,
+        "p50": 0.072262124449,
+        "p90": 0.077797849744,
+        "p95": 0.079746228823,
+        "p99": 0.094194292255,
+        "stdev": 0.00472297241
       },
       "lowering": {
         "active_adapter": "merchant",
@@ -6165,8 +6165,8 @@
         "dense_fallback_used": false,
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1616986112,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
           "a_device": "cpu",
@@ -7165,13 +7165,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000578840044,
-        "median": 0.000568791991,
-        "p50": 0.000568791991,
-        "p90": 0.000610892044,
-        "p95": 0.000654787518,
-        "p99": 0.000760428554,
-        "stdev": 4.7079544e-05
+        "mean": 0.000563959216,
+        "median": 0.000544146053,
+        "p50": 0.000544146053,
+        "p90": 0.000579067308,
+        "p95": 0.000629887538,
+        "p99": 0.000910123825,
+        "stdev": 7.4359784e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -7187,13 +7187,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.024727996641,
-        "median": 0.024724271032,
-        "p50": 0.024724271032,
-        "p90": 0.025019836915,
-        "p95": 0.025181793753,
-        "p99": 0.025663541749,
-        "stdev": 0.000316769603
+        "mean": 0.021632645708,
+        "median": 0.021444250015,
+        "p50": 0.021444250015,
+        "p90": 0.022729799687,
+        "p95": 0.023185714532,
+        "p99": 0.023972191021,
+        "stdev": 0.000767008357
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -7201,8 +7201,8 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1271185408,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 16,
       "status": "ok",
@@ -7216,13 +7216,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 8.0082e-08,
-        "median": 8.2946e-08,
-        "p50": 8.2946e-08,
-        "p90": 1.66101e-07,
-        "p95": 2.12592e-07,
-        "p99": 2.5006e-07,
-        "stdev": 5.4491e-08
+        "mean": 6.4257e-08,
+        "median": 4.2026e-08,
+        "p50": 4.2026e-08,
+        "p90": 8.4052e-08,
+        "p95": 1.06526e-07,
+        "p99": 2.29467e-07,
+        "stdev": 4.0071e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -7238,13 +7238,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.024404440913,
-        "median": 0.024433249957,
-        "p50": 0.024433249957,
-        "p90": 0.024617954099,
-        "p95": 0.024750150193,
-        "p99": 0.02503741628,
-        "stdev": 0.00022926416
+        "mean": 0.022403584924,
+        "median": 0.022111042053,
+        "p50": 0.022111042053,
+        "p90": 0.023430729203,
+        "p95": 0.024922010291,
+        "p99": 0.025416810877,
+        "stdev": 0.000977164535
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -7252,8 +7252,8 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1781891072,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 16,
       "status": "ok",
       "storage": {
@@ -7266,13 +7266,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.008250160001,
-        "median": 0.008218875038,
-        "p50": 0.008218875038,
-        "p90": 0.008490778948,
-        "p95": 0.008602014714,
-        "p99": 0.009054834971,
-        "stdev": 0.000244048648
+        "mean": 0.008987969079,
+        "median": 0.008629916469,
+        "p50": 0.008629916469,
+        "p90": 0.009154262801,
+        "p95": 0.00978365374,
+        "p99": 0.017723380543,
+        "stdev": 0.001971002656
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -7288,13 +7288,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.025157120842,
-        "median": 0.025038604042,
-        "p50": 0.025038604042,
-        "p90": 0.025864153507,
-        "p95": 0.02622082071,
-        "p99": 0.026746562199,
-        "stdev": 0.000520444264
+        "mean": 0.022509930769,
+        "median": 0.022155729006,
+        "p50": 0.022155729006,
+        "p90": 0.023440499674,
+        "p95": 0.023885393608,
+        "p99": 0.028295956102,
+        "stdev": 0.001321711894
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -7302,8 +7302,8 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1271021568,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 16,
       "status": "ok",
       "storage": {
@@ -7316,13 +7316,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.00058541172,
-        "median": 0.000553374994,
-        "p50": 0.000553374994,
-        "p90": 0.000632341905,
-        "p95": 0.000714110496,
-        "p99": 0.000831325654,
-        "stdev": 6.5990178e-05
+        "mean": 0.000572080908,
+        "median": 0.000548771059,
+        "p50": 0.000548771059,
+        "p90": 0.000573362201,
+        "p95": 0.000732583005,
+        "p99": 0.000965436368,
+        "stdev": 9.2005689e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -7338,13 +7338,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.024843035806,
-        "median": 0.024722812464,
-        "p50": 0.024722812464,
-        "p90": 0.025292608328,
-        "p95": 0.025727929501,
-        "p99": 0.027695751532,
-        "stdev": 0.000749622536
+        "mean": 0.021763808369,
+        "median": 0.021510145976,
+        "p50": 0.021510145976,
+        "p90": 0.023081662226,
+        "p95": 0.023646237236,
+        "p99": 0.024311241707,
+        "stdev": 0.000836999073
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -7352,8 +7352,8 @@
         "dense_fallback_used": false,
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1270890496,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
           "a_device": "cpu",
@@ -8352,13 +8352,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000595089227,
-        "median": 0.000569625001,
-        "p50": 0.000569625001,
-        "p90": 0.000677057751,
-        "p95": 0.000730312651,
-        "p99": 0.000755956927,
-        "stdev": 6.1557437e-05
+        "mean": 0.000558599134,
+        "median": 0.000539187575,
+        "p50": 0.000539187575,
+        "p90": 0.000558971148,
+        "p95": 0.000703208172,
+        "p99": 0.000892868293,
+        "stdev": 7.7648835e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -8374,13 +8374,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.024209870044,
-        "median": 0.024220354448,
-        "p50": 0.024220354448,
-        "p90": 0.024888678896,
-        "p95": 0.024970699899,
-        "p99": 0.025154123727,
-        "stdev": 0.000513853576
+        "mean": 0.021666217512,
+        "median": 0.021117917029,
+        "p50": 0.021117917029,
+        "p90": 0.023456958041,
+        "p95": 0.024284608138,
+        "p99": 0.028748040841,
+        "stdev": 0.001713029624
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -8388,8 +8388,8 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1271119872,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 16,
       "status": "ok",
@@ -8403,13 +8403,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 8.1642e-08,
-        "median": 8.3004e-08,
-        "p50": 8.3004e-08,
-        "p90": 1.66008e-07,
-        "p95": 1.90054e-07,
-        "p99": 2.71434e-07,
-        "stdev": 5.4668e-08
+        "mean": 6.0007e-08,
+        "median": 4.2026e-08,
+        "p50": 4.2026e-08,
+        "p90": 8.3004e-08,
+        "p95": 1.0659e-07,
+        "p99": 2.29864e-07,
+        "stdev": 4.0095e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -8425,13 +8425,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.023986834018,
-        "median": 0.0238352085,
-        "p50": 0.0238352085,
-        "p90": 0.024221545749,
-        "p95": 0.024353216001,
-        "p99": 0.028126776587,
-        "stdev": 0.000895068931
+        "mean": 0.020965729116,
+        "median": 0.020785708446,
+        "p50": 0.020785708446,
+        "p90": 0.022045575618,
+        "p95": 0.022180060239,
+        "p99": 0.023637891327,
+        "stdev": 0.000783725391
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -8439,8 +8439,8 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1781612544,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 16,
       "status": "ok",
       "storage": {
@@ -8453,13 +8453,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.008147499191,
-        "median": 0.008041499997,
-        "p50": 0.008041499997,
-        "p90": 0.008454600582,
-        "p95": 0.008914804587,
-        "p99": 0.009736968197,
-        "stdev": 0.000415670892
+        "mean": 0.00749342334,
+        "median": 0.007374583045,
+        "p50": 0.007374583045,
+        "p90": 0.007725354831,
+        "p95": 0.008053360449,
+        "p99": 0.008793002616,
+        "stdev": 0.000331554893
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -8475,13 +8475,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.024267491661,
-        "median": 0.024169874494,
-        "p50": 0.024169874494,
-        "p90": 0.024755220918,
-        "p95": 0.024843539461,
-        "p99": 0.025831589119,
-        "stdev": 0.000415473524
+        "mean": 0.021811289222,
+        "median": 0.021180458483,
+        "p50": 0.021180458483,
+        "p90": 0.023516720359,
+        "p95": 0.025042102463,
+        "p99": 0.026465670345,
+        "stdev": 0.001428241934
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -8489,8 +8489,8 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1270857728,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 16,
       "status": "ok",
       "storage": {
@@ -8503,13 +8503,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000601732426,
-        "median": 0.000581478991,
-        "p50": 0.000581478991,
-        "p90": 0.000645862508,
-        "p95": 0.000754825224,
-        "p99": 0.00089714936,
-        "stdev": 7.5000604e-05
+        "mean": 0.000567906538,
+        "median": 0.000542290974,
+        "p50": 0.000542290974,
+        "p90": 0.00059746675,
+        "p95": 0.000698995561,
+        "p99": 0.000926669417,
+        "stdev": 8.0353739e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -8525,13 +8525,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.025122082541,
-        "median": 0.025134978991,
-        "p50": 0.025134978991,
-        "p90": 0.025756403618,
-        "p95": 0.025990152615,
-        "p99": 0.027108360166,
-        "stdev": 0.000707810921
+        "mean": 0.021723734958,
+        "median": 0.021619437495,
+        "p50": 0.021619437495,
+        "p90": 0.022538345458,
+        "p95": 0.022856924863,
+        "p99": 0.023813565894,
+        "stdev": 0.000668783854
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -8539,8 +8539,8 @@
         "dense_fallback_used": false,
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1270546432,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
           "a_device": "cpu",
@@ -9539,13 +9539,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000573603343,
-        "median": 0.000561083027,
-        "p50": 0.000561083027,
-        "p90": 0.000634637522,
-        "p95": 0.000643852295,
-        "p99": 0.000686381523,
-        "stdev": 4.1369993e-05
+        "mean": 0.000690674195,
+        "median": 0.000582187495,
+        "p50": 0.000582187495,
+        "p90": 0.000917649677,
+        "p95": 0.001155339635,
+        "p99": 0.001619896386,
+        "stdev": 0.000241912661
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -9561,13 +9561,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.033337827583,
-        "median": 0.033324500429,
-        "p50": 0.033324500429,
-        "p90": 0.033993154205,
-        "p95": 0.034120741347,
-        "p99": 0.035017765107,
-        "stdev": 0.00061391461
+        "mean": 0.031214418344,
+        "median": 0.030862187501,
+        "p50": 0.030862187501,
+        "p90": 0.032515646075,
+        "p95": 0.034237591049,
+        "p99": 0.035026971311,
+        "stdev": 0.001242267267
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -9575,8 +9575,8 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1271382016,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 64,
       "status": "ok",
@@ -9590,13 +9590,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 8.0017e-08,
-        "median": 8.3004e-08,
-        "p50": 8.3004e-08,
-        "p90": 1.24925e-07,
-        "p95": 1.2503e-07,
-        "p99": 2.9281e-07,
-        "stdev": 5.0596e-08
+        "mean": 6.17e-08,
+        "median": 4.2026e-08,
+        "p50": 4.2026e-08,
+        "p90": 8.3935e-08,
+        "p95": 8.3999e-08,
+        "p99": 2.29467e-07,
+        "stdev": 4.0111e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -9612,13 +9612,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.032976608356,
-        "median": 0.032601771003,
-        "p50": 0.032601771003,
-        "p90": 0.034716716991,
-        "p95": 0.035328135459,
-        "p99": 0.036328892208,
-        "stdev": 0.001116920404
+        "mean": 0.029336982612,
+        "median": 0.02887718752,
+        "p50": 0.02887718752,
+        "p90": 0.031070599938,
+        "p95": 0.032151993783,
+        "p99": 0.032428351318,
+        "stdev": 0.001070250712
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -9626,8 +9626,8 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1782628352,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 64,
       "status": "ok",
       "storage": {
@@ -9640,13 +9640,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.008774642446,
-        "median": 0.0085133955,
-        "p50": 0.0085133955,
-        "p90": 0.00985939533,
-        "p95": 0.009984672838,
-        "p99": 0.010450372936,
-        "stdev": 0.00061272014
+        "mean": 0.007609762489,
+        "median": 0.0075026665,
+        "p50": 0.0075026665,
+        "p90": 0.008179416601,
+        "p95": 0.008426285657,
+        "p99": 0.009298344331,
+        "stdev": 0.000459780192
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -9662,13 +9662,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.034060306791,
-        "median": 0.03423143801,
-        "p50": 0.03423143801,
-        "p90": 0.034630671097,
-        "p95": 0.034763198276,
-        "p99": 0.036651605427,
-        "stdev": 0.00089645485
+        "mean": 0.030938528404,
+        "median": 0.030734187458,
+        "p50": 0.030734187458,
+        "p90": 0.032352075295,
+        "p95": 0.032816637348,
+        "p99": 0.032920021816,
+        "stdev": 0.000760482271
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -9676,8 +9676,8 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1271218176,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 64,
       "status": "ok",
       "storage": {
@@ -9690,13 +9690,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000610967609,
-        "median": 0.000581229513,
-        "p50": 0.000581229513,
-        "p90": 0.000680046051,
-        "p95": 0.000837556546,
-        "p99": 0.000952800572,
-        "stdev": 9.1794002e-05
+        "mean": 0.000606019988,
+        "median": 0.000561708468,
+        "p50": 0.000561708468,
+        "p90": 0.000792599679,
+        "p95": 0.000827706361,
+        "p99": 0.000860824889,
+        "stdev": 9.7089145e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -9712,13 +9712,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.034850380013,
-        "median": 0.034867999959,
-        "p50": 0.034867999959,
-        "p90": 0.035214741062,
-        "p95": 0.035362451617,
-        "p99": 0.038546475102,
-        "stdev": 0.001107206138
+        "mean": 0.036298888312,
+        "median": 0.036016020516,
+        "p50": 0.036016020516,
+        "p90": 0.039561562112,
+        "p95": 0.040323745995,
+        "p99": 0.043111495839,
+        "stdev": 0.002605367558
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -9726,8 +9726,8 @@
         "dense_fallback_used": false,
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1270792192,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
           "a_device": "cpu",
@@ -10726,13 +10726,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000585276613,
-        "median": 0.00056368747,
-        "p50": 0.00056368747,
-        "p90": 0.000630370772,
-        "p95": 0.000751241506,
-        "p99": 0.000865901214,
-        "stdev": 7.24291e-05
+        "mean": 0.000596363356,
+        "median": 0.00055547955,
+        "p50": 0.00055547955,
+        "p90": 0.000713837589,
+        "p95": 0.000815059,
+        "p99": 0.000927063721,
+        "stdev": 9.6547643e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -10748,13 +10748,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.047575449955,
-        "median": 0.04773258348,
-        "p50": 0.04773258348,
-        "p90": 0.048361712822,
-        "p95": 0.048377272568,
-        "p99": 0.049839069325,
-        "stdev": 0.000898421778
+        "mean": 0.043373159161,
+        "median": 0.042766625527,
+        "p50": 0.042766625527,
+        "p90": 0.045577203855,
+        "p95": 0.046316247707,
+        "p99": 0.049215984818,
+        "stdev": 0.001647901344
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -10762,8 +10762,8 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1321271296,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 64,
       "status": "ok",
@@ -10777,13 +10777,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 7.5924e-08,
+        "mean": 6.2524e-08,
         "median": 4.2026e-08,
         "p50": 4.2026e-08,
-        "p90": 8.815e-08,
-        "p95": 1.6652e-07,
-        "p99": 3.54438e-07,
-        "stdev": 6.4258e-08
+        "p90": 1.24925e-07,
+        "p95": 1.2503e-07,
+        "p99": 1.88373e-07,
+        "stdev": 3.6595e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -10799,13 +10799,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.045686571684,
-        "median": 0.04562672897,
-        "p50": 0.04562672897,
-        "p90": 0.046728520351,
-        "p95": 0.046949239483,
-        "p99": 0.050225741981,
-        "stdev": 0.001281442549
+        "mean": 0.0412265617,
+        "median": 0.040991749964,
+        "p50": 0.040991749964,
+        "p90": 0.042453199707,
+        "p95": 0.042849279504,
+        "p99": 0.043780854584,
+        "stdev": 0.000825615791
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -10813,8 +10813,8 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1822605312,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 64,
       "status": "ok",
       "storage": {
@@ -10827,13 +10827,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.008023481702,
-        "median": 0.007987229445,
-        "p50": 0.007987229445,
-        "p90": 0.008170437801,
-        "p95": 0.008202987351,
-        "p99": 0.008934886721,
-        "stdev": 0.000221728949
+        "mean": 0.007678713321,
+        "median": 0.007551311981,
+        "p50": 0.007551311981,
+        "p90": 0.008275063103,
+        "p95": 0.00844109368,
+        "p99": 0.00927662541,
+        "stdev": 0.000481456994
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -10849,13 +10849,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.04676124081,
-        "median": 0.046695166442,
-        "p50": 0.046695166442,
-        "p90": 0.047164875665,
-        "p95": 0.047451481188,
-        "p99": 0.048387462684,
-        "stdev": 0.000534330113
+        "mean": 0.043255004971,
+        "median": 0.043058541487,
+        "p50": 0.043058541487,
+        "p90": 0.044000124966,
+        "p95": 0.045020829095,
+        "p99": 0.046435526261,
+        "stdev": 0.000870093783
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -10863,8 +10863,8 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1324171264,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 64,
       "status": "ok",
       "storage": {
@@ -10877,13 +10877,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000589235036,
-        "median": 0.000559208042,
-        "p50": 0.000559208042,
-        "p90": 0.000672683632,
-        "p95": 0.000787264406,
-        "p99": 0.00094408702,
-        "stdev": 9.1938078e-05
+        "mean": 0.000579284178,
+        "median": 0.000540729496,
+        "p50": 0.000540729496,
+        "p90": 0.000615291682,
+        "p95": 0.00086675802,
+        "p99": 0.000997544146,
+        "stdev": 0.000113856079
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -10899,13 +10899,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.047821268523,
-        "median": 0.047595167067,
-        "p50": 0.047595167067,
-        "p90": 0.048795246566,
-        "p95": 0.049221302307,
-        "p99": 0.050168572424,
-        "stdev": 0.000780707991
+        "mean": 0.04413518918,
+        "median": 0.043582437502,
+        "p50": 0.043582437502,
+        "p90": 0.046054887481,
+        "p95": 0.047596139356,
+        "p99": 0.049754187241,
+        "stdev": 0.001616261729
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -10913,8 +10913,8 @@
         "dense_fallback_used": false,
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1319878656,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
           "a_device": "cpu",
@@ -11913,13 +11913,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.00059300072,
-        "median": 0.000567729527,
-        "p50": 0.000567729527,
-        "p90": 0.000658137177,
-        "p95": 0.000704378635,
-        "p99": 0.000939436739,
-        "stdev": 8.544144e-05
+        "mean": 0.000572686638,
+        "median": 0.000538832974,
+        "p50": 0.000538832974,
+        "p90": 0.000620483304,
+        "p95": 0.000651414576,
+        "p99": 0.000932628731,
+        "stdev": 8.0256789e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -11935,13 +11935,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.047759408446,
-        "median": 0.047821104527,
-        "p50": 0.047821104527,
-        "p90": 0.04824424627,
-        "p95": 0.048421727435,
-        "p99": 0.051346823277,
-        "stdev": 0.001052404158
+        "mean": 0.044609872471,
+        "median": 0.04422370845,
+        "p50": 0.04422370845,
+        "p90": 0.046450408373,
+        "p95": 0.047098722943,
+        "p99": 0.047898813174,
+        "stdev": 0.001164425712
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -11949,8 +11949,8 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1318944768,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 128,
       "status": "ok",
@@ -11964,13 +11964,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 8.744e-08,
-        "median": 8.3004e-08,
-        "p50": 8.3004e-08,
-        "p90": 1.66101e-07,
-        "p95": 1.89594e-07,
-        "p99": 2.50841e-07,
-        "stdev": 5.2143e-08
+        "mean": 6.74e-08,
+        "median": 4.2026e-08,
+        "p50": 4.2026e-08,
+        "p90": 8.815e-08,
+        "p95": 1.2503e-07,
+        "p99": 2.70959e-07,
+        "stdev": 4.845e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -11986,13 +11986,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.046847426749,
-        "median": 0.046851812513,
-        "p50": 0.046851812513,
-        "p90": 0.047183428879,
-        "p95": 0.047286093392,
-        "p99": 0.048196176839,
-        "stdev": 0.000471108322
+        "mean": 0.042907796642,
+        "median": 0.042647312512,
+        "p50": 0.042647312512,
+        "p90": 0.043904720771,
+        "p95": 0.044421373087,
+        "p99": 0.046407116414,
+        "stdev": 0.000982732398
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -12000,8 +12000,8 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1822687232,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 128,
       "status": "ok",
       "storage": {
@@ -12014,13 +12014,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.008358024927,
-        "median": 0.008364312467,
-        "p50": 0.008364312467,
-        "p90": 0.00858555414,
-        "p95": 0.008837881382,
-        "p99": 0.009074125327,
-        "stdev": 0.000247179461
+        "mean": 0.007293780833,
+        "median": 0.007256291457,
+        "p50": 0.007256291457,
+        "p90": 0.007472946192,
+        "p95": 0.0077582044,
+        "p99": 0.008214004046,
+        "stdev": 0.000256437182
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -12036,13 +12036,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.048789609137,
-        "median": 0.048802708508,
-        "p50": 0.048802708508,
-        "p90": 0.049221150286,
-        "p95": 0.049374233297,
-        "p99": 0.050900120022,
-        "stdev": 0.000625473669
+        "mean": 0.04366141421,
+        "median": 0.043388354534,
+        "p50": 0.043388354534,
+        "p90": 0.045613958046,
+        "p95": 0.045897797809,
+        "p99": 0.046503408261,
+        "stdev": 0.000977868064
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -12050,8 +12050,8 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1323433984,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 128,
       "status": "ok",
       "storage": {
@@ -12064,13 +12064,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000599735074,
-        "median": 0.000572874967,
-        "p50": 0.000572874967,
-        "p90": 0.000641962199,
-        "p95": 0.000832739373,
-        "p99": 0.000874313728,
-        "stdev": 7.9814228e-05
+        "mean": 0.000563383428,
+        "median": 0.000540166977,
+        "p50": 0.000540166977,
+        "p90": 0.000586492289,
+        "p95": 0.000680079224,
+        "p99": 0.000880394613,
+        "stdev": 7.1598153e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -12086,13 +12086,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.048889044162,
-        "median": 0.049002166954,
-        "p50": 0.049002166954,
-        "p90": 0.049509946397,
-        "p95": 0.049580387492,
-        "p99": 0.052146742771,
-        "stdev": 0.001055435809
+        "mean": 0.043827646687,
+        "median": 0.043433771003,
+        "p50": 0.043433771003,
+        "p90": 0.045248145319,
+        "p95": 0.046513637697,
+        "p99": 0.049031546736,
+        "stdev": 0.001376433928
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -12100,8 +12100,8 @@
         "dense_fallback_used": false,
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1318830080,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
           "a_device": "cpu",
@@ -13100,13 +13100,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000582086581,
-        "median": 0.000563396025,
-        "p50": 0.000563396025,
-        "p90": 0.000628070952,
-        "p95": 0.000731916679,
-        "p99": 0.000883872868,
-        "stdev": 7.5225178e-05
+        "mean": 0.00061741503,
+        "median": 0.000583166548,
+        "p50": 0.000583166548,
+        "p90": 0.000715308753,
+        "p95": 0.000766904629,
+        "p99": 0.001009402546,
+        "stdev": 9.9173711e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_unmerged",
@@ -13122,13 +13122,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.077933720879,
-        "median": 0.077918354014,
-        "p50": 0.077918354014,
-        "p90": 0.078865312284,
-        "p95": 0.079082833556,
-        "p99": 0.081829138978,
-        "stdev": 0.001264393305
+        "mean": 0.073666246624,
+        "median": 0.072590728989,
+        "p50": 0.072590728989,
+        "p90": 0.076435962459,
+        "p95": 0.07812226644,
+        "p99": 0.089124352057,
+        "stdev": 0.004180981611
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -13136,8 +13136,8 @@
         "dense_fallback_used": false,
         "kind": "peft_unmerged_adapter"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1614807040,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [],
       "sequence_length": 128,
       "status": "ok",
@@ -13151,13 +13151,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 6.2524e-08,
+        "mean": 7.2562e-08,
         "median": 4.2026e-08,
         "p50": 4.2026e-08,
-        "p90": 8.3935e-08,
-        "p95": 1.0659e-07,
-        "p99": 2.29408e-07,
-        "stdev": 4.0954e-08
+        "p90": 1.2503e-07,
+        "p95": 1.2503e-07,
+        "p99": 2.7174e-07,
+        "stdev": 5.1084e-08
       },
       "adapter_switch_status": "measured_dense_cache_pointer_swap",
       "baseline": "upstream_peft_merged_dense_cache",
@@ -13173,13 +13173,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.074896841638,
-        "median": 0.074957811972,
-        "p50": 0.074957811972,
-        "p90": 0.075408758887,
-        "p95": 0.075623024831,
-        "p99": 0.076800680651,
-        "stdev": 0.000617350045
+        "mean": 0.069258878483,
+        "median": 0.068932854454,
+        "p50": 0.068932854454,
+        "p90": 0.071427745628,
+        "p95": 0.071676181525,
+        "p99": 0.072393736376,
+        "stdev": 0.00120340037
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -13187,8 +13187,8 @@
         "dense_fallback_used": true,
         "kind": "peft_merged_dense_cache"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1360461824,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 128,
       "status": "ok",
       "storage": {
@@ -13201,13 +13201,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.008132088315,
-        "median": 0.008151000016,
-        "p50": 0.008151000016,
-        "p90": 0.008316137514,
-        "p95": 0.008506269066,
-        "p99": 0.009150356348,
-        "stdev": 0.00030613527
+        "mean": 0.007545551697,
+        "median": 0.007523249951,
+        "p50": 0.007523249951,
+        "p90": 0.00828370034,
+        "p95": 0.008463527507,
+        "p99": 0.008684614328,
+        "stdev": 0.000425125818
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "upstream_peft_repeated_merge_unmerge",
@@ -13223,13 +13223,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.077112941688,
-        "median": 0.07719168748,
-        "p50": 0.07719168748,
-        "p90": 0.078014204465,
-        "p95": 0.078183322918,
-        "p99": 0.078311824795,
-        "stdev": 0.000688896219
+        "mean": 0.072132950015,
+        "median": 0.071396437474,
+        "p50": 0.071396437474,
+        "p90": 0.074599391746,
+        "p95": 0.075273418747,
+        "p99": 0.076062841853,
+        "stdev": 0.001579955703
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -13237,8 +13237,8 @@
         "dense_fallback_used": true,
         "kind": "peft_repeated_merge_unmerge"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1615888384,
+      "peak_memory_status": "measured_process_maxrss",
       "sequence_length": 128,
       "status": "ok",
       "storage": {
@@ -13251,13 +13251,13 @@
     {
       "adapter": "gaisb",
       "adapter_switch_seconds": {
-        "mean": 0.000586409164,
-        "median": 0.000565417053,
-        "p50": 0.000565417053,
-        "p90": 0.000648003898,
-        "p95": 0.000725616369,
-        "p99": 0.000780440139,
-        "stdev": 5.889937e-05
+        "mean": 0.000588425884,
+        "median": 0.000561062538,
+        "p50": 0.000561062538,
+        "p90": 0.000635045639,
+        "p95": 0.000752624852,
+        "p99": 0.000917580082,
+        "stdev": 8.230527e-05
       },
       "adapter_switch_status": "measured_loaded_adapters",
       "baseline": "beyond_matmul_factor_provenance",
@@ -13273,13 +13273,13 @@
         "tolerance_profile": "cpu_fp32"
       },
       "latency_seconds": {
-        "mean": 0.078094825814,
-        "median": 0.078008832992,
-        "p50": 0.078008832992,
-        "p90": 0.078858078527,
-        "p95": 0.079170835577,
-        "p99": 0.083886859855,
-        "stdev": 0.00146529451
+        "mean": 0.072559241676,
+        "median": 0.071622958523,
+        "p50": 0.071622958523,
+        "p90": 0.074786320841,
+        "p95": 0.076379923249,
+        "p99": 0.084573515189,
+        "stdev": 0.002843571922
       },
       "lowering": {
         "active_adapter": "gaisb",
@@ -13287,8 +13287,8 @@
         "dense_fallback_used": false,
         "kind": "provenance_lora_factors"
       },
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 1610186752,
+      "peak_memory_status": "measured_process_maxrss",
       "peft_provenance_events": [
         {
           "a_device": "cpu",
@@ -14287,27 +14287,29 @@
   ],
   "run": {
     "command": [
-      "/Users/sasha/.cache/uv/builds-v0/.tmp6Xik2U/bin/python",
-      "/Users/sasha/Documents/beyond-matmul-110-peft-dense-merge/benchmarks/peft_multi_adapter_serving.py",
+      "/Users/sasha/.cache/uv/builds-v0/.tmpjWvapJ/bin/python",
+      "/Users/sasha/Documents/beyond-matmul-112-peft-memory-control-instrumentation/benchmarks/peft_multi_adapter_serving.py",
       "--json-output",
-      "docs/results/peft_multi_adapter_serving.json",
-      "--checkout-dir",
-      "/Users/sasha/Documents/beyond-matmul-109-peft-seq100/.peft_benchmark_checkouts"
+      "docs/results/peft_multi_adapter_serving.json"
     ],
-    "command_text": "/Users/sasha/.cache/uv/builds-v0/.tmp6Xik2U/bin/python /Users/sasha/Documents/beyond-matmul-110-peft-dense-merge/benchmarks/peft_multi_adapter_serving.py --json-output docs/results/peft_multi_adapter_serving.json --checkout-dir /Users/sasha/Documents/beyond-matmul-109-peft-seq100/.peft_benchmark_checkouts",
-    "generated_at_utc": "2026-07-09T15:20:19Z",
+    "command_text": "/Users/sasha/.cache/uv/builds-v0/.tmpjWvapJ/bin/python /Users/sasha/Documents/beyond-matmul-112-peft-memory-control-instrumentation/benchmarks/peft_multi_adapter_serving.py --json-output docs/results/peft_multi_adapter_serving.json",
+    "generated_at_utc": "2026-07-09T16:25:33Z",
     "mode": "real"
   },
   "schema_version": 1,
   "summary": {
+    "all_adapter_switch_cases_measured": true,
     "all_correctness_checks_passed": true,
     "all_dense_fallback_cases_explicit": true,
+    "all_peak_memory_cases_measured": true,
     "all_required_cases_present": true,
     "all_switching_cases_present": true,
     "benchmark_ready": true,
     "fallback_cases": [],
     "max_abs_error": 5.53131103515625e-05,
     "max_relative_l2_error": 1.3214124852245438e-06,
+    "memory_control_claim_ready": true,
+    "memory_control_readiness_blockers": [],
     "memory_or_control_claim": "none",
     "negative_cases": [],
     "performance_claim": "none",

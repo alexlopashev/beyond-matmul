@@ -127,7 +127,8 @@ Each measured row must include:
 - adapter-switch cost in seconds for the transition into the row's adapter:
   median, mean, standard deviation, p50, p90, p95, and p99, or `null` with a
   reason for rows where switching is not applicable
-- peak memory when measurable on the device, otherwise `null` with reason
+- peak process memory when the platform exposes a supported process high-water
+  API, otherwise `null` with an explicit status
 - per-adapter storage bytes for the adapter payload and config
 - per-adapter resident bytes attributable to dense merged model copies,
   unmerged factors, provenance metadata, or dense fallback caches
@@ -140,10 +141,18 @@ Each measured row must include:
   revision, CPU model, accelerator model if any, thread settings, and relevant
   environment variables
 
-Memory and storage summaries must distinguish adapter payload storage from
-resident serving footprint. A dense merged cache should account for one dense
-base-model copy per cached adapter, even if the process allocator makes peak
-memory difficult to observe directly on CPU.
+Current CPU rows use the worker subprocess' `resource.getrusage(...).ru_maxrss`
+as `peak_memory_status="measured_process_maxrss"` when that API is available.
+That value is process max RSS, not PyTorch allocator peak memory and not a
+proof of adapter memory savings. Synthetic smoke rows and platforms without a
+supported process high-water API must keep `peak_memory_bytes=null` with an
+explicit unavailable status. Future CUDA evidence must use the separate
+hardware-backed contract's allocator fields before making a CUDA memory claim.
+
+Memory and storage summaries must distinguish measured process memory, adapter
+payload storage, and resident serving footprint. A dense merged cache should
+account for one dense base-model copy per cached adapter, even if the process
+allocator makes peak memory difficult to attribute directly on CPU.
 
 ## JSON Artifact Schema
 
@@ -232,8 +241,8 @@ The benchmark artifact is a single JSON object:
         "p99": 0.0
       },
       "adapter_switch_status": "measured_loaded_adapters",
-      "peak_memory_bytes": null,
-      "peak_memory_status": "not_measurable_on_cpu",
+      "peak_memory_bytes": 0,
+      "peak_memory_status": "measured_process_maxrss",
       "storage": {
         "adapter_payload_bytes": 2365968,
         "adapter_config_bytes": "<int-or-null>",
@@ -261,6 +270,10 @@ The benchmark artifact is a single JSON object:
     "all_correctness_checks_passed": true,
     "all_switching_cases_present": true,
     "all_dense_fallback_cases_explicit": true,
+    "all_peak_memory_cases_measured": true,
+    "all_adapter_switch_cases_measured": true,
+    "memory_control_claim_ready": true,
+    "memory_control_readiness_blockers": [],
     "benchmark_ready": true,
     "readiness_blockers": [],
     "max_abs_error": 0.0,

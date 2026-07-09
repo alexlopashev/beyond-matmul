@@ -106,6 +106,33 @@ class PeftMultiAdapterServingTests(unittest.TestCase):
         self.assertEqual(len(latencies), 2)
         self.assertTrue(all(latency >= 0.0 for latency in latencies))
 
+    def test_process_peak_memory_sampler_reports_measured_or_unavailable(self):
+        benchmark = _load_benchmark_module()
+
+        class FakeUsage:
+            ru_maxrss = 123
+
+        class FakeResource:
+            RUSAGE_SELF = object()
+
+            @staticmethod
+            def getrusage(_target):
+                return FakeUsage()
+
+        class MissingResource:
+            pass
+
+        linux_sample = benchmark._process_peak_memory_sample(FakeResource, platform_name="linux")
+        mac_sample = benchmark._process_peak_memory_sample(FakeResource, platform_name="darwin")
+        unavailable = benchmark._process_peak_memory_sample(MissingResource, platform_name="linux")
+
+        self.assertEqual(linux_sample["peak_memory_bytes"], 123 * 1024)
+        self.assertEqual(linux_sample["peak_memory_status"], "measured_process_maxrss")
+        self.assertEqual(mac_sample["peak_memory_bytes"], 123)
+        self.assertEqual(mac_sample["peak_memory_status"], "measured_process_maxrss")
+        self.assertEqual(unavailable["peak_memory_bytes"], None)
+        self.assertEqual(unavailable["peak_memory_status"], "unavailable_platform_api")
+
     def test_dense_cache_merges_the_named_adapter(self):
         benchmark = _load_benchmark_module()
 
@@ -292,7 +319,7 @@ class PeftMultiAdapterServingTests(unittest.TestCase):
             self.assertEqual(row["case"], f"{row['adapter']}_seq4_batch1")
             self.assertEqual(row["status"], "ok")
             self.assertEqual(row["peak_memory_bytes"], None)
-            self.assertEqual(row["peak_memory_status"], "not_measurable_on_cpu")
+            self.assertEqual(row["peak_memory_status"], "not_measured_synthetic_smoke")
             self.assertEqual(row["latency_seconds"]["median"], 0.015)
             self.assertEqual(row["adapter_switch_seconds"]["median"], 0.0015)
             self.assertIn(row["adapter_switch_status"], {"measured_loaded_adapters", "measured_dense_cache_pointer_swap"})
@@ -324,6 +351,13 @@ class PeftMultiAdapterServingTests(unittest.TestCase):
         self.assertTrue(first["summary"]["all_correctness_checks_passed"])
         self.assertTrue(first["summary"]["all_switching_cases_present"])
         self.assertTrue(first["summary"]["all_dense_fallback_cases_explicit"])
+        self.assertFalse(first["summary"]["all_peak_memory_cases_measured"])
+        self.assertTrue(first["summary"]["all_adapter_switch_cases_measured"])
+        self.assertFalse(first["summary"]["memory_control_claim_ready"])
+        self.assertEqual(
+            first["summary"]["memory_control_readiness_blockers"],
+            ["synthetic_smoke_not_benchmark_evidence", "peak_memory_cases_unavailable"],
+        )
         self.assertFalse(first["summary"]["benchmark_ready"])
         self.assertEqual(first["summary"]["readiness_blockers"], ["synthetic_smoke_not_benchmark_evidence"])
         self.assertEqual(first["summary"]["fallback_cases"], [])
@@ -351,11 +385,196 @@ class PeftMultiAdapterServingTests(unittest.TestCase):
             self.assertEqual(row["status"], "blocked")
             self.assertEqual(row["latency_seconds"], None)
             self.assertEqual(row["adapter_switch_seconds"], None)
+            self.assertEqual(row["peak_memory_bytes"], None)
+            self.assertEqual(row["peak_memory_status"], "not_measured_blocked")
             self.assertIn("context limit", row["reason"])
             self.assertFalse(row["correctness"]["passed"])
         self.assertIn("context_limit_exceeded", artifact["summary"]["readiness_blockers"])
+        self.assertIn("context_limit_exceeded", artifact["summary"]["memory_control_readiness_blockers"])
         self.assertFalse(artifact["summary"]["benchmark_ready"])
+        self.assertFalse(artifact["summary"]["memory_control_claim_ready"])
         self.assertTrue(artifact["summary"]["all_required_cases_present"])
+
+    def test_worker_payload_records_measured_peak_memory_readiness(self):
+        benchmark = _load_benchmark_module()
+
+        payloads = [
+            {
+                "baseline": "upstream_peft_unmerged",
+                "adapter": "merchant",
+                "sequence_length": 4,
+                "batch_size": 1,
+                "status": "ok",
+                "reason": None,
+                "latencies": [0.01],
+                "switch_latencies": [0.001],
+                "logits": [[[0.0, 1.0]]],
+                "storage": {"adapter_config_bytes": 128, "resident_adapter_bytes": 2365968},
+                "peak_memory_bytes": 10_000,
+                "peak_memory_status": "measured_process_maxrss",
+            },
+            {
+                "baseline": "upstream_peft_merged_dense_cache",
+                "adapter": "merchant",
+                "sequence_length": 4,
+                "batch_size": 1,
+                "status": "ok",
+                "reason": None,
+                "latencies": [0.02],
+                "switch_latencies": [0.0],
+                "logits": [[[0.0, 1.0]]],
+                "storage": {"adapter_config_bytes": 128, "resident_adapter_bytes": 500000000},
+                "peak_memory_bytes": 20_000,
+                "peak_memory_status": "measured_process_maxrss",
+            },
+            {
+                "baseline": "upstream_peft_repeated_merge_unmerge",
+                "adapter": "merchant",
+                "sequence_length": 4,
+                "batch_size": 1,
+                "status": "ok",
+                "reason": None,
+                "latencies": [0.03],
+                "switch_latencies": [0.002],
+                "logits": [[[0.0, 1.0]]],
+                "storage": {"adapter_config_bytes": 128, "resident_adapter_bytes": None},
+                "peak_memory_bytes": 30_000,
+                "peak_memory_status": "measured_process_maxrss",
+            },
+            {
+                "baseline": "beyond_matmul_factor_provenance",
+                "adapter": "merchant",
+                "sequence_length": 4,
+                "batch_size": 1,
+                "status": "ok",
+                "reason": None,
+                "latencies": [0.02],
+                "switch_latencies": [0.0005],
+                "logits": [[[0.0, 1.0]]],
+                "storage": {"adapter_config_bytes": 128, "resident_adapter_bytes": 2365968},
+                "peft_provenance_events": [
+                    {
+                        "kind": "beyond_matmul_lora_provenance",
+                        "path": "structured_low_rank",
+                        "adapter": "merchant",
+                    }
+                ],
+                "peak_memory_bytes": 40_000,
+                "peak_memory_status": "measured_process_maxrss",
+            },
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            upstream = Path(temp_dir) / "upstream"
+            fork = Path(temp_dir) / "fork"
+            upstream.mkdir()
+            fork.mkdir()
+            with mock.patch.object(benchmark, "_run_real_worker", side_effect=payloads):
+                artifact = benchmark.collect_results(
+                    adapters=[benchmark.ADAPTERS[0]],
+                    sequence_lengths=[4],
+                    batch_sizes=[1],
+                    warmup_repetitions=0,
+                    measured_repetitions=1,
+                    mode="real",
+                    upstream_peft_path=str(upstream),
+                    fork_peft_path=str(fork),
+                    model_context_limit=2048,
+                )
+
+        self.assertEqual(
+            {row["peak_memory_bytes"] for row in artifact["results"]},
+            {10_000, 20_000, 30_000, 40_000},
+        )
+        self.assertEqual(
+            {row["peak_memory_status"] for row in artifact["results"]},
+            {"measured_process_maxrss"},
+        )
+        self.assertTrue(artifact["summary"]["all_correctness_checks_passed"])
+        self.assertTrue(artifact["summary"]["all_peak_memory_cases_measured"])
+        self.assertTrue(artifact["summary"]["all_adapter_switch_cases_measured"])
+        self.assertTrue(artifact["summary"]["memory_control_claim_ready"])
+        self.assertEqual(artifact["summary"]["memory_control_readiness_blockers"], [])
+
+    def test_memory_control_claim_readiness_requires_correctness(self):
+        benchmark = _load_benchmark_module()
+
+        payloads = [
+            {
+                "baseline": "upstream_peft_unmerged",
+                "adapter": "merchant",
+                "sequence_length": 4,
+                "batch_size": 1,
+                "status": "ok",
+                "reason": None,
+                "latencies": [0.01],
+                "switch_latencies": [0.001],
+                "logits": [[[0.0, 1.0]]],
+                "peak_memory_bytes": 10_000,
+                "peak_memory_status": "measured_process_maxrss",
+            },
+            {
+                "baseline": "upstream_peft_merged_dense_cache",
+                "adapter": "merchant",
+                "sequence_length": 4,
+                "batch_size": 1,
+                "status": "ok",
+                "reason": None,
+                "latencies": [0.02],
+                "switch_latencies": [0.0],
+                "logits": [[[0.0, 1.0]]],
+                "peak_memory_bytes": 20_000,
+                "peak_memory_status": "measured_process_maxrss",
+            },
+            {
+                "baseline": "upstream_peft_repeated_merge_unmerge",
+                "adapter": "merchant",
+                "sequence_length": 4,
+                "batch_size": 1,
+                "status": "ok",
+                "reason": None,
+                "latencies": [0.03],
+                "switch_latencies": [0.002],
+                "logits": [[[0.0, 1.0]]],
+                "peak_memory_bytes": 30_000,
+                "peak_memory_status": "measured_process_maxrss",
+            },
+            {
+                "baseline": "beyond_matmul_factor_provenance",
+                "adapter": "merchant",
+                "sequence_length": 4,
+                "batch_size": 1,
+                "status": "ok",
+                "reason": None,
+                "latencies": [0.02],
+                "switch_latencies": [0.0005],
+                "logits": [[[0.5, 1.5]]],
+                "peak_memory_bytes": 40_000,
+                "peak_memory_status": "measured_process_maxrss",
+            },
+        ]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            upstream = Path(temp_dir) / "upstream"
+            fork = Path(temp_dir) / "fork"
+            upstream.mkdir()
+            fork.mkdir()
+            with mock.patch.object(benchmark, "_run_real_worker", side_effect=payloads):
+                artifact = benchmark.collect_results(
+                    adapters=[benchmark.ADAPTERS[0]],
+                    sequence_lengths=[4],
+                    batch_sizes=[1],
+                    warmup_repetitions=0,
+                    measured_repetitions=1,
+                    mode="real",
+                    upstream_peft_path=str(upstream),
+                    fork_peft_path=str(fork),
+                    model_context_limit=2048,
+                )
+
+        self.assertFalse(artifact["summary"]["all_correctness_checks_passed"])
+        self.assertTrue(artifact["summary"]["all_peak_memory_cases_measured"])
+        self.assertTrue(artifact["summary"]["all_adapter_switch_cases_measured"])
+        self.assertFalse(artifact["summary"]["memory_control_claim_ready"])
+        self.assertEqual(artifact["summary"]["memory_control_readiness_blockers"], ["correctness_checks_failed"])
 
     def test_summary_records_not_applicable_and_fallback_cases(self):
         benchmark = _load_benchmark_module()

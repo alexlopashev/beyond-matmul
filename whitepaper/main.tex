@@ -505,8 +505,13 @@ lengths, and both batch sizes. The Beyond Matmul rows expose structured
 low-rank provenance without dense fallback, so this run supports row-complete
 serving metadata and structured provenance visibility. The artifact records
 \texttt{summary.benchmark\_ready: true}, no readiness blockers,
+\texttt{summary.memory\_control\_claim\_ready: true},
 \texttt{summary.performance\_claim: "none"}, and
 \texttt{summary.memory\_or\_control\_claim: "none"}.
+The memory/control readiness flag means correctness has passed and the
+row-level adapter-switch and process max-RSS fields are populated where the CPU
+platform exposes them; it is not a CUDA allocator measurement or a memory-win
+claim.
 
 The fixed-mask row is intentionally narrower than full masked attention. It
 applies a fixed causal-band binary mask as a sparse linear map and selects
@@ -790,17 +795,20 @@ win, training claim, or universal Transformer speedup conclusion.
 The PEFT multi-adapter serving follow-up narrows the claim further. It shows
 that the project can produce a contract-shaped, row-complete external serving
 artifact with adapter-switch measurements, storage metadata, correctness
-summaries, and structured factor-provenance reporting for two pinned adapters.
-It does not show a memory or control win: the refreshed artifact passes the
-correctness-readiness bar, but it claims no latency threshold win, measured
-peak-memory reduction, or adapter-switching gain, and keeps performance and
-memory/control claims at \texttt{none}.
+summaries, measured CPU process max-RSS fields, and structured
+factor-provenance reporting for two pinned adapters. It does not show a memory
+or control win: the refreshed artifact passes the correctness and
+memory/control instrumentation-readiness bars, but it claims no latency
+threshold win, process-memory reduction, CUDA peak-memory reduction, or
+adapter-switching gain, and keeps performance and memory/control claims at
+\texttt{none}.
 
 The next production/performance step is explicitly contractual rather than
 evidentiary. \texttt{docs/hardware\_backed\_production\_benchmark\_contract.md}
 selects the same OPT-125M two-adapter PEFT serving workload as the minimal
-future CUDA target and defines the schema and readiness gates that issues
-\#112 and \#113 must satisfy before any latency, memory, adapter-switching, or
+future CUDA target. Issue \#112 adds CPU process memory/control
+instrumentation; the remaining CUDA allocator and structured-serving gates
+must still be satisfied before any latency, memory, adapter-switching, or
 structured-execution result can support a stronger claim.
 
 \section{Conclusion}
