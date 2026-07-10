@@ -25,6 +25,8 @@ if ROOT not in sys.path:
 
 BENCHMARK = "peft_multi_adapter_serving"
 CONTRACT_PATH = "docs/peft_multi_adapter_serving_benchmark_contract.md"
+HARDWARE_BENCHMARK = "hardware_backed_peft_multi_adapter_serving"
+HARDWARE_CONTRACT_PATH = "docs/hardware_backed_production_benchmark_contract.md"
 BASE_MODEL = "facebook/opt-125m"
 BASE_MODEL_REVISION = "27dcfa74d334bc871f3234de431e71c6eeba5dd6"
 MODEL_CONTEXT_LIMIT = 2048
@@ -33,8 +35,14 @@ DEFAULT_SEQUENCE_LENGTHS = [16, 64, 128]
 DEFAULT_BATCH_SIZES = [1, 2]
 DEFAULT_WARMUP_REPETITIONS = 10
 DEFAULT_MEASURED_REPETITIONS = 50
+HARDWARE_FORWARD_WARMUP_REPETITIONS = 25
+HARDWARE_FORWARD_MEASURED_REPETITIONS = 100
+HARDWARE_SWITCH_WARMUP_REPETITIONS = 25
+HARDWARE_SWITCH_MEASURED_REPETITIONS = 100
 DEFAULT_UPSTREAM_REF = "main"
 DEFAULT_FORK_REF = "beyond-matmul/provenance-lora-inference"
+HARDWARE_UPSTREAM_REF = "1598ecb8fc504bfcb08b9b232b295414a729d7ed"
+HARDWARE_FORK_REF = "7ac8d57b100846837c5a3b76c65e1e1954ccc3c8"
 UPSTREAM_REPOSITORY = "huggingface/peft"
 FORK_REPOSITORY = "alexlopashev/peft"
 CORRECTNESS_MAX_ABS_TOLERANCE = 1e-4
@@ -47,6 +55,12 @@ BASELINES = [
     "upstream_peft_merged_dense_cache",
     "upstream_peft_repeated_merge_unmerge",
     "beyond_matmul_factor_provenance",
+]
+HARDWARE_BASELINES = [
+    "upstream_peft_unmerged",
+    "upstream_peft_merged_dense_cache",
+    "upstream_peft_repeated_merge_unmerge",
+    "beyond_matmul_structured_low_rank",
 ]
 
 
@@ -270,6 +284,447 @@ def collect_results(
             context_limit=resolved_context_limit,
         ),
     }
+
+
+def collect_hardware_contract_results(
+    *,
+    adapters: Sequence[AdapterSpec] | None = None,
+    sequence_lengths: Sequence[int] | None = None,
+    batch_sizes: Sequence[int] | None = None,
+    mode: str = "synthetic-smoke",
+    cuda_available: bool | None = None,
+    model_context_limit: int | None = None,
+    hardware_metadata: Dict[str, Any] | None = None,
+    command: Sequence[str] | None = None,
+    generated_at_utc: str | None = None,
+) -> Dict[str, Any]:
+    adapters = list(adapters or ADAPTERS)
+    sequence_lengths = list(sequence_lengths or DEFAULT_SEQUENCE_LENGTHS)
+    batch_sizes = list(batch_sizes or DEFAULT_BATCH_SIZES)
+    _validate_positive_ints("sequence length", sequence_lengths)
+    _validate_positive_ints("batch size", batch_sizes)
+    if not adapters:
+        raise ValueError("at least one adapter is required")
+    if mode not in {"synthetic-smoke", "fake-backend", "real"}:
+        raise ValueError(f"unsupported hardware contract mode: {mode}")
+
+    resolved_context_limit = MODEL_CONTEXT_LIMIT if model_context_limit is None else model_context_limit
+    resolved_cuda_available = _cuda_available() if cuda_available is None else bool(cuda_available)
+    resolved_hardware = _hardware_contract_metadata(
+        cuda_available=resolved_cuda_available,
+        override=hardware_metadata,
+    )
+    preflight_blockers = _hardware_preflight_blockers(
+        adapters=adapters,
+        sequence_lengths=sequence_lengths,
+        model_context_limit=resolved_context_limit,
+        cuda_available=resolved_cuda_available,
+        hardware=resolved_hardware,
+        mode=mode,
+    )
+
+    results = [
+        _hardware_contract_row(
+            adapter=adapter,
+            baseline=baseline,
+            sequence_length=sequence_length,
+            batch_size=batch_size,
+            readiness_blockers=preflight_blockers,
+        )
+        for adapter in adapters
+        for sequence_length in sequence_lengths
+        for batch_size in batch_sizes
+        for baseline in HARDWARE_BASELINES
+    ]
+
+    return {
+        "schema_version": 1,
+        "benchmark": HARDWARE_BENCHMARK,
+        "contract": HARDWARE_CONTRACT_PATH,
+        "mode": mode,
+        "workload": {
+            "base_model": BASE_MODEL,
+            "base_model_revision": BASE_MODEL_REVISION,
+            "model_context_limit": resolved_context_limit,
+            "adapters": [_adapter_metadata(adapter) for adapter in adapters],
+            "task": "causal_lm_prefill_logits",
+            "dtype": "float32",
+            "device": "cuda",
+            "sequence_lengths": sequence_lengths,
+            "batch_sizes": batch_sizes,
+            "input_seed": INPUT_SEED,
+            "forward_warmup_repetitions": HARDWARE_FORWARD_WARMUP_REPETITIONS,
+            "forward_measured_repetitions": HARDWARE_FORWARD_MEASURED_REPETITIONS,
+            "switch_warmup_repetitions": HARDWARE_SWITCH_WARMUP_REPETITIONS,
+            "switch_measured_repetitions": HARDWARE_SWITCH_MEASURED_REPETITIONS,
+        },
+        "dependencies": _hardware_dependency_metadata(),
+        "hardware": resolved_hardware,
+        "environment": _environment_metadata(),
+        "run": _run_metadata(command=command, generated_at_utc=generated_at_utc, mode=mode),
+        "results": results,
+        "summary": _hardware_contract_summary(
+            results,
+            adapters=adapters,
+            sequence_lengths=sequence_lengths,
+            batch_sizes=batch_sizes,
+            readiness_blockers=preflight_blockers,
+        ),
+    }
+
+
+def _cuda_available() -> bool:
+    torch = _torch()
+    return bool(getattr(torch, "cuda", None) is not None and torch.cuda.is_available())
+
+
+def _hardware_preflight_blockers(
+    *,
+    adapters: Sequence[AdapterSpec],
+    sequence_lengths: Sequence[int],
+    model_context_limit: int | None,
+    cuda_available: bool,
+    hardware: Dict[str, Any],
+    mode: str,
+) -> List[str]:
+    blockers = []
+    if mode != "real":
+        blockers.append("synthetic_smoke_not_benchmark_evidence")
+    if not cuda_available:
+        blockers.append("missing_cuda")
+    if model_context_limit is None:
+        blockers.append("model_context_limit_unresolved")
+    elif any(sequence_length > model_context_limit for sequence_length in sequence_lengths):
+        blockers.append("context_limit_exceeded")
+    if _hardware_contract_pin_mismatches(adapters):
+        blockers.append("contract_pin_mismatch")
+    if cuda_available and _incomplete_hardware_metadata(hardware):
+        blockers.append("incomplete_hardware_metadata")
+    blockers.append("cuda_measurements_missing")
+    return _ordered_unique_blockers(blockers)
+
+
+def _hardware_contract_pin_mismatches(adapters: Sequence[AdapterSpec]) -> List[str]:
+    expected = {adapter.name: adapter for adapter in ADAPTERS}
+    mismatches = []
+    for adapter in adapters:
+        contract = expected.get(adapter.name)
+        if contract is None:
+            mismatches.append(adapter.name)
+            continue
+        if (
+            adapter.repository != contract.repository
+            or adapter.revision != contract.revision
+            or adapter.payload_file != contract.payload_file
+        ):
+            mismatches.append(adapter.name)
+    return mismatches
+
+
+def _incomplete_hardware_metadata(hardware: Dict[str, Any]) -> bool:
+    required_fields = ("gpu", "cuda_device", "compute_capability", "total_memory_bytes", "driver")
+    return any(hardware.get(field) is None for field in required_fields)
+
+
+def _ordered_unique_blockers(blockers: Sequence[str]) -> List[str]:
+    order = [
+        "synthetic_smoke_not_benchmark_evidence",
+        "missing_cuda",
+        "model_context_limit_unresolved",
+        "context_limit_exceeded",
+        "contract_pin_mismatch",
+        "incomplete_hardware_metadata",
+        "cuda_measurements_missing",
+        "required_cases_missing",
+        "correctness_checks_failed",
+        "cuda_memory_fields_unmeasured",
+        "switching_cases_unmeasured",
+        "dense_fallback_cases_not_explicit",
+    ]
+    seen = set()
+    unique = []
+    for blocker in order:
+        if blocker in blockers and blocker not in seen:
+            unique.append(blocker)
+            seen.add(blocker)
+    for blocker in blockers:
+        if blocker not in seen:
+            unique.append(blocker)
+            seen.add(blocker)
+    return unique
+
+
+def _hardware_contract_row(
+    *,
+    adapter: AdapterSpec,
+    baseline: str,
+    sequence_length: int,
+    batch_size: int,
+    readiness_blockers: Sequence[str],
+) -> Dict[str, Any]:
+    status = "blocked" if readiness_blockers else "not_measured"
+    return {
+        "case": _case_name(adapter.name, sequence_length, batch_size),
+        "adapter": adapter.name,
+        "baseline": baseline,
+        "status": status,
+        "readiness_blockers": list(readiness_blockers),
+        "reason": ", ".join(readiness_blockers) if readiness_blockers else "hardware measurement not implemented",
+        "sequence_length": sequence_length,
+        "batch_size": batch_size,
+        "forward_latency_seconds": None,
+        "adapter_switch_seconds": None,
+        "preprocessing_seconds": {
+            "dense_cache_build": None,
+            "structured_factor_pack": None,
+            "compilation_or_graph_capture": None,
+        },
+        "cuda_memory": {
+            "setup_peak_allocated_bytes": None,
+            "setup_peak_reserved_bytes": None,
+            "steady_peak_allocated_bytes": None,
+            "steady_peak_reserved_bytes": None,
+            "post_setup_allocated_bytes": None,
+            "post_loop_allocated_bytes": None,
+        },
+        "storage": _hardware_storage_metadata(baseline, adapter),
+        "correctness": _hardware_empty_correctness(passed=False),
+        "lowering": _hardware_lowering_metadata(baseline, adapter.name, blocked=bool(readiness_blockers)),
+    }
+
+
+def _hardware_empty_correctness(*, passed: bool) -> Dict[str, Any]:
+    return {
+        "reference_baseline": "upstream_peft_unmerged",
+        "max_abs_error": None,
+        "relative_l2_error": None,
+        "max_abs_tolerance": CORRECTNESS_MAX_ABS_TOLERANCE,
+        "relative_l2_tolerance": CORRECTNESS_RELATIVE_L2_TOLERANCE,
+        "tolerance_profile": "cuda_fp32",
+        "passed": passed,
+    }
+
+
+def _hardware_storage_metadata(baseline: str, adapter: AdapterSpec) -> Dict[str, Any]:
+    return {
+        "adapter_payload_bytes": adapter.payload_bytes,
+        "dense_cache_bytes_per_adapter": BASE_MODEL_FP32_BYTES_APPROX
+        if baseline == "upstream_peft_merged_dense_cache"
+        else None,
+        "structured_factor_bytes": None,
+        "provenance_metadata_bytes": None,
+        "dense_fallback_cache_bytes": BASE_MODEL_FP32_BYTES_APPROX
+        if baseline in {"upstream_peft_merged_dense_cache", "upstream_peft_repeated_merge_unmerge"}
+        else None,
+    }
+
+
+def _hardware_lowering_metadata(baseline: str, adapter_name: str, *, blocked: bool) -> Dict[str, Any]:
+    if baseline == "beyond_matmul_structured_low_rank":
+        return {
+            "kind": "structured_low_rank",
+            "active_adapter": adapter_name,
+            "dense_fallback_available": True,
+            "dense_fallback_used": blocked,
+            "fallback_reason": "preflight_blocked" if blocked else None,
+        }
+    return {
+        "kind": _hardware_baseline_kind(baseline),
+        "active_adapter": adapter_name,
+        "dense_fallback_available": True,
+        "dense_fallback_used": baseline != "upstream_peft_unmerged",
+        "fallback_reason": None,
+    }
+
+
+def _hardware_baseline_kind(baseline: str) -> str:
+    return {
+        "upstream_peft_unmerged": "peft_unmerged_adapter",
+        "upstream_peft_merged_dense_cache": "peft_merged_dense_cache",
+        "upstream_peft_repeated_merge_unmerge": "peft_repeated_merge_unmerge",
+    }.get(baseline, baseline)
+
+
+def _hardware_contract_summary(
+    results: Sequence[Dict[str, Any]],
+    *,
+    adapters: Sequence[AdapterSpec],
+    sequence_lengths: Sequence[int],
+    batch_sizes: Sequence[int],
+    readiness_blockers: Sequence[str],
+) -> Dict[str, Any]:
+    all_required_cases_present = _all_hardware_required_cases_present(results, adapters, sequence_lengths, batch_sizes)
+    all_correctness_checks_passed = all(row["status"] == "ok" and row["correctness"]["passed"] for row in results)
+    all_memory_fields_measured = all(_hardware_memory_measured(row) for row in results)
+    all_switching_cases_present = all(row.get("adapter_switch_seconds") is not None for row in results)
+    all_fallback_cases_explicit = all(
+        "dense_fallback_available" in row["lowering"] and "dense_fallback_used" in row["lowering"]
+        for row in results
+    )
+    blockers = list(readiness_blockers)
+    if not all_required_cases_present:
+        blockers.append("required_cases_missing")
+    if not all_correctness_checks_passed:
+        blockers.append("correctness_checks_failed")
+    if not all_memory_fields_measured:
+        blockers.append("cuda_memory_fields_unmeasured")
+    if not all_switching_cases_present:
+        blockers.append("switching_cases_unmeasured")
+    if not all_fallback_cases_explicit:
+        blockers.append("dense_fallback_cases_not_explicit")
+    blockers = _ordered_unique_blockers(blockers)
+    ready = not blockers
+    return {
+        "all_required_cases_present": all_required_cases_present,
+        "all_correctness_checks_passed": all_correctness_checks_passed,
+        "all_memory_fields_measured": all_memory_fields_measured,
+        "all_switching_cases_present": all_switching_cases_present,
+        "all_fallback_cases_explicit": all_fallback_cases_explicit,
+        "production_contract_ready": ready,
+        "performance_fields_interpretable": ready,
+        "memory_fields_interpretable": ready,
+        "readiness_blockers": blockers,
+        "primary_performance_question": "structured_low_rank_switch_or_memory_without_forward_regression",
+        "performance_claim": "none",
+        "memory_or_control_claim": "none",
+    }
+
+
+def _all_hardware_required_cases_present(
+    results: Sequence[Dict[str, Any]],
+    adapters: Sequence[AdapterSpec],
+    sequence_lengths: Sequence[int],
+    batch_sizes: Sequence[int],
+) -> bool:
+    present = {
+        (row["adapter"], row["baseline"], row["sequence_length"], row["batch_size"])
+        for row in results
+    }
+    required = {
+        (adapter.name, baseline, sequence_length, batch_size)
+        for adapter in adapters
+        for sequence_length in sequence_lengths
+        for batch_size in batch_sizes
+        for baseline in HARDWARE_BASELINES
+    }
+    return required.issubset(present)
+
+
+def _hardware_memory_measured(row: Dict[str, Any]) -> bool:
+    memory = row.get("cuda_memory")
+    if not isinstance(memory, dict):
+        return False
+    required_fields = (
+        "setup_peak_allocated_bytes",
+        "setup_peak_reserved_bytes",
+        "steady_peak_allocated_bytes",
+        "steady_peak_reserved_bytes",
+        "post_setup_allocated_bytes",
+        "post_loop_allocated_bytes",
+    )
+    return all(isinstance(memory.get(field), int) and memory[field] >= 0 for field in required_fields)
+
+
+def _hardware_dependency_metadata() -> Dict[str, Any]:
+    torch = _torch()
+    return {
+        "python": platform.python_version(),
+        "torch": {"version": torch.__version__, "cuda": getattr(torch.version, "cuda", None)},
+        "transformers": _module_metadata("transformers", "hardware-contract"),
+        "peft_upstream": {
+            "repository": UPSTREAM_REPOSITORY,
+            "version": None,
+            "revision": HARDWARE_UPSTREAM_REF,
+        },
+        "peft_fork": {
+            "repository": FORK_REPOSITORY,
+            "version": None,
+            "revision": HARDWARE_FORK_REF,
+        },
+        "beyond_matmul": {
+            "repository": "alexlopashev/beyond-matmul",
+            "revision": _git_revision(Path(ROOT)),
+        },
+        "huggingface_hub": _module_metadata("huggingface_hub", "hardware-contract"),
+        "accelerate": _module_metadata("accelerate", "hardware-contract"),
+        "safetensors": _module_metadata("safetensors", "hardware-contract"),
+    }
+
+
+def _hardware_contract_metadata(
+    *, cuda_available: bool, override: Dict[str, Any] | None
+) -> Dict[str, Any]:
+    torch = _torch()
+    if cuda_available and getattr(torch, "cuda", None) is not None:
+        cuda_device = 0
+        try:
+            properties = torch.cuda.get_device_properties(cuda_device)
+            gpu = properties.name
+            compute_capability = f"{properties.major}.{properties.minor}"
+            total_memory_bytes = int(properties.total_memory)
+        except Exception:
+            gpu = None
+            compute_capability = None
+            total_memory_bytes = None
+    else:
+        cuda_device = 0
+        gpu = None
+        compute_capability = None
+        total_memory_bytes = None
+
+    metadata = {
+        "gpu": gpu,
+        "cuda_device": cuda_device,
+        "compute_capability": compute_capability,
+        "total_memory_bytes": total_memory_bytes,
+        "driver": _cuda_driver_version(torch) if cuda_available else None,
+        "mig_partition": None,
+        "torch_backends": _torch_backend_flags(torch),
+        "torch_num_threads": torch.get_num_threads(),
+        "platform": platform.platform(),
+        "env": {
+            name: os.environ[name]
+            for name in sorted(["CUDA_VISIBLE_DEVICES", "PYTORCH_CUDA_ALLOC_CONF", "OMP_NUM_THREADS", "MKL_NUM_THREADS"])
+            if name in os.environ
+        },
+    }
+    if override:
+        metadata.update(override)
+        metadata.setdefault("torch_backends", _torch_backend_flags(torch))
+    return metadata
+
+
+def _cuda_driver_version(torch: Any) -> str | None:
+    driver_version = getattr(getattr(torch, "_C", None), "_cuda_getDriverVersion", None)
+    if not callable(driver_version):
+        return None
+    try:
+        value = driver_version()
+    except Exception:
+        return None
+    return str(value) if value else None
+
+
+def _torch_backend_flags(torch: Any) -> Dict[str, Any]:
+    cuda_matmul = getattr(getattr(torch.backends, "cuda", None), "matmul", None)
+    cudnn = getattr(torch.backends, "cudnn", None)
+    return {
+        "cuda_matmul_allow_tf32": getattr(cuda_matmul, "allow_tf32", None),
+        "cudnn_allow_tf32": getattr(cudnn, "allow_tf32", None),
+        "cudnn_benchmark": getattr(cudnn, "benchmark", None),
+        "cudnn_deterministic": getattr(cudnn, "deterministic", None),
+        "deterministic_algorithms": (
+            torch.are_deterministic_algorithms_enabled()
+            if hasattr(torch, "are_deterministic_algorithms_enabled")
+            else None
+        ),
+    }
+
+
+def write_hardware_contract_json_artifact(output_path: str | os.PathLike[str], **kwargs: Any) -> Dict[str, Any]:
+    artifact = collect_hardware_contract_results(**kwargs)
+    _write_json(output_path, artifact)
+    return artifact
 
 
 def _validate_positive_ints(name: str, values: Sequence[int]) -> None:
@@ -1721,6 +2176,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json-output", help="write machine-readable benchmark results to this JSON path")
     parser.add_argument("--smoke", action="store_true", help="run the torch-only CI smoke workload")
+    parser.add_argument(
+        "--hardware-contract-smoke",
+        action="store_true",
+        help="emit the CI-safe hardware-backed production contract readiness artifact",
+    )
     parser.add_argument("--sequence-lengths", default=",".join(str(value) for value in DEFAULT_SEQUENCE_LENGTHS))
     parser.add_argument("--batch-sizes", default=",".join(str(value) for value in DEFAULT_BATCH_SIZES))
     parser.add_argument("--warmup-repetitions", type=int, default=DEFAULT_WARMUP_REPETITIONS)
@@ -1747,9 +2207,24 @@ def main() -> None:
     if args._worker_json_output:
         _real_worker(args)
         return
+    command = [sys.executable, __file__, *sys.argv[1:]]
+    generated_at_utc = datetime.datetime.now(datetime.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    if args.hardware_contract_smoke:
+        artifact = collect_hardware_contract_results(
+            mode="synthetic-smoke",
+            command=command,
+            generated_at_utc=generated_at_utc,
+        )
+        if args.json_output:
+            _write_json(args.json_output, artifact)
+        print(
+            "hardware_contract_ready="
+            f"{str(artifact['summary']['production_contract_ready']).lower()} "
+            f"blockers={','.join(artifact['summary']['readiness_blockers'])}"
+        )
+        return
     sequence_lengths = [4] if args.smoke else _parse_int_list(args.sequence_lengths)
     batch_sizes = [1] if args.smoke else _parse_int_list(args.batch_sizes)
-    command = [sys.executable, __file__, *sys.argv[1:]]
     artifact = collect_results(
         sequence_lengths=sequence_lengths,
         batch_sizes=batch_sizes,
@@ -1762,7 +2237,7 @@ def main() -> None:
         fork_peft_ref=args.fork_peft_ref,
         checkout_dir=args.checkout_dir,
         command=command,
-        generated_at_utc=datetime.datetime.now(datetime.UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        generated_at_utc=generated_at_utc,
     )
     if args.json_output:
         _write_json(args.json_output, artifact)

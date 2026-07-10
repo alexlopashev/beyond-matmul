@@ -69,6 +69,9 @@ jobs:
       - name: Run PEFT multi-adapter serving smoke artifact
         run: mise exec -- uv run python benchmarks/peft_multi_adapter_serving.py --smoke --json-output docs/results/peft_multi_adapter_serving_smoke.json
 
+      - name: Run hardware-backed PEFT contract smoke artifact
+        run: mise exec -- uv run python benchmarks/peft_multi_adapter_serving.py --hardware-contract-smoke --json-output docs/results/hardware_backed_peft_multi_adapter_serving_smoke.json
+
       - name: Upload fixed-weight benchmark JSON
         uses: actions/upload-artifact@v4
         with:
@@ -104,3 +107,9 @@ jobs:
         with:
           name: peft-multi-adapter-serving-smoke-json
           path: docs/results/peft_multi_adapter_serving_smoke.json
+
+      - name: Upload hardware-backed PEFT contract smoke JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: hardware-backed-peft-contract-smoke-json
+          path: docs/results/hardware_backed_peft_multi_adapter_serving_smoke.json

@@ -524,6 +524,92 @@ class PeftMultiAdapterServingTests(unittest.TestCase):
         self.assertFalse(artifact["summary"]["memory_control_claim_ready"])
         self.assertTrue(artifact["summary"]["all_required_cases_present"])
 
+    def test_hardware_contract_smoke_records_cuda_schema_and_required_grid(self):
+        benchmark = _load_benchmark_module()
+
+        artifact = benchmark.collect_hardware_contract_results(
+            mode="synthetic-smoke",
+            cuda_available=False,
+        )
+
+        self.assertEqual(artifact["schema_version"], 1)
+        self.assertEqual(artifact["benchmark"], "hardware_backed_peft_multi_adapter_serving")
+        self.assertEqual(
+            artifact["contract"],
+            "docs/hardware_backed_production_benchmark_contract.md",
+        )
+        self.assertEqual(artifact["workload"]["device"], "cuda")
+        self.assertEqual(artifact["workload"]["sequence_lengths"], [16, 64, 128])
+        self.assertEqual(artifact["workload"]["batch_sizes"], [1, 2])
+        self.assertIn("accelerate", artifact["dependencies"])
+        self.assertIn("safetensors", artifact["dependencies"])
+        self.assertIn("torch_backends", artifact["hardware"])
+        self.assertEqual(artifact["hardware"]["gpu"], None)
+        self.assertFalse(artifact["summary"]["production_contract_ready"])
+        self.assertFalse(artifact["summary"]["performance_fields_interpretable"])
+        self.assertFalse(artifact["summary"]["memory_fields_interpretable"])
+        self.assertIn("missing_cuda", artifact["summary"]["readiness_blockers"])
+        self.assertTrue(artifact["summary"]["all_required_cases_present"])
+
+        cases = {
+            (row["adapter"], row["baseline"], row["sequence_length"], row["batch_size"])
+            for row in artifact["results"]
+        }
+        self.assertEqual(len(cases), 2 * 4 * 3 * 2)
+        self.assertIn(("merchant", "beyond_matmul_structured_low_rank", 128, 2), cases)
+        for row in artifact["results"]:
+            self.assertEqual(row["status"], "blocked")
+            self.assertIn("missing_cuda", row["readiness_blockers"])
+            self.assertIn("forward_latency_seconds", row)
+            self.assertIn("adapter_switch_seconds", row)
+            self.assertIn("preprocessing_seconds", row)
+            self.assertIn("cuda_memory", row)
+            self.assertIn("storage", row)
+            self.assertEqual(row["correctness"]["tolerance_profile"], "cuda_fp32")
+            self.assertFalse(row["correctness"]["passed"])
+            self.assertIn("dense_fallback_available", row["lowering"])
+
+    def test_hardware_contract_preflight_blockers_are_stable(self):
+        benchmark = _load_benchmark_module()
+
+        bad_adapter = benchmark.AdapterSpec(
+            name="merchant",
+            repository="choyiny/opt-125m-lora-merchant-finetune",
+            revision="not-the-contract-revision",
+            payload_file="adapter_model.safetensors",
+            payload_bytes=2_365_968,
+        )
+        artifact = benchmark.collect_hardware_contract_results(
+            adapters=[bad_adapter],
+            sequence_lengths=[128],
+            batch_sizes=[1],
+            mode="synthetic-smoke",
+            cuda_available=True,
+            model_context_limit=64,
+            hardware_metadata={
+                "gpu": "NVIDIA Test GPU",
+                "cuda_device": 0,
+                "compute_capability": None,
+                "total_memory_bytes": None,
+                "driver": None,
+                "mig_partition": None,
+            },
+        )
+
+        blockers = artifact["summary"]["readiness_blockers"]
+        self.assertIn("contract_pin_mismatch", blockers)
+        self.assertIn("context_limit_exceeded", blockers)
+        self.assertIn("incomplete_hardware_metadata", blockers)
+        self.assertFalse(artifact["summary"]["production_contract_ready"])
+        self.assertFalse(artifact["summary"]["performance_fields_interpretable"])
+        self.assertFalse(artifact["summary"]["memory_fields_interpretable"])
+        self.assertTrue(artifact["summary"]["all_required_cases_present"])
+        for row in artifact["results"]:
+            self.assertEqual(row["status"], "blocked")
+            self.assertIn("contract_pin_mismatch", row["readiness_blockers"])
+            self.assertIn("context_limit_exceeded", row["readiness_blockers"])
+            self.assertIn("incomplete_hardware_metadata", row["readiness_blockers"])
+
     def test_worker_payload_records_measured_peak_memory_readiness(self):
         benchmark = _load_benchmark_module()
 
