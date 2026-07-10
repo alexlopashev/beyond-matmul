@@ -610,6 +610,253 @@ class PeftMultiAdapterServingTests(unittest.TestCase):
             self.assertIn("context_limit_exceeded", row["readiness_blockers"])
             self.assertIn("incomplete_hardware_metadata", row["readiness_blockers"])
 
+    def test_latency_stats_include_min_and_max(self):
+        benchmark = _load_benchmark_module()
+
+        stats = benchmark._latency_stats([0.003, 0.001, 0.002])
+
+        self.assertEqual(stats["min"], 0.001)
+        self.assertEqual(stats["max"], 0.003)
+
+    def test_hardware_contract_fake_backend_measures_upstream_rows_in_isolated_processes(self):
+        benchmark = _load_benchmark_module()
+        calls = []
+
+        def fake_runner(*, adapter, baseline, sequence_length, batch_size, forward_warmup_repetitions,
+                        forward_measured_repetitions, switch_warmup_repetitions,
+                        switch_measured_repetitions, **_kwargs):
+            calls.append((adapter.name, baseline, sequence_length, batch_size))
+            return {
+                "status": "ok",
+                "reason": None,
+                "isolated_process": True,
+                "process_id": 40_000 + len(calls),
+                "forward_latencies_seconds": [0.010, 0.012, 0.014],
+                "forward_wall_seconds": [0.011, 0.013, 0.015],
+                "switch_latencies_seconds": [0.001, 0.002, 0.003],
+                "switch_wall_seconds": [0.0015, 0.0025, 0.0035],
+                "preprocessing_seconds": {
+                    "model_load": 3.0,
+                    "tokenization": 0.2,
+                    "dense_cache_build": 0.4
+                    if baseline == "upstream_peft_merged_dense_cache"
+                    else None,
+                    "structured_factor_pack": None,
+                    "compilation_or_graph_capture": None,
+                },
+                "cuda_memory": {
+                    "setup_peak_allocated_bytes": 100,
+                    "setup_peak_reserved_bytes": 200,
+                    "steady_peak_allocated_bytes": 120,
+                    "steady_peak_reserved_bytes": 240,
+                    "post_setup_allocated_bytes": 80,
+                    "post_setup_reserved_bytes": 160,
+                    "post_loop_allocated_bytes": 90,
+                    "post_loop_reserved_bytes": 180,
+                },
+                "correctness": {
+                    "max_abs_error": 0.0,
+                    "relative_l2_error": 0.0,
+                    "passed": True,
+                },
+                "storage": {"resident_adapter_bytes": adapter.payload_bytes},
+                "timing_protocol": {
+                    "cuda_events": True,
+                    "synchronized_before_after": True,
+                    "allocator_reset": True,
+                    "setup_excluded_from_steady_state": True,
+                },
+            }
+
+        artifact = benchmark.collect_hardware_contract_results(
+            adapters=[benchmark.ADAPTERS[0]],
+            sequence_lengths=[16],
+            batch_sizes=[1],
+            mode="fake-backend",
+            cuda_available=True,
+            hardware_metadata={
+                "gpu": "Fake CUDA GPU",
+                "cuda_device": 0,
+                "compute_capability": "9.0",
+                "total_memory_bytes": 80_000_000_000,
+                "driver": "999.0",
+            },
+            hardware_case_runner=fake_runner,
+        )
+
+        self.assertEqual(
+            calls,
+            [
+                ("merchant", "upstream_peft_unmerged", 16, 1),
+                ("merchant", "upstream_peft_merged_dense_cache", 16, 1),
+                ("merchant", "upstream_peft_repeated_merge_unmerge", 16, 1),
+            ],
+        )
+        measured = [row for row in artifact["results"] if row["baseline"] != "beyond_matmul_structured_low_rank"]
+        self.assertEqual(len(measured), 3)
+        for row in measured:
+            self.assertEqual(row["status"], "ok")
+            self.assertTrue(row["measurement"]["isolated_process"])
+            self.assertTrue(row["timing_protocol"]["cuda_events"])
+            self.assertTrue(row["timing_protocol"]["synchronized_before_after"])
+            self.assertTrue(row["timing_protocol"]["allocator_reset"])
+            self.assertEqual(row["forward_repetitions"]["warmup"], 25)
+            self.assertEqual(row["forward_repetitions"]["measured"], 100)
+            self.assertEqual(row["adapter_switch_repetitions"]["warmup"], 25)
+            self.assertEqual(row["adapter_switch_repetitions"]["measured"], 100)
+            self.assertEqual(row["forward_latency_seconds"]["min"], 0.010)
+            self.assertEqual(row["forward_latency_seconds"]["max"], 0.014)
+            self.assertEqual(row["forward_latency_wall_seconds"]["median"], 0.013)
+            self.assertEqual(row["cuda_memory"]["post_setup_reserved_bytes"], 160)
+            self.assertEqual(row["cuda_memory"]["post_loop_reserved_bytes"], 180)
+
+        structured = [
+            row for row in artifact["results"]
+            if row["baseline"] == "beyond_matmul_structured_low_rank"
+        ]
+        self.assertEqual(len(structured), 1)
+        self.assertEqual(structured[0]["status"], "blocked")
+        self.assertIn("structured_path_blocked_milestone_2", structured[0]["readiness_blockers"])
+        self.assertFalse(artifact["summary"]["production_contract_ready"])
+        self.assertIn("structured_path_blocked_milestone_2", artifact["summary"]["readiness_blockers"])
+
+    def test_cuda_measurement_backend_uses_events_sync_and_allocator_resets(self):
+        benchmark = _load_benchmark_module()
+
+        class FakeEvent:
+            def __init__(self, cuda):
+                self.cuda = cuda
+
+            def record(self):
+                self.cuda.calls.append("record")
+
+            def elapsed_time(self, _other):
+                return 12.5
+
+        class FakeCuda:
+            def __init__(self):
+                self.calls = []
+
+            def synchronize(self):
+                self.calls.append("synchronize")
+
+            def reset_peak_memory_stats(self):
+                self.calls.append("reset_peak_memory_stats")
+
+            def memory_allocated(self):
+                return 10
+
+            def memory_reserved(self):
+                return 20
+
+            def max_memory_allocated(self):
+                return 30
+
+            def max_memory_reserved(self):
+                return 40
+
+            def Event(self, *, enable_timing):
+                self.calls.append(("event", enable_timing))
+                return FakeEvent(self)
+
+        fake_cuda = FakeCuda()
+        backend = benchmark._CudaMeasurementBackend(mock.Mock(cuda=fake_cuda))
+        backend.reset_peak_memory_stats()
+        timing = backend.time_cuda_region(lambda: fake_cuda.calls.append("callback"))
+        allocator = backend.allocator_values()
+
+        self.assertEqual(timing["cuda_seconds"], 0.0125)
+        self.assertGreaterEqual(timing["wall_seconds"], 0.0)
+        self.assertEqual(
+            fake_cuda.calls[:7],
+            [
+                "reset_peak_memory_stats",
+                ("event", True),
+                ("event", True),
+                "synchronize",
+                "record",
+                "callback",
+                "record",
+            ],
+        )
+        self.assertEqual(fake_cuda.calls[7], "synchronize")
+        self.assertEqual(
+            allocator,
+            {
+                "allocated_bytes": 10,
+                "reserved_bytes": 20,
+                "peak_allocated_bytes": 30,
+                "peak_reserved_bytes": 40,
+            },
+        )
+
+    def test_hardware_contract_keeps_failed_correctness_rows_out_of_claim_summary(self):
+        benchmark = _load_benchmark_module()
+
+        def fake_runner(*, adapter, baseline, **_kwargs):
+            passed = baseline != "upstream_peft_merged_dense_cache"
+            return {
+                "status": "ok",
+                "reason": None,
+                "isolated_process": True,
+                "process_id": 50_000,
+                "forward_latencies_seconds": [0.010],
+                "forward_wall_seconds": [0.011],
+                "switch_latencies_seconds": [0.001],
+                "switch_wall_seconds": [0.0015],
+                "preprocessing_seconds": {},
+                "cuda_memory": {
+                    "setup_peak_allocated_bytes": 100,
+                    "setup_peak_reserved_bytes": 200,
+                    "steady_peak_allocated_bytes": 120,
+                    "steady_peak_reserved_bytes": 240,
+                    "post_setup_allocated_bytes": 80,
+                    "post_setup_reserved_bytes": 160,
+                    "post_loop_allocated_bytes": 90,
+                    "post_loop_reserved_bytes": 180,
+                },
+                "correctness": {
+                    "max_abs_error": 0.2 if not passed else 0.0,
+                    "relative_l2_error": 0.1 if not passed else 0.0,
+                    "passed": passed,
+                },
+                "storage": {"resident_adapter_bytes": adapter.payload_bytes},
+                "timing_protocol": {
+                    "cuda_events": True,
+                    "synchronized_before_after": True,
+                    "allocator_reset": True,
+                    "setup_excluded_from_steady_state": True,
+                },
+            }
+
+        artifact = benchmark.collect_hardware_contract_results(
+            adapters=[benchmark.ADAPTERS[0]],
+            sequence_lengths=[16],
+            batch_sizes=[1],
+            mode="fake-backend",
+            cuda_available=True,
+            hardware_metadata={
+                "gpu": "Fake CUDA GPU",
+                "cuda_device": 0,
+                "compute_capability": "9.0",
+                "total_memory_bytes": 80_000_000_000,
+                "driver": "999.0",
+            },
+            hardware_case_runner=fake_runner,
+        )
+
+        failed = [
+            row for row in artifact["results"]
+            if row["baseline"] == "upstream_peft_merged_dense_cache"
+        ]
+        self.assertEqual(failed[0]["status"], "failed_correctness")
+        self.assertFalse(failed[0]["correctness"]["passed"])
+        self.assertIn("correctness_checks_failed", artifact["summary"]["readiness_blockers"])
+        self.assertNotIn(
+            "upstream_peft_merged_dense_cache",
+            {row["baseline"] for row in artifact["summary"]["claim_summary_rows"]},
+        )
+
     def test_worker_payload_records_measured_peak_memory_readiness(self):
         benchmark = _load_benchmark_module()
 

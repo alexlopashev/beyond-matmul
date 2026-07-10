@@ -321,6 +321,11 @@ The future benchmark artifact is a single JSON object:
 Rows may add fields, but they must not remove or rename required fields without
 a schema-version bump. Smoke artifacts, CPU artifacts, local dry runs, and rows
 with missing CUDA memory fields must set `production_contract_ready=false`.
+Until the Milestone 2 structured CUDA execution path exists,
+`beyond_matmul_structured_low_rank` rows remain present but blocked with
+`structured_path_blocked_milestone_2`; artifacts with that blocker must keep
+`production_contract_ready=false` even when upstream baseline rows have CUDA
+timing and allocator measurements.
 
 ## Readiness And Claim Thresholds
 
