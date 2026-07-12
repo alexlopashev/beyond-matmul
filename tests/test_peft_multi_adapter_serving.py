@@ -2,7 +2,9 @@ import importlib.util
 import json
 import numbers
 import tempfile
+import types
 import unittest
+import weakref
 from unittest import mock
 from pathlib import Path
 
@@ -737,6 +739,9 @@ class PeftMultiAdapterServingTests(unittest.TestCase):
             def __init__(self):
                 self.calls = []
 
+            def empty_cache(self):
+                self.calls.append("empty_cache")
+
             def synchronize(self):
                 self.calls.append("synchronize")
 
@@ -761,6 +766,7 @@ class PeftMultiAdapterServingTests(unittest.TestCase):
 
         fake_cuda = FakeCuda()
         backend = benchmark._CudaMeasurementBackend(mock.Mock(cuda=fake_cuda))
+        backend.empty_cache()
         backend.reset_peak_memory_stats()
         timing = backend.time_cuda_region(lambda: fake_cuda.calls.append("callback"))
         allocator = backend.allocator_values()
@@ -770,16 +776,16 @@ class PeftMultiAdapterServingTests(unittest.TestCase):
         self.assertEqual(
             fake_cuda.calls[:7],
             [
+                "empty_cache",
                 "reset_peak_memory_stats",
                 ("event", True),
                 ("event", True),
                 "synchronize",
                 "record",
                 "callback",
-                "record",
             ],
         )
-        self.assertEqual(fake_cuda.calls[7], "synchronize")
+        self.assertEqual(fake_cuda.calls[7:9], ["record", "synchronize"])
         self.assertEqual(
             allocator,
             {
@@ -788,6 +794,258 @@ class PeftMultiAdapterServingTests(unittest.TestCase):
                 "peak_allocated_bytes": 30,
                 "peak_reserved_bytes": 40,
             },
+        )
+
+    def test_hardware_dense_cache_loader_retains_both_merged_models(self):
+        benchmark = _load_benchmark_module()
+
+        class FakeDenseModel:
+            def __init__(self, adapter_name):
+                self.adapter_name = adapter_name
+
+            def to(self, device):
+                self.device = device
+                return self
+
+            def eval(self):
+                return self
+
+        class FakePeftModel:
+            def __init__(self, adapter_name):
+                self.adapter_name = adapter_name
+                self.active_adapter = None
+
+            def set_adapter(self, adapter_name):
+                self.active_adapter = adapter_name
+
+            def merge_and_unload(self):
+                self.assert_active_adapter()
+                return FakeDenseModel(self.adapter_name)
+
+            def assert_active_adapter(self):
+                if self.active_adapter != self.adapter_name:
+                    raise AssertionError("the named adapter must be selected before merge")
+
+        args = mock.Mock(_hardware_worker_baseline="upstream_peft_merged_dense_cache")
+        with (
+            mock.patch.object(benchmark, "_load_base_worker_model", side_effect=lambda _model_class: object()),
+            mock.patch.object(
+                benchmark,
+                "_load_primary_worker_adapter",
+                side_effect=lambda _peft_class, _base, cached_adapter, _baseline: FakePeftModel(
+                    cached_adapter.name
+                ),
+            ),
+        ):
+            dense_cache, preprocessing = benchmark._load_hardware_worker_model(
+                args,
+                object(),
+                object(),
+                benchmark.ADAPTERS[0],
+            )
+
+        self.assertEqual(set(dense_cache), {adapter.name for adapter in benchmark.ADAPTERS})
+        self.assertIsNot(dense_cache[benchmark.ADAPTERS[0].name], dense_cache[benchmark.ADAPTERS[1].name])
+        self.assertEqual(
+            [dense_cache[adapter.name].adapter_name for adapter in benchmark.ADAPTERS],
+            [adapter.name for adapter in benchmark.ADAPTERS],
+        )
+        self.assertTrue(all(dense_cache[adapter.name].device == "cuda" for adapter in benchmark.ADAPTERS))
+        self.assertIsNotNone(preprocessing["dense_cache_build"])
+
+    def test_hardware_dense_cache_switch_selects_between_cached_models(self):
+        benchmark = _load_benchmark_module()
+
+        class RecordingCache(dict):
+            def __init__(self):
+                super().__init__({adapter.name: object() for adapter in benchmark.ADAPTERS})
+                self.selections = []
+
+            def __getitem__(self, key):
+                selected = super().__getitem__(key)
+                self.selections.append(selected)
+                return selected
+
+        class FakeBackend:
+            @staticmethod
+            def time_cuda_region(callback):
+                callback()
+                return {"cuda_seconds": 0.0, "wall_seconds": 0.0}
+
+        args = mock.Mock(
+            _hardware_worker_baseline="upstream_peft_merged_dense_cache",
+            _hardware_worker_switch_warmup=1,
+            _hardware_worker_switch_repetitions=2,
+        )
+        cache = RecordingCache()
+        result = benchmark._measure_hardware_worker_switch(
+            args,
+            cache,
+            benchmark.ADAPTERS[0],
+            FakeBackend(),
+        )
+        other_model = dict.__getitem__(cache, benchmark.ADAPTERS[1].name)
+        selected_model = dict.__getitem__(cache, benchmark.ADAPTERS[0].name)
+        expected_selections = [
+            other_model,
+            selected_model,
+        ] * 3
+
+        self.assertEqual(cache.selections, expected_selections)
+        self.assertIs(result["selected_model"], selected_model)
+
+    def test_hardware_real_worker_clears_cache_and_retains_dense_models_through_sampling(self):
+        benchmark = _load_benchmark_module()
+        calls = []
+        resident_models = []
+        captured_payload = {}
+
+        class FakeTensor:
+            def to(self, _device):
+                return self
+
+            def detach(self):
+                return self
+
+            def cpu(self):
+                return self
+
+            def tolist(self):
+                return [[[0.0]]]
+
+        class FakeModel:
+            def __init__(self, adapter_name):
+                self.adapter_name = adapter_name
+                self.config = mock.Mock(vocab_size=16)
+
+            def __call__(self, *, input_ids, attention_mask):
+                del input_ids, attention_mask
+                return mock.Mock(logits=FakeTensor())
+
+        class FakeInferenceMode:
+            def __enter__(self):
+                return None
+
+            def __exit__(self, *_args):
+                return False
+
+        class FakeCuda:
+            @staticmethod
+            def is_available():
+                return True
+
+        class FakeTorch:
+            cuda = FakeCuda()
+
+            @staticmethod
+            def inference_mode():
+                return FakeInferenceMode()
+
+        class FakeBackend:
+            def __init__(self, _torch_module):
+                pass
+
+            def empty_cache(self):
+                calls.append("empty_cache")
+
+            def synchronize(self):
+                calls.append("synchronize")
+
+            def reset_peak_memory_stats(self):
+                calls.append("reset_peak_memory_stats")
+
+            def allocator_values(self):
+                calls.append("allocator_values")
+                self.assert_cache_resident()
+                return {
+                    "allocated_bytes": 10,
+                    "reserved_bytes": 20,
+                    "peak_allocated_bytes": 30,
+                    "peak_reserved_bytes": 40,
+                }
+
+            @staticmethod
+            def assert_cache_resident():
+                if not resident_models or any(model_ref() is None for model_ref in resident_models):
+                    raise AssertionError("both dense models must remain resident")
+
+        def load_models(*_args):
+            calls.append("setup")
+            dense_cache = {adapter.name: FakeModel(adapter.name) for adapter in benchmark.ADAPTERS}
+            resident_models.extend(weakref.ref(model) for model in dense_cache.values())
+            return dense_cache, {
+                "model_load": 0.1,
+                "hub_download": None,
+                "tokenization": None,
+                "dense_cache_build": 0.1,
+                "structured_factor_pack": None,
+                "compilation_or_graph_capture": None,
+            }
+
+        def measure_switch(_args, dense_cache, adapter, _backend):
+            calls.append("switch")
+            FakeBackend.assert_cache_resident()
+            return {
+                "cuda_seconds": [0.0],
+                "wall_seconds": [0.0],
+                "selected_model": dense_cache[adapter.name],
+            }
+
+        def measure_forward(_args, model, _inputs, _backend):
+            calls.append(("forward", model.adapter_name))
+            FakeBackend.assert_cache_resident()
+            return {"cuda_seconds": [0.01], "wall_seconds": [0.02]}
+
+        peft_module = types.ModuleType("peft")
+        peft_module.PeftModel = object
+        transformers_module = types.ModuleType("transformers")
+        transformers_module.AutoModelForCausalLM = object
+        args = mock.Mock(
+            _hardware_worker_adapter_name=benchmark.ADAPTERS[0].name,
+            _hardware_worker_baseline="upstream_peft_merged_dense_cache",
+            _hardware_worker_peft_path="/tmp/peft",
+            _hardware_worker_sequence_length=16,
+            _hardware_worker_batch_size=1,
+            _hardware_worker_json_output="/tmp/result.json",
+        )
+        with (
+            mock.patch.dict("sys.modules", {"peft": peft_module, "transformers": transformers_module}),
+            mock.patch.object(benchmark, "_prepend_peft_import_paths"),
+            mock.patch.object(benchmark, "_torch", return_value=FakeTorch()),
+            mock.patch.object(benchmark, "_CudaMeasurementBackend", FakeBackend),
+            mock.patch.object(benchmark, "_load_hardware_worker_model", side_effect=load_models),
+            mock.patch.object(
+                benchmark,
+                "_worker_inputs",
+                return_value={"input_ids": FakeTensor(), "attention_mask": FakeTensor()},
+            ),
+            mock.patch.object(benchmark, "_measure_hardware_worker_switch", side_effect=measure_switch),
+            mock.patch.object(benchmark, "_measure_hardware_worker_forward", side_effect=measure_forward),
+            mock.patch.object(benchmark, "_worker_storage", return_value={}),
+            mock.patch.object(
+                benchmark,
+                "_write_json",
+                side_effect=lambda _path, payload: captured_payload.update(payload),
+            ),
+        ):
+            benchmark._hardware_real_worker(args)
+
+        self.assertEqual(captured_payload["status"], "ok")
+        self.assertEqual(
+            calls,
+            [
+                "empty_cache",
+                "synchronize",
+                "reset_peak_memory_stats",
+                "setup",
+                "synchronize",
+                "allocator_values",
+                "reset_peak_memory_stats",
+                "switch",
+                ("forward", benchmark.ADAPTERS[0].name),
+                "synchronize",
+                "allocator_values",
+            ],
         )
 
     def test_hardware_contract_keeps_failed_correctness_rows_out_of_claim_summary(self):

@@ -2006,6 +2006,9 @@ class _CudaMeasurementBackend:
     def synchronize(self) -> None:
         self.cuda.synchronize()
 
+    def empty_cache(self) -> None:
+        self.cuda.empty_cache()
+
     def reset_peak_memory_stats(self) -> None:
         self.cuda.reset_peak_memory_stats()
 
@@ -2045,13 +2048,19 @@ def _hardware_real_worker(args: argparse.Namespace) -> None:
         from transformers import AutoModelForCausalLM
 
         backend = _CudaMeasurementBackend(torch)
+        backend.empty_cache()
         backend.synchronize()
         backend.reset_peak_memory_stats()
-        model, preprocessing_seconds = _load_hardware_worker_model(
+        serving_model, preprocessing_seconds = _load_hardware_worker_model(
             args,
             AutoModelForCausalLM,
             PeftModel,
             adapter,
+        )
+        model = (
+            serving_model[adapter.name]
+            if args._hardware_worker_baseline == "upstream_peft_merged_dense_cache"
+            else serving_model
         )
         tokenization_start = time.perf_counter()
         inputs = _worker_inputs(args._hardware_worker_sequence_length, args._hardware_worker_batch_size, model.config.vocab_size)
@@ -2060,7 +2069,8 @@ def _hardware_real_worker(args: argparse.Namespace) -> None:
         backend.synchronize()
         setup_memory = backend.allocator_values()
         backend.reset_peak_memory_stats()
-        switch_times = _measure_hardware_worker_switch(args, model, adapter, backend)
+        switch_times = _measure_hardware_worker_switch(args, serving_model, adapter, backend)
+        model = switch_times["selected_model"]
         forward_times = _measure_hardware_worker_forward(args, model, inputs, backend)
         backend.synchronize()
         steady_memory = backend.allocator_values()
@@ -2151,7 +2161,7 @@ def _load_hardware_worker_model(
             dense_cache[cached_adapter.name] = merged.to("cuda").eval()
         preprocessing_seconds["dense_cache_build"] = time.perf_counter() - cache_start
         preprocessing_seconds["model_load"] = time.perf_counter() - model_start
-        return dense_cache[adapter.name], preprocessing_seconds
+        return dense_cache, preprocessing_seconds
     base_model = _load_base_worker_model(model_class)
     model = _load_worker_model(peft_model_class, base_model, adapter, args._hardware_worker_baseline)
     model = model.to("cuda").eval()
@@ -2184,21 +2194,37 @@ def _measure_hardware_worker_switch(
     model: Any,
     adapter: AdapterSpec,
     backend: _CudaMeasurementBackend,
-) -> Dict[str, List[float]]:
+) -> Dict[str, Any]:
     baseline = args._hardware_worker_baseline
     other_adapter = _other_adapter(adapter)
     cuda_seconds = []
     wall_seconds = []
     if baseline == "upstream_peft_merged_dense_cache":
+        if not isinstance(model, dict):
+            raise RuntimeError("dense-cache hardware worker requires the full model cache")
+        selected_model = None
         for _ in range(args._hardware_worker_switch_warmup):
-            _ = model
+            selected_model = model[other_adapter.name]
+            selected_model = model[adapter.name]
         for _ in range(args._hardware_worker_switch_repetitions):
-            timing = backend.time_cuda_region(lambda: None)
+            selected_model = model[other_adapter.name]
+
+            def select_model() -> None:
+                nonlocal selected_model
+                selected_model = model[adapter.name]
+
+            timing = backend.time_cuda_region(select_model)
             cuda_seconds.append(timing["cuda_seconds"])
             wall_seconds.append(timing["wall_seconds"])
-        return {"cuda_seconds": cuda_seconds, "wall_seconds": wall_seconds}
+        if selected_model is None:
+            selected_model = model[adapter.name]
+        return {
+            "cuda_seconds": cuda_seconds,
+            "wall_seconds": wall_seconds,
+            "selected_model": selected_model,
+        }
     if not hasattr(model, "set_adapter"):
-        return {"cuda_seconds": cuda_seconds, "wall_seconds": wall_seconds}
+        return {"cuda_seconds": cuda_seconds, "wall_seconds": wall_seconds, "selected_model": model}
     for _ in range(args._hardware_worker_switch_warmup):
         model.set_adapter(other_adapter.name)
         model.set_adapter(adapter.name)
@@ -2213,7 +2239,7 @@ def _measure_hardware_worker_switch(
         timing = backend.time_cuda_region(switch)
         cuda_seconds.append(timing["cuda_seconds"])
         wall_seconds.append(timing["wall_seconds"])
-    return {"cuda_seconds": cuda_seconds, "wall_seconds": wall_seconds}
+    return {"cuda_seconds": cuda_seconds, "wall_seconds": wall_seconds, "selected_model": model}
 
 
 def _worker_payload_to_row(payload: Dict[str, Any], reference_logits: Any) -> Dict[str, Any]:
