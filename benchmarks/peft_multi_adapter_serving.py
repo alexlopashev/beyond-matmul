@@ -295,6 +295,9 @@ def collect_hardware_contract_results(
     cuda_available: bool | None = None,
     model_context_limit: int | None = None,
     hardware_metadata: Dict[str, Any] | None = None,
+    upstream_peft_path: str | None = None,
+    checkout_dir: str | os.PathLike[str] | None = None,
+    hardware_case_runner: Callable[..., Dict[str, Any]] | None = None,
     command: Sequence[str] | None = None,
     generated_at_utc: str | None = None,
 ) -> Dict[str, Any]:
@@ -323,19 +326,40 @@ def collect_hardware_contract_results(
         mode=mode,
     )
 
-    results = [
-        _hardware_contract_row(
-            adapter=adapter,
-            baseline=baseline,
-            sequence_length=sequence_length,
-            batch_size=batch_size,
-            readiness_blockers=preflight_blockers,
+    resolved_upstream_path = upstream_peft_path
+    if mode == "real" and not _hardware_measurement_preflight_blockers(preflight_blockers):
+        resolved_upstream_path = _resolve_checkout(
+            repository=UPSTREAM_REPOSITORY,
+            ref=HARDWARE_UPSTREAM_REF,
+            path=upstream_peft_path,
+            checkout_dir=checkout_dir,
         )
-        for adapter in adapters
-        for sequence_length in sequence_lengths
-        for batch_size in batch_sizes
-        for baseline in HARDWARE_BASELINES
-    ]
+
+    if mode == "synthetic-smoke" or _hardware_measurement_preflight_blockers(preflight_blockers):
+        row_blockers = _ordered_unique_blockers([*preflight_blockers, "cuda_measurements_missing"])
+        results = [
+            _hardware_contract_row(
+                adapter=adapter,
+                baseline=baseline,
+                sequence_length=sequence_length,
+                batch_size=batch_size,
+                readiness_blockers=row_blockers,
+            )
+            for adapter in adapters
+            for sequence_length in sequence_lengths
+            for batch_size in batch_sizes
+            for baseline in HARDWARE_BASELINES
+        ]
+    else:
+        runner = hardware_case_runner or _run_hardware_contract_worker
+        results = _collect_hardware_measured_rows(
+            adapters=adapters,
+            sequence_lengths=sequence_lengths,
+            batch_sizes=batch_sizes,
+            runner=runner,
+            mode=mode,
+            upstream_peft_path=resolved_upstream_path,
+        )
 
     return {
         "schema_version": 1,
@@ -400,8 +424,12 @@ def _hardware_preflight_blockers(
         blockers.append("contract_pin_mismatch")
     if cuda_available and _incomplete_hardware_metadata(hardware):
         blockers.append("incomplete_hardware_metadata")
-    blockers.append("cuda_measurements_missing")
     return _ordered_unique_blockers(blockers)
+
+
+def _hardware_measurement_preflight_blockers(blockers: Sequence[str]) -> List[str]:
+    non_measurement_blockers = {"synthetic_smoke_not_benchmark_evidence"}
+    return [blocker for blocker in blockers if blocker not in non_measurement_blockers]
 
 
 def _hardware_contract_pin_mismatches(adapters: Sequence[AdapterSpec]) -> List[str]:
@@ -435,6 +463,7 @@ def _ordered_unique_blockers(blockers: Sequence[str]) -> List[str]:
         "contract_pin_mismatch",
         "incomplete_hardware_metadata",
         "cuda_measurements_missing",
+        "structured_path_blocked_milestone_2",
         "required_cases_missing",
         "correctness_checks_failed",
         "cuda_memory_fields_unmeasured",
@@ -463,6 +492,7 @@ def _hardware_contract_row(
     readiness_blockers: Sequence[str],
 ) -> Dict[str, Any]:
     status = "blocked" if readiness_blockers else "not_measured"
+    structured_blocked = baseline == "beyond_matmul_structured_low_rank"
     return {
         "case": _case_name(adapter.name, sequence_length, batch_size),
         "adapter": adapter.name,
@@ -473,8 +503,22 @@ def _hardware_contract_row(
         "sequence_length": sequence_length,
         "batch_size": batch_size,
         "forward_latency_seconds": None,
+        "forward_latency_wall_seconds": None,
+        "forward_repetitions": {
+            "warmup": HARDWARE_FORWARD_WARMUP_REPETITIONS,
+            "measured": HARDWARE_FORWARD_MEASURED_REPETITIONS,
+        },
         "adapter_switch_seconds": None,
+        "adapter_switch_wall_seconds": None,
+        "adapter_switch_status": "not_measured_blocked" if readiness_blockers else "not_measured",
+        "adapter_switch_repetitions": {
+            "warmup": HARDWARE_SWITCH_WARMUP_REPETITIONS,
+            "measured": HARDWARE_SWITCH_MEASURED_REPETITIONS,
+        },
         "preprocessing_seconds": {
+            "model_load": None,
+            "hub_download": None,
+            "tokenization": None,
             "dense_cache_build": None,
             "structured_factor_pack": None,
             "compilation_or_graph_capture": None,
@@ -485,12 +529,237 @@ def _hardware_contract_row(
             "steady_peak_allocated_bytes": None,
             "steady_peak_reserved_bytes": None,
             "post_setup_allocated_bytes": None,
+            "post_setup_reserved_bytes": None,
             "post_loop_allocated_bytes": None,
+            "post_loop_reserved_bytes": None,
+        },
+        "measurement": {
+            "isolated_process": False,
+            "process_id": None,
+            "mode": "blocked" if readiness_blockers else "not_measured",
+        },
+        "timing_protocol": {
+            "cuda_events": False,
+            "synchronized_before_after": False,
+            "allocator_reset": False,
+            "setup_excluded_from_steady_state": False,
         },
         "storage": _hardware_storage_metadata(baseline, adapter),
         "correctness": _hardware_empty_correctness(passed=False),
-        "lowering": _hardware_lowering_metadata(baseline, adapter.name, blocked=bool(readiness_blockers)),
+        "lowering": _hardware_lowering_metadata(
+            baseline,
+            adapter.name,
+            blocked=bool(readiness_blockers) or structured_blocked,
+        ),
     }
+
+
+def _collect_hardware_measured_rows(
+    *,
+    adapters: Sequence[AdapterSpec],
+    sequence_lengths: Sequence[int],
+    batch_sizes: Sequence[int],
+    runner: Callable[..., Dict[str, Any]],
+    mode: str,
+    upstream_peft_path: str | None,
+) -> List[Dict[str, Any]]:
+    rows = []
+    for adapter in adapters:
+        for sequence_length in sequence_lengths:
+            for batch_size in batch_sizes:
+                reference_logits = None
+                for baseline in HARDWARE_BASELINES:
+                    if baseline == "beyond_matmul_structured_low_rank":
+                        rows.append(
+                            _hardware_contract_row(
+                                adapter=adapter,
+                                baseline=baseline,
+                                sequence_length=sequence_length,
+                                batch_size=batch_size,
+                                readiness_blockers=["structured_path_blocked_milestone_2"],
+                            )
+                        )
+                        continue
+                    try:
+                        payload = runner(
+                            adapter=adapter,
+                            baseline=baseline,
+                            sequence_length=sequence_length,
+                            batch_size=batch_size,
+                            forward_warmup_repetitions=HARDWARE_FORWARD_WARMUP_REPETITIONS,
+                            forward_measured_repetitions=HARDWARE_FORWARD_MEASURED_REPETITIONS,
+                            switch_warmup_repetitions=HARDWARE_SWITCH_WARMUP_REPETITIONS,
+                            switch_measured_repetitions=HARDWARE_SWITCH_MEASURED_REPETITIONS,
+                            mode=mode,
+                            upstream_peft_path=upstream_peft_path,
+                        )
+                    except Exception as exc:
+                        payload = {
+                            "status": "failed",
+                            "reason": str(exc),
+                            "forward_latencies_seconds": None,
+                            "forward_wall_seconds": None,
+                            "switch_latencies_seconds": None,
+                            "switch_wall_seconds": None,
+                            "preprocessing_seconds": {},
+                            "cuda_memory": {},
+                            "correctness": {"passed": False},
+                        }
+                    if baseline == "upstream_peft_unmerged" and payload.get("logits") is not None:
+                        reference_logits = payload["logits"]
+                    rows.append(
+                        _hardware_payload_to_row(
+                            adapter=adapter,
+                            baseline=baseline,
+                            sequence_length=sequence_length,
+                            batch_size=batch_size,
+                            payload=payload,
+                            reference_logits=reference_logits,
+                        )
+                    )
+    return rows
+
+
+def _hardware_payload_to_row(
+    *,
+    adapter: AdapterSpec,
+    baseline: str,
+    sequence_length: int,
+    batch_size: int,
+    payload: Dict[str, Any],
+    reference_logits: Any,
+) -> Dict[str, Any]:
+    status = payload.get("status") or "failed"
+    correctness = _hardware_correctness_from_payload(payload, reference_logits)
+    reason = payload.get("reason")
+    if status == "ok" and not correctness["passed"]:
+        status = "failed_correctness"
+        reason = reason or "correctness tolerance failed"
+    forward_latencies = payload.get("forward_latencies_seconds")
+    forward_wall = payload.get("forward_wall_seconds")
+    switch_latencies = payload.get("switch_latencies_seconds")
+    switch_wall = payload.get("switch_wall_seconds")
+    storage = _hardware_storage_metadata(baseline, adapter)
+    storage.update(payload.get("storage") or {})
+    return {
+        "case": _case_name(adapter.name, sequence_length, batch_size),
+        "adapter": adapter.name,
+        "baseline": baseline,
+        "status": status,
+        "readiness_blockers": [],
+        "reason": reason,
+        "sequence_length": sequence_length,
+        "batch_size": batch_size,
+        "forward_latency_seconds": _latency_stats_or_none(forward_latencies),
+        "forward_latency_wall_seconds": _latency_stats_or_none(forward_wall),
+        "forward_repetitions": {
+            "warmup": HARDWARE_FORWARD_WARMUP_REPETITIONS,
+            "measured": HARDWARE_FORWARD_MEASURED_REPETITIONS,
+        },
+        "adapter_switch_seconds": _latency_stats_or_none(switch_latencies),
+        "adapter_switch_wall_seconds": _latency_stats_or_none(switch_wall),
+        "adapter_switch_status": _hardware_adapter_switch_status(
+            baseline,
+            switch_latencies=switch_latencies,
+            status=status,
+        ),
+        "adapter_switch_repetitions": {
+            "warmup": HARDWARE_SWITCH_WARMUP_REPETITIONS,
+            "measured": HARDWARE_SWITCH_MEASURED_REPETITIONS,
+        },
+        "preprocessing_seconds": _hardware_preprocessing_seconds(payload.get("preprocessing_seconds")),
+        "cuda_memory": _hardware_cuda_memory(payload.get("cuda_memory")),
+        "measurement": {
+            "isolated_process": bool(payload.get("isolated_process")),
+            "process_id": payload.get("process_id"),
+            "mode": "measured" if status in {"ok", "failed_correctness"} else status,
+        },
+        "timing_protocol": _hardware_timing_protocol(payload.get("timing_protocol")),
+        "storage": storage,
+        "correctness": correctness,
+        "lowering": _hardware_lowering_metadata(baseline, adapter.name, blocked=False),
+    }
+
+
+def _hardware_correctness_from_payload(payload: Dict[str, Any], reference_logits: Any) -> Dict[str, Any]:
+    correctness = dict(payload.get("correctness") or {})
+    if "passed" not in correctness and payload.get("logits") is not None and reference_logits is not None:
+        correctness = _correctness_metrics(payload["logits"], reference_logits)
+    return {
+        "reference_baseline": "upstream_peft_unmerged",
+        "max_abs_error": correctness.get("max_abs_error"),
+        "relative_l2_error": correctness.get("relative_l2_error"),
+        "max_abs_tolerance": CORRECTNESS_MAX_ABS_TOLERANCE,
+        "relative_l2_tolerance": CORRECTNESS_RELATIVE_L2_TOLERANCE,
+        "tolerance_profile": "cuda_fp32",
+        "passed": bool(correctness.get("passed")),
+    }
+
+
+def _latency_stats_or_none(latencies: Sequence[float] | None) -> Dict[str, float] | None:
+    if latencies is None:
+        return None
+    values = list(latencies)
+    if not values:
+        return None
+    return _latency_stats(values)
+
+
+def _hardware_preprocessing_seconds(preprocessing: Dict[str, Any] | None) -> Dict[str, float | None]:
+    values = dict(preprocessing or {})
+    return {
+        "model_load": values.get("model_load"),
+        "hub_download": values.get("hub_download"),
+        "tokenization": values.get("tokenization"),
+        "dense_cache_build": values.get("dense_cache_build"),
+        "structured_factor_pack": values.get("structured_factor_pack"),
+        "compilation_or_graph_capture": values.get("compilation_or_graph_capture"),
+    }
+
+
+def _hardware_cuda_memory(memory: Dict[str, Any] | None) -> Dict[str, int | None]:
+    values = dict(memory or {})
+    fields = (
+        "setup_peak_allocated_bytes",
+        "setup_peak_reserved_bytes",
+        "steady_peak_allocated_bytes",
+        "steady_peak_reserved_bytes",
+        "post_setup_allocated_bytes",
+        "post_setup_reserved_bytes",
+        "post_loop_allocated_bytes",
+        "post_loop_reserved_bytes",
+    )
+    return {
+        field: int(values[field]) if isinstance(values.get(field), int) and values[field] >= 0 else None
+        for field in fields
+    }
+
+
+def _hardware_timing_protocol(protocol: Dict[str, Any] | None) -> Dict[str, bool]:
+    values = dict(protocol or {})
+    return {
+        "cuda_events": bool(values.get("cuda_events")),
+        "synchronized_before_after": bool(values.get("synchronized_before_after")),
+        "allocator_reset": bool(values.get("allocator_reset")),
+        "setup_excluded_from_steady_state": bool(values.get("setup_excluded_from_steady_state")),
+    }
+
+
+def _hardware_adapter_switch_status(
+    baseline: str,
+    *,
+    switch_latencies: Sequence[float] | None,
+    status: str,
+) -> str:
+    if status in {"blocked", "failed", "not_applicable"}:
+        return f"not_measured_{status}"
+    if switch_latencies is None:
+        return "not_measured_unavailable"
+    if baseline == "upstream_peft_merged_dense_cache":
+        return "measured_cuda_dense_cache_pointer_swap"
+    if baseline == "upstream_peft_repeated_merge_unmerge":
+        return "measured_cuda_merge_unmerge"
+    return "measured_cuda_loaded_adapters"
 
 
 def _hardware_empty_correctness(*, passed: bool) -> Dict[str, Any]:
@@ -562,6 +831,8 @@ def _hardware_contract_summary(
         for row in results
     )
     blockers = list(readiness_blockers)
+    for row in results:
+        blockers.extend(row.get("readiness_blockers", []))
     if not all_required_cases_present:
         blockers.append("required_cases_missing")
     if not all_correctness_checks_passed:
@@ -587,6 +858,7 @@ def _hardware_contract_summary(
         "primary_performance_question": "structured_low_rank_switch_or_memory_without_forward_regression",
         "performance_claim": "none",
         "memory_or_control_claim": "none",
+        "claim_summary_rows": _hardware_claim_summary_rows(results),
     }
 
 
@@ -620,9 +892,39 @@ def _hardware_memory_measured(row: Dict[str, Any]) -> bool:
         "steady_peak_allocated_bytes",
         "steady_peak_reserved_bytes",
         "post_setup_allocated_bytes",
+        "post_setup_reserved_bytes",
         "post_loop_allocated_bytes",
+        "post_loop_reserved_bytes",
     )
     return all(isinstance(memory.get(field), int) and memory[field] >= 0 for field in required_fields)
+
+
+def _hardware_claim_summary_rows(results: Sequence[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    rows = []
+    for row in results:
+        if row["status"] != "ok" or not row["correctness"]["passed"]:
+            continue
+        if row["baseline"] == "beyond_matmul_structured_low_rank":
+            continue
+        rows.append(
+            {
+                "case": row["case"],
+                "adapter": row["adapter"],
+                "baseline": row["baseline"],
+                "forward_latency_median_seconds": (
+                    row["forward_latency_seconds"]["median"]
+                    if row.get("forward_latency_seconds")
+                    else None
+                ),
+                "adapter_switch_median_seconds": (
+                    row["adapter_switch_seconds"]["median"]
+                    if row.get("adapter_switch_seconds")
+                    else None
+                ),
+                "correctness_passed": True,
+            }
+        )
+    return rows
 
 
 def _hardware_dependency_metadata() -> Dict[str, Any]:
@@ -1005,6 +1307,8 @@ def _latency_stats(latencies: Sequence[float]) -> Dict[str, float]:
         "p90": _stable_float(_percentile(values, 90)),
         "p95": _stable_float(_percentile(values, 95)),
         "p99": _stable_float(_percentile(values, 99)),
+        "min": _stable_float(values[0]),
+        "max": _stable_float(values[-1]),
     }
 
 
@@ -1640,6 +1944,304 @@ def _run_real_worker(
             pass
 
 
+def _run_hardware_contract_worker(
+    *,
+    adapter: AdapterSpec,
+    baseline: str,
+    sequence_length: int,
+    batch_size: int,
+    forward_warmup_repetitions: int,
+    forward_measured_repetitions: int,
+    switch_warmup_repetitions: int,
+    switch_measured_repetitions: int,
+    mode: str,
+    upstream_peft_path: str | None,
+) -> Dict[str, Any]:
+    if mode != "real":
+        raise RuntimeError(f"default hardware worker only supports real mode, got {mode}")
+    if upstream_peft_path is None:
+        raise RuntimeError("real hardware contract measurement requires an upstream PEFT checkout")
+    with tempfile.NamedTemporaryFile("w+", encoding="utf-8", suffix=".json", delete=False) as output:
+        output_path = output.name
+    command = [
+        sys.executable,
+        __file__,
+        "--_hardware-worker-json-output",
+        output_path,
+        "--_hardware-worker-baseline",
+        baseline,
+        "--_hardware-worker-adapter-name",
+        adapter.name,
+        "--_hardware-worker-sequence-length",
+        str(sequence_length),
+        "--_hardware-worker-batch-size",
+        str(batch_size),
+        "--_hardware-worker-forward-warmup",
+        str(forward_warmup_repetitions),
+        "--_hardware-worker-forward-repetitions",
+        str(forward_measured_repetitions),
+        "--_hardware-worker-switch-warmup",
+        str(switch_warmup_repetitions),
+        "--_hardware-worker-switch-repetitions",
+        str(switch_measured_repetitions),
+        "--_hardware-worker-peft-path",
+        upstream_peft_path,
+    ]
+    try:
+        subprocess.run(command, check=True)
+        with open(output_path, encoding="utf-8") as handle:
+            return json.load(handle)
+    finally:
+        try:
+            os.unlink(output_path)
+        except OSError:
+            pass
+
+
+class _CudaMeasurementBackend:
+    def __init__(self, torch_module: Any) -> None:
+        self.torch = torch_module
+        self.cuda = torch_module.cuda
+
+    def synchronize(self) -> None:
+        self.cuda.synchronize()
+
+    def empty_cache(self) -> None:
+        self.cuda.empty_cache()
+
+    def reset_peak_memory_stats(self) -> None:
+        self.cuda.reset_peak_memory_stats()
+
+    def allocator_values(self) -> Dict[str, int]:
+        return {
+            "allocated_bytes": int(self.cuda.memory_allocated()),
+            "reserved_bytes": int(self.cuda.memory_reserved()),
+            "peak_allocated_bytes": int(self.cuda.max_memory_allocated()),
+            "peak_reserved_bytes": int(self.cuda.max_memory_reserved()),
+        }
+
+    def time_cuda_region(self, callback: Callable[[], None]) -> Dict[str, float]:
+        start_event = self.cuda.Event(enable_timing=True)
+        end_event = self.cuda.Event(enable_timing=True)
+        self.synchronize()
+        start_event.record()
+        wall_start = time.perf_counter()
+        callback()
+        end_event.record()
+        self.synchronize()
+        wall_seconds = time.perf_counter() - wall_start
+        return {
+            "cuda_seconds": float(start_event.elapsed_time(end_event)) / 1000.0,
+            "wall_seconds": wall_seconds,
+        }
+
+
+def _hardware_real_worker(args: argparse.Namespace) -> None:
+    adapter = _adapter_by_name(args._hardware_worker_adapter_name)
+    payload: Dict[str, Any]
+    try:
+        _prepend_peft_import_paths(args._hardware_worker_peft_path)
+        torch = _torch()
+        if not getattr(torch, "cuda", None) or not torch.cuda.is_available():
+            raise RuntimeError("CUDA is not available in hardware worker")
+        from peft import PeftModel
+        from transformers import AutoModelForCausalLM
+
+        backend = _CudaMeasurementBackend(torch)
+        backend.empty_cache()
+        backend.synchronize()
+        backend.reset_peak_memory_stats()
+        serving_model, preprocessing_seconds = _load_hardware_worker_model(
+            args,
+            AutoModelForCausalLM,
+            PeftModel,
+            adapter,
+        )
+        model = (
+            serving_model[adapter.name]
+            if args._hardware_worker_baseline == "upstream_peft_merged_dense_cache"
+            else serving_model
+        )
+        tokenization_start = time.perf_counter()
+        inputs = _worker_inputs(args._hardware_worker_sequence_length, args._hardware_worker_batch_size, model.config.vocab_size)
+        inputs = {name: value.to("cuda") for name, value in inputs.items()}
+        preprocessing_seconds["tokenization"] = time.perf_counter() - tokenization_start
+        backend.synchronize()
+        setup_memory = backend.allocator_values()
+        backend.reset_peak_memory_stats()
+        switch_times = _measure_hardware_worker_switch(args, serving_model, adapter, backend)
+        model = switch_times["selected_model"]
+        forward_times = _measure_hardware_worker_forward(args, model, inputs, backend)
+        backend.synchronize()
+        steady_memory = backend.allocator_values()
+        with torch.inference_mode():
+            logits = model(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"]).logits
+        payload = {
+            "status": "ok",
+            "reason": None,
+            "isolated_process": True,
+            "process_id": os.getpid(),
+            "forward_latencies_seconds": forward_times["cuda_seconds"],
+            "forward_wall_seconds": forward_times["wall_seconds"],
+            "switch_latencies_seconds": switch_times["cuda_seconds"],
+            "switch_wall_seconds": switch_times["wall_seconds"],
+            "preprocessing_seconds": preprocessing_seconds,
+            "cuda_memory": {
+                "setup_peak_allocated_bytes": setup_memory["peak_allocated_bytes"],
+                "setup_peak_reserved_bytes": setup_memory["peak_reserved_bytes"],
+                "steady_peak_allocated_bytes": steady_memory["peak_allocated_bytes"],
+                "steady_peak_reserved_bytes": steady_memory["peak_reserved_bytes"],
+                "post_setup_allocated_bytes": setup_memory["allocated_bytes"],
+                "post_setup_reserved_bytes": setup_memory["reserved_bytes"],
+                "post_loop_allocated_bytes": steady_memory["allocated_bytes"],
+                "post_loop_reserved_bytes": steady_memory["reserved_bytes"],
+            },
+            "logits": logits.detach().cpu().tolist(),
+            "storage": _worker_storage(model, adapter, args._hardware_worker_baseline),
+            "timing_protocol": {
+                "cuda_events": True,
+                "synchronized_before_after": True,
+                "allocator_reset": True,
+                "setup_excluded_from_steady_state": True,
+            },
+        }
+    except Exception as exc:  # pragma: no cover - depends on CUDA and optional dependencies.
+        payload = {
+            "status": "failed",
+            "reason": str(exc),
+            "isolated_process": True,
+            "process_id": os.getpid(),
+            "forward_latencies_seconds": None,
+            "forward_wall_seconds": None,
+            "switch_latencies_seconds": None,
+            "switch_wall_seconds": None,
+            "preprocessing_seconds": {},
+            "cuda_memory": {},
+            "correctness": {"passed": False},
+            "storage": _worker_storage(None, adapter, args._hardware_worker_baseline),
+            "timing_protocol": {
+                "cuda_events": False,
+                "synchronized_before_after": False,
+                "allocator_reset": False,
+                "setup_excluded_from_steady_state": False,
+            },
+        }
+    _write_json(args._hardware_worker_json_output, payload)
+
+
+def _load_hardware_worker_model(
+    args: argparse.Namespace,
+    model_class: Any,
+    peft_model_class: Any,
+    adapter: AdapterSpec,
+) -> tuple[Any, Dict[str, float | None]]:
+    preprocessing_seconds: Dict[str, float | None] = {
+        "model_load": None,
+        "hub_download": None,
+        "tokenization": None,
+        "dense_cache_build": None,
+        "structured_factor_pack": None,
+        "compilation_or_graph_capture": None,
+    }
+    model_start = time.perf_counter()
+    if args._hardware_worker_baseline == "upstream_peft_merged_dense_cache":
+        cache_start = time.perf_counter()
+        dense_cache = {}
+        for cached_adapter in ADAPTERS:
+            base_model = _load_base_worker_model(model_class)
+            model = _load_primary_worker_adapter(
+                peft_model_class,
+                base_model,
+                cached_adapter,
+                args._hardware_worker_baseline,
+            )
+            if hasattr(model, "set_adapter"):
+                model.set_adapter(cached_adapter.name)
+            merged = model.merge_and_unload()
+            dense_cache[cached_adapter.name] = merged.to("cuda").eval()
+        preprocessing_seconds["dense_cache_build"] = time.perf_counter() - cache_start
+        preprocessing_seconds["model_load"] = time.perf_counter() - model_start
+        return dense_cache, preprocessing_seconds
+    base_model = _load_base_worker_model(model_class)
+    model = _load_worker_model(peft_model_class, base_model, adapter, args._hardware_worker_baseline)
+    model = model.to("cuda").eval()
+    preprocessing_seconds["model_load"] = time.perf_counter() - model_start
+    return model, preprocessing_seconds
+
+
+def _measure_hardware_worker_forward(
+    args: argparse.Namespace,
+    model: Any,
+    inputs: Dict[str, Any],
+    backend: _CudaMeasurementBackend,
+) -> Dict[str, List[float]]:
+    with backend.torch.inference_mode():
+        for _ in range(args._hardware_worker_forward_warmup):
+            model(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"])
+        cuda_seconds = []
+        wall_seconds = []
+        for _ in range(args._hardware_worker_forward_repetitions):
+            timing = backend.time_cuda_region(
+                lambda: model(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"])
+            )
+            cuda_seconds.append(timing["cuda_seconds"])
+            wall_seconds.append(timing["wall_seconds"])
+    return {"cuda_seconds": cuda_seconds, "wall_seconds": wall_seconds}
+
+
+def _measure_hardware_worker_switch(
+    args: argparse.Namespace,
+    model: Any,
+    adapter: AdapterSpec,
+    backend: _CudaMeasurementBackend,
+) -> Dict[str, Any]:
+    baseline = args._hardware_worker_baseline
+    other_adapter = _other_adapter(adapter)
+    cuda_seconds = []
+    wall_seconds = []
+    if baseline == "upstream_peft_merged_dense_cache":
+        if not isinstance(model, dict):
+            raise RuntimeError("dense-cache hardware worker requires the full model cache")
+        selected_model = None
+        for _ in range(args._hardware_worker_switch_warmup):
+            selected_model = model[other_adapter.name]
+            selected_model = model[adapter.name]
+        for _ in range(args._hardware_worker_switch_repetitions):
+            selected_model = model[other_adapter.name]
+
+            def select_model() -> None:
+                nonlocal selected_model
+                selected_model = model[adapter.name]
+
+            timing = backend.time_cuda_region(select_model)
+            cuda_seconds.append(timing["cuda_seconds"])
+            wall_seconds.append(timing["wall_seconds"])
+        if selected_model is None:
+            selected_model = model[adapter.name]
+        return {
+            "cuda_seconds": cuda_seconds,
+            "wall_seconds": wall_seconds,
+            "selected_model": selected_model,
+        }
+    if not hasattr(model, "set_adapter"):
+        return {"cuda_seconds": cuda_seconds, "wall_seconds": wall_seconds, "selected_model": model}
+    for _ in range(args._hardware_worker_switch_warmup):
+        model.set_adapter(other_adapter.name)
+        model.set_adapter(adapter.name)
+    for _ in range(args._hardware_worker_switch_repetitions):
+        def switch() -> None:
+            model.set_adapter(other_adapter.name)
+            model.set_adapter(adapter.name)
+            if baseline == "upstream_peft_repeated_merge_unmerge":
+                model.merge_adapter()
+                model.unmerge_adapter()
+
+        timing = backend.time_cuda_region(switch)
+        cuda_seconds.append(timing["cuda_seconds"])
+        wall_seconds.append(timing["wall_seconds"])
+    return {"cuda_seconds": cuda_seconds, "wall_seconds": wall_seconds, "selected_model": model}
+
+
 def _worker_payload_to_row(payload: Dict[str, Any], reference_logits: Any) -> Dict[str, Any]:
     adapter = _adapter_by_name(payload["adapter"])
     if payload["status"] != "ok":
@@ -2198,12 +2800,55 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--_worker-warmup", dest="_worker_warmup", type=int, help=argparse.SUPPRESS)
     parser.add_argument("--_worker-repetitions", dest="_worker_repetitions", type=int, help=argparse.SUPPRESS)
     parser.add_argument("--_worker-peft-path", dest="_worker_peft_path", help=argparse.SUPPRESS)
+    parser.add_argument("--_hardware-worker-json-output", dest="_hardware_worker_json_output", help=argparse.SUPPRESS)
+    parser.add_argument("--_hardware-worker-baseline", dest="_hardware_worker_baseline", help=argparse.SUPPRESS)
+    parser.add_argument("--_hardware-worker-adapter-name", dest="_hardware_worker_adapter_name", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--_hardware-worker-sequence-length",
+        dest="_hardware_worker_sequence_length",
+        type=int,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--_hardware-worker-batch-size",
+        dest="_hardware_worker_batch_size",
+        type=int,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--_hardware-worker-forward-warmup",
+        dest="_hardware_worker_forward_warmup",
+        type=int,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--_hardware-worker-forward-repetitions",
+        dest="_hardware_worker_forward_repetitions",
+        type=int,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--_hardware-worker-switch-warmup",
+        dest="_hardware_worker_switch_warmup",
+        type=int,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--_hardware-worker-switch-repetitions",
+        dest="_hardware_worker_switch_repetitions",
+        type=int,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument("--_hardware-worker-peft-path", dest="_hardware_worker_peft_path", help=argparse.SUPPRESS)
     return parser
 
 
 def main() -> None:
     parser = _build_parser()
     args = parser.parse_args()
+    if args._hardware_worker_json_output:
+        _hardware_real_worker(args)
+        return
     if args._worker_json_output:
         _real_worker(args)
         return
