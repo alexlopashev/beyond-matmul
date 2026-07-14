@@ -392,6 +392,12 @@ class OlmoeStockBaselineTests(unittest.TestCase):
             cuda_runtime="12.8",
             available_modules={"kernels", "cutlass"},
         )
+        blackwell_old_runtime = benchmark.backend_availability(
+            cuda_available=True,
+            compute_capability=(10, 0),
+            cuda_runtime="12.8",
+            available_modules={"kernels", "cutlass"},
+        )
 
         self.assertEqual(ampere["deepgemm"]["status"], "not_applicable")
         self.assertEqual(ampere["sonicmoe"]["status"], "not_applicable")
@@ -399,6 +405,8 @@ class OlmoeStockBaselineTests(unittest.TestCase):
         self.assertEqual(hopper_without_kernels["sonicmoe"]["status"], "blocked")
         self.assertEqual(hopper_ready["deepgemm"]["status"], "available")
         self.assertEqual(hopper_ready["sonicmoe"]["status"], "available")
+        self.assertEqual(blackwell_old_runtime["deepgemm"]["status"], "blocked")
+        self.assertIn("12_9", blackwell_old_runtime["deepgemm"]["reason"])
 
     def test_loaded_model_revision_must_match_the_pin(self):
         benchmark = _load_benchmark_module()
@@ -430,6 +438,41 @@ class OlmoeStockBaselineTests(unittest.TestCase):
 
         self.assertEqual(args.warmup_repetitions, 5)
         self.assertEqual(args.measured_repetitions, 20)
+
+    def test_decode_stage_mirrors_stock_grouped_to_batched_switch(self):
+        benchmark = _load_benchmark_module()
+
+        self.assertEqual(
+            benchmark.stage_experts_backends("decode", "grouped_mm"),
+            {"setup": "grouped_mm", "timed": "batched_mm"},
+        )
+        self.assertEqual(
+            benchmark.stage_experts_backends("prefill", "grouped_mm"),
+            {"setup": "grouped_mm", "timed": "grouped_mm"},
+        )
+        self.assertEqual(
+            benchmark.stage_experts_backends("decode", "deepgemm"),
+            {"setup": "deepgemm", "timed": "deepgemm"},
+        )
+
+    def test_nvidia_driver_probe_records_driver_and_gpu_uuid(self):
+        benchmark = _load_benchmark_module()
+
+        completed = mock.Mock(
+            returncode=0,
+            stdout="GPU-1234, 580.42.01\n",
+            stderr="",
+        )
+        run_command = mock.Mock(return_value=completed)
+
+        metadata = benchmark.probe_nvidia_smi_metadata(run_command=run_command)
+
+        self.assertEqual(metadata["status"], "measured")
+        self.assertEqual(metadata["gpu_uuid"], "GPU-1234")
+        self.assertEqual(metadata["driver_version"], "580.42.01")
+        command = run_command.call_args.args[0]
+        self.assertEqual(command[0], "nvidia-smi")
+        self.assertIn("--id=0", command)
 
 
 def _available_environment(benchmark):

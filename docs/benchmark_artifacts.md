@@ -28,17 +28,21 @@ surface for issues #132 and #133 under the gate in
 The required grid has four BF16 full-model prefill regimes—batch 1 and 4 at
 sequence lengths 128 and 512—and four one-token decode regimes—batch 1 and 8
 after prompt lengths 128 and 512. Prompt prefill is setup for decode and is not
-included in the per-token timed region. Inputs are deterministic token IDs, and
-correctness compares last-token logits with stock uncompiled eager using fixed
-maximum-absolute `0.125` and relative-L2 `0.01` tolerances.
+included in the per-token timed region. A stock grouped/default decode row uses
+grouped prompt prefill and the same grouped-to-batched stage switch that
+Transformers generation applies; both effective backends are recorded. Inputs
+are deterministic token IDs, and correctness compares last-token logits with
+stock uncompiled eager using fixed maximum-absolute `0.125` and relative-L2
+`0.01` tolerances.
 
 For every regime, the inventory contains stock default, eager, `batched_mm`,
 `grouped_mm`, `deepgemm`, and `sonicmoe`. It also contains the runtime-supported
 `torch.compile` modes for default, eager, and batched execution, the audited
 `grouped_mm` modes, and explicit excluded rows for compilation modes or external
-kernels that do not apply. CUDA, compute capability, CUDA runtime, pinned
-Transformers source revision, model revision, compilation mode, and external
-kernel dependencies are checked or recorded rather than silently skipped.
+kernels that do not apply. GPU UUID, device properties, NVIDIA driver, CUDA
+runtime, pinned Transformers source revision, model revision, compilation mode,
+and external-kernel dependencies are checked or recorded rather than silently
+skipped.
 
 Run the schema-only CI smoke with:
 

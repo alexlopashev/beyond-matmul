@@ -409,8 +409,11 @@ enumerates all eight required full-model prefill/decode regimes and every stock
 backend/compilation configuration, including explicit exclusions and failures,
 without loading OLMoE or measuring performance. The real path pins the model
 and Transformers revisions, compares last-token logits with uncompiled eager,
-and records CUDA-event latency, wall time, throughput, setup, and allocator
-fields. No real CUDA OLMoE artifact exists yet; the harness therefore keeps
+and records GPU/driver identity, CUDA-event latency, wall time, throughput,
+setup, allocator, and effective stage-backend fields. Grouped/default decode
+rows reproduce the upstream grouped-prefill to batched-decode switch rather
+than timing a direct grouped cached forward that stock generation would not
+use. No real CUDA OLMoE artifact exists yet; the harness therefore keeps
 \texttt{target\_decision\_ready=false} and
 \texttt{performance\_claim=none}. Issue \#133 owns the measured stock cohort,
 profiling, and accept-or-reject decision.

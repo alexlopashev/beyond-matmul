@@ -13,6 +13,7 @@ import math
 import os
 import platform
 import statistics
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -333,6 +334,7 @@ def select_best_stock_rows(results: Sequence[Mapping[str, Any]]) -> List[Dict[st
                 "experts_backend": best["experts_backend"],
                 "compiled": best.get("compiled"),
                 "compile_mode": best.get("compile_mode"),
+                "stage_experts_backends": best.get("stage_experts_backends"),
                 "cuda_event_median_seconds": best["timing"]["cuda_event_median_seconds"],
                 "throughput_tokens_per_second": best.get("throughput_tokens_per_second"),
             }
@@ -408,7 +410,12 @@ def backend_availability(
             }
         return availability
 
-    if _version_tuple(cuda_runtime) < (12, 3):
+    if capability >= (10, 0) and _version_tuple(cuda_runtime) < (12, 9):
+        availability["deepgemm"] = {
+            "status": "blocked",
+            "reason": "deepgemm_blackwell_requires_cuda_12_9_or_newer",
+        }
+    elif _version_tuple(cuda_runtime) < (12, 3):
         availability["deepgemm"] = {
             "status": "blocked",
             "reason": "deepgemm_requires_cuda_12_3_or_newer",
@@ -435,6 +442,15 @@ def validate_loaded_model_revision(model: Any) -> str:
             f"model revision mismatch: expected {MODEL_REVISION}, observed {loaded_revision}"
         )
     return str(loaded_revision)
+
+
+def stage_experts_backends(phase: str, resolved_backend: str) -> Dict[str, str]:
+    timed_backend = (
+        "batched_mm"
+        if phase == "decode" and resolved_backend == "grouped_mm"
+        else resolved_backend
+    )
+    return {"setup": resolved_backend, "timed": timed_backend}
 
 
 def correctness_metrics(candidate: Any, reference: Any) -> Dict[str, Any]:
@@ -563,6 +579,7 @@ class RealConfigurationRunner:
                     model,
                     regime,
                     torch,
+                    resolved_backend=resolved_backend,
                     warmup_repetitions=self.warmup_repetitions,
                     measured_repetitions=self.measured_repetitions,
                 )
@@ -612,9 +629,11 @@ def _measure_regime(
     regime: Mapping[str, Any],
     torch: Any,
     *,
+    resolved_backend: str,
     warmup_repetitions: int,
     measured_repetitions: int,
 ) -> tuple[Dict[str, Any], Any]:
+    stage_backends = stage_experts_backends(str(regime["phase"]), resolved_backend)
     input_start = time.perf_counter()
     input_ids = _deterministic_tokens(
         torch,
@@ -653,6 +672,8 @@ def _measure_regime(
                 0.0,
             )
 
+        if stage_backends["setup"] != stage_backends["timed"]:
+            _set_model_experts_backend(model, stage_backends["setup"])
         torch.cuda.synchronize()
         setup_start = time.perf_counter()
         prompt_output = model(
@@ -664,6 +685,8 @@ def _measure_regime(
         torch.cuda.synchronize()
         setup_seconds = time.perf_counter() - setup_start
         past_key_values = prompt_output.past_key_values
+        if stage_backends["setup"] != stage_backends["timed"]:
+            _set_model_experts_backend(model, stage_backends["timed"])
         return (
             lambda: model(
                 input_ids=decode_token,
@@ -715,6 +738,7 @@ def _measure_regime(
             "regime_id": regime["regime_id"],
             "status": "ok",
             "reason": None,
+            "stage_experts_backends": stage_backends,
             "timing": {
                 "cuda_event_median_seconds": cuda_median,
                 "wall_median_seconds": wall_median,
@@ -747,6 +771,13 @@ def _measure_regime(
         },
         last_token_logits,
     )
+
+
+def _set_model_experts_backend(model: Any, backend: str) -> None:
+    setter = getattr(model, "set_experts_implementation", None)
+    if setter is None:
+        raise RuntimeError("model does not expose stock experts backend switching")
+    setter(backend)
 
 
 def _deterministic_tokens(
@@ -816,9 +847,14 @@ def probe_environment() -> Dict[str, Any]:
 
     device_name = None
     compute_capability = None
+    gpu_total_memory_bytes = None
+    gpu_multiprocessor_count = None
     if cuda_available:
-        device_name = torch.cuda.get_device_name(0)
-        compute_capability = list(torch.cuda.get_device_capability(0))
+        device_properties = torch.cuda.get_device_properties(0)
+        device_name = device_properties.name
+        compute_capability = [device_properties.major, device_properties.minor]
+        gpu_total_memory_bytes = int(device_properties.total_memory)
+        gpu_multiprocessor_count = int(device_properties.multi_processor_count)
 
     available_modules = {
         module_name
@@ -836,6 +872,18 @@ def probe_environment() -> Dict[str, Any]:
         )
     }
     cuda_runtime = getattr(torch.version, "cuda", None)
+    nvidia_smi = (
+        probe_nvidia_smi_metadata()
+        if cuda_available
+        else {
+            "status": "unavailable",
+            "reason": "cuda_unavailable",
+            "gpu_uuid": None,
+            "driver_version": None,
+        }
+    )
+    if cuda_available and nvidia_smi["status"] != "measured":
+        blockers.append("nvidia_driver_unavailable")
 
     return {
         "preflight_status": "ready" if not blockers else "blocked",
@@ -845,6 +893,12 @@ def probe_environment() -> Dict[str, Any]:
         "cuda_available": cuda_available,
         "cuda_device_name": device_name,
         "cuda_compute_capability": compute_capability,
+        "gpu_total_memory_bytes": gpu_total_memory_bytes,
+        "gpu_multiprocessor_count": gpu_multiprocessor_count,
+        "gpu_uuid": nvidia_smi["gpu_uuid"],
+        "nvidia_driver_version": nvidia_smi["driver_version"],
+        "nvidia_smi_status": nvidia_smi["status"],
+        "nvidia_smi_reason": nvidia_smi.get("reason"),
         "cuda_runtime": cuda_runtime,
         "torch_version": torch.__version__,
         "transformers_version": transformers_version,
@@ -859,6 +913,56 @@ def probe_environment() -> Dict[str, Any]:
             available_modules=available_modules,
         ),
         "compile_mode_availability": _compile_mode_availability(torch),
+    }
+
+
+def probe_nvidia_smi_metadata(
+    *,
+    run_command: Callable[..., Any] | None = None,
+) -> Dict[str, Any]:
+    runner = run_command or subprocess.run
+    command = [
+        "nvidia-smi",
+        "--id=0",
+        "--query-gpu=uuid,driver_version",
+        "--format=csv,noheader,nounits",
+    ]
+    try:
+        result = runner(
+            command,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=10,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError) as exc:
+        return {
+            "status": "unavailable",
+            "reason": f"nvidia_smi_failed:{type(exc).__name__}",
+            "gpu_uuid": None,
+            "driver_version": None,
+        }
+    if result.returncode != 0:
+        return {
+            "status": "unavailable",
+            "reason": f"nvidia_smi_exit_{result.returncode}",
+            "gpu_uuid": None,
+            "driver_version": None,
+        }
+    fields = [field.strip() for field in result.stdout.strip().split(",", maxsplit=1)]
+    if len(fields) != 2 or not all(fields):
+        return {
+            "status": "unavailable",
+            "reason": "nvidia_smi_unparseable_output",
+            "gpu_uuid": None,
+            "driver_version": None,
+        }
+    return {
+        "status": "measured",
+        "reason": None,
+        "gpu_uuid": fields[0],
+        "driver_version": fields[1],
     }
 
 
@@ -996,6 +1100,7 @@ def _normalize_measured_row(
     )
     for field in (
         "resolved_experts_backend",
+        "stage_experts_backends",
         "configuration_setup",
         "correctness",
         "timing",
@@ -1030,6 +1135,7 @@ def _empty_result_row(
         "configuration_eligibility": configuration["eligibility"],
         "runtime_applicability": runtime_applicability,
         "resolved_experts_backend": None,
+        "stage_experts_backends": None,
         "configuration_setup": {
             "model_load_seconds": None,
             "compile_wrapper_seconds": None,
