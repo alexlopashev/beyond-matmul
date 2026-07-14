@@ -510,6 +510,18 @@ class OlmoeStockBaselineTests(unittest.TestCase):
                 "kernels": "0.16.0",
             },
         )
+        unpinned_compatible_kernels = benchmark.backend_availability(
+            cuda_available=True,
+            compute_capability=(9, 0),
+            cuda_runtime="12.8",
+            available_modules={"kernels", "cutlass"},
+            cuda_toolkit_version="12.8",
+            nvcc_available=True,
+            dependency_versions={
+                **compatible_dependencies,
+                "kernels": "0.15.3",
+            },
+        )
 
         self.assertEqual(ampere["deepgemm"]["status"], "not_applicable")
         self.assertEqual(ampere["sonicmoe"]["status"], "not_applicable")
@@ -521,6 +533,18 @@ class OlmoeStockBaselineTests(unittest.TestCase):
         self.assertIn("nvcc", hopper_without_toolkit["deepgemm"]["reason"])
         self.assertEqual(incompatible_kernels["deepgemm"]["status"], "blocked")
         self.assertIn("incompatible_kernels_version", incompatible_kernels["deepgemm"]["reason"])
+        self.assertEqual(
+            unpinned_compatible_kernels["deepgemm"]["status"],
+            "blocked",
+        )
+        self.assertEqual(
+            unpinned_compatible_kernels["deepgemm"]["reason"],
+            "deepgemm_kernels_version_pin_mismatch",
+        )
+        self.assertEqual(
+            unpinned_compatible_kernels["sonicmoe"]["status"],
+            "blocked",
+        )
         self.assertEqual(blackwell_old_runtime["deepgemm"]["status"], "blocked")
         self.assertIn("12_9", blackwell_old_runtime["deepgemm"]["reason"])
         self.assertEqual(blackwell_old_toolkit["deepgemm"]["status"], "blocked")

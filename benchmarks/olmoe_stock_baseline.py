@@ -513,6 +513,13 @@ def backend_availability(
                 "status": "blocked",
                 "reason": "deepgemm_incompatible_kernels_version",
             }
+        elif dependency_versions.get("kernels") != PINNED_DEPENDENCY_VERSIONS[
+            "kernels"
+        ]:
+            availability["deepgemm"] = {
+                "status": "blocked",
+                "reason": "deepgemm_kernels_version_pin_mismatch",
+            }
 
     missing_sonic_modules = sorted({"kernels", "cutlass"} - available_modules)
     if missing_sonic_modules:
@@ -528,6 +535,13 @@ def backend_availability(
         availability["sonicmoe"] = {
             "status": "blocked",
             "reason": "sonicmoe_incompatible_kernels_version",
+        }
+    elif dependency_versions.get("kernels") != PINNED_DEPENDENCY_VERSIONS[
+        "kernels"
+    ]:
+        availability["sonicmoe"] = {
+            "status": "blocked",
+            "reason": "sonicmoe_kernels_version_pin_mismatch",
         }
     elif dependency_versions.get("nvidia-cutlass-dsl") != PINNED_DEPENDENCY_VERSIONS[
         "nvidia-cutlass-dsl"
