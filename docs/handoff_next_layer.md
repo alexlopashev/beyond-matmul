@@ -13,9 +13,10 @@ claim support from project-level completion.
 This file's original recommended frontend/Conv1d work is historical and has
 already landed. Merged issue #129/PR #131 established the external OLMoE target
 gate in `docs/olmoe_tensor_contraction_capstone.md`. Merged issue #132/PR #134
-provides the stock-only baseline harness. Ready issue #133 is the active work
-for the real CUDA cohort, profiling, and accept-or-reject decision. Do not use
-the old suggested PR at the end of this file as current roadmap state.
+provides the stock-only baseline harness. Issue #136 adds the bound profiler
+and real-activation diagnostic prerequisite; issue #133 owns the real CUDA
+baseline/profile cohort and accept-or-reject decision. Do not use the old
+suggested PR at the end of this file as current roadmap state.
 
 ## Current State
 

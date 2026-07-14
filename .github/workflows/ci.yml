@@ -75,6 +75,9 @@ jobs:
       - name: Run OLMoE stock-baseline contract smoke artifact
         run: mise exec -- uv run python benchmarks/olmoe_stock_baseline.py --smoke --json-output docs/results/olmoe_stock_baseline_smoke.json
 
+      - name: Run OLMoE stock-profile contract smoke artifact
+        run: mise exec -- uv run python benchmarks/olmoe_stock_profile.py --smoke --json-output docs/results/olmoe_stock_profile_smoke.json
+
       - name: Upload fixed-weight benchmark JSON
         uses: actions/upload-artifact@v4
         with:
@@ -122,3 +125,9 @@ jobs:
         with:
           name: olmoe-stock-baseline-smoke-json
           path: docs/results/olmoe_stock_baseline_smoke.json
+
+      - name: Upload OLMoE stock-profile contract smoke JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: olmoe-stock-profile-smoke-json
+          path: docs/results/olmoe_stock_profile_smoke.json

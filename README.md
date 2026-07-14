@@ -91,6 +91,8 @@ uv run python examples/torch_fx_frontend_demo.py
 - `benchmarks/olmoe_stock_baseline.py`: pinned stock-only OLMoE prefill/decode
   harness with explicit backend, compilation, correctness, timing, and
   unavailable-row semantics
+- `benchmarks/olmoe_stock_profile.py`: best-stock full-model profiler plus a
+  real-activation router/expert diagnostic with explicit unclassified events
 - `docs/peft_fork_setup.md`: setup, sync, branch, and issue-mapping rules for
   the PEFT fork integration branch
 - `docs/peft_low_rank_provenance_design.md`: first PEFT low-rank provenance
@@ -134,9 +136,10 @@ that attributable gap, OLMoE is rejected before implementation expands.
 The decision record and benchmark gate are in
 `docs/olmoe_tensor_contraction_capstone.md`. No general tensor IR is implied by
 this target selection. Merged issue #129/PR #131 establishes that contract, and
-merged issue #132/PR #134 implements the stock-only harness. Ready issue #133
-owns the real CUDA cohort, profiling, and accept-or-reject decision. The harness
-CI smoke runs no OLMoE inference and supports no performance claim.
+merged issue #132/PR #134 implements the stock-only harness. Issue #136 adds the
+profiler and real-activation diagnostic surface that issue #133 consumes for
+the CUDA cohort and accept-or-reject decision. Both CI smokes run no OLMoE
+inference and support no performance claim.
 
 ## PEFT Capstone Status
 
@@ -185,6 +188,6 @@ measured artifact at `docs/results/peft_multi_adapter_serving.json`.
 Current completion status: the matrix-focused first artifact is historical and
 internally bounded, but the project-level north star is open. Issue #129 and PR
 #131 merged the tensor-program correction, issue #132/PR #134 merged the
-baseline harness, and ready issue #133 owns the measured target decision. The
-PEFT CUDA roadmap remains paused. `docs/completion_audit.md` records the
-distinction.
+baseline harness, and issue #136 adds the stock profiler prerequisite. Issue
+#133 owns the still-unmeasured target decision. The PEFT CUDA roadmap remains
+paused. `docs/completion_audit.md` records the distinction.

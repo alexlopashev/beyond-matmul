@@ -419,8 +419,20 @@ the upstream grouped-prefill to batched-decode switch rather than timing a
 direct grouped cached forward that stock generation would not use. No real
 CUDA OLMoE artifact exists yet; the harness therefore keeps
 \texttt{target\_decision\_ready=false} and
-\texttt{performance\_claim=none}. Issue \#133 owns the measured stock cohort,
-profiling, and accept-or-reject decision.
+\texttt{performance\_claim=none}.
+
+Issue \#136 adds
+\texttt{benchmarks/olmoe\_stock\_profile.py}. It accepts only a complete stock
+artifact from the same GPU/software cohort, profiles the best stock row for all
+eight regimes, requires CUPTI device events, and conserves aggregated profiler
+self time across explicit categories while retaining unknown event names. Its
+real-activation diagnostic captures the input and output of sparse layer 8 from
+a full-model \texttt{prefill\_b1\_s512} forward, then profiles the exposed
+router and expert replay with correctness metadata. The replay is isolated,
+uncompiled, and diagnostic even if the bound best full-model row is compiled.
+Its CI smoke performs no model execution and leaves all timing fields
+unavailable. Issue \#133 owns the measured baseline/profile artifacts and the
+accept-or-reject decision.
 
 In the fixed-weight benchmark, the planner request allows approximate
 lowerings with a maximum relative error of $0.05$ over a batch of $32$ and
@@ -767,12 +779,14 @@ applicable stock configuration per regime, a distinct changed execution,
 end-to-end prefill or decode evidence, and rejection of OLMoE if no remaining
 opportunity is found.
 
-The issue \#132 harness closes only the measurement-capability gap. Its CI
-smoke executes no model, and its future real rows contain only stock
-configurations. Routing attribution remains explicitly unmeasured until issue
-\#133 profiles the frozen CUDA cohort. Consequently, row/schema completeness,
-or even a complete stock cohort, cannot be interpreted as target acceptance or
-as a Beyond Matmul performance result.
+The issue \#132 and \#136 harnesses close only measurement and diagnostic
+capability gaps. Their CI smokes execute no model, and future real rows contain
+only stock configurations. The profiler leaves ambiguous full-model operators
+unclassified rather than assigning generic matrix multiplications to expert
+work, and its layer replay cannot substitute for end-to-end prefill or decode.
+Consequently, row/schema completeness, a complete stock cohort, or a correct
+diagnostic replay cannot be interpreted as target acceptance or as a Beyond
+Matmul performance result.
 
 Recovery after provenance is lost is weaker than preserving provenance before
 dense lowering. The analyzer confidence values are probe-specific heuristic
@@ -890,10 +904,11 @@ erased. The active next step is the OLMoE target-validation gate in
 \texttt{docs/olmoe\_tensor\_contraction\_capstone.md}. OLMoE is fully open and
 its routed experts form a tensor program around expert-indexed contraction
 subgraphs, but current Transformers already has optimized expert backends. The
-issue \#132 harness is baseline-only and does not change this boundary. A
-follow-up optimization issue may be opened only after issue \#133 identifies a
-remaining cost that preserved route, axis, layout, or phase provenance can
-remove. Otherwise the target must be rejected without generalizing the IR.
+issue \#132 baseline harness and issue \#136 profiler are stock-only and do not
+change this boundary. A follow-up optimization issue may be opened only after
+issue \#133 identifies a remaining cost that preserved route, axis, layout, or
+phase provenance can remove. Otherwise the target must be rejected without
+generalizing the IR.
 
 \section{Conclusion}
 
