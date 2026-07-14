@@ -1,10 +1,12 @@
 # Beyond Matmul
 
-This repository explores whether computations that are often lowered to dense
-`A @ B` can stay cheaper and more meaningful as provenance-aware linear
-operators.
+This repository explores whether tensor contractions that are often lowered to
+generic GEMM, batched GEMM, grouped GEMM, or `einsum` can stay cheaper and more
+meaningful when their computation provenance is preserved. Matrix
+multiplication is the rank-2 case, not the research boundary.
 
-The current artifact is scoped to fixed-weight inference:
+The implemented first artifact remains scoped to matrix-shaped fixed-weight
+inference:
 
 - a provenance-aware linear and affine operator IR
 - exact operators for dense, diagonal, sparse COO, fixed-mask, low-rank,
@@ -82,27 +84,53 @@ uv run python examples/torch_fx_frontend_demo.py
   measured PEFT multi-adapter serving benchmark comparing factor provenance
   with dense merged serving strategies
 - `docs/hardware_backed_production_benchmark_contract.md`: future-work
-  contract for interpreting hardware-backed PEFT production/performance
-  measurements
+  contract for the now-paused PEFT hardware roadmap
+- `docs/olmoe_tensor_contraction_capstone.md`: provisional open-LLM target,
+  routed tensor-program definition, upstream baseline audit, and rejection
+  gate
 - `docs/peft_fork_setup.md`: setup, sync, branch, and issue-mapping rules for
   the PEFT fork integration branch
 - `docs/peft_low_rank_provenance_design.md`: first PEFT low-rank provenance
   integration design and #78 handoff checklist
 - `docs/evidence_matrix.md`: whitepaper claim-to-evidence map and current
   unsupported-claim boundaries
-- `docs/completion_audit.md`: final first-artifact audit of claims, evidence,
-  limitations, validation commands, and optional follow-ups
+- `docs/completion_audit.md`: historical first-artifact audit plus the current
+  project-level completion correction and residual risks
 - `docs/handoff_next_layer.md`: current state and next-layer handoff
-- `whitepaper/main.tex`: final-draft whitepaper source and completion criteria
+- `whitepaper/main.tex`: cumulative research draft and completion criteria
 - GitHub wiki: concise north star, operating loop, coverage snapshot, and
   artifact map for humans and agents
 - `AGENTS.md`: operating contract for issue-driven, worktree-based agent loops
 
 ## Crisp Contribution
 
-This work introduces a provenance-aware linear/affine-operator IR and planner
-that preserves or recovers structure behind dense matmuls, then selects exact or
-bounded-error lowerings that reduce inference cost relative to dense GEMM.
+The first artifact introduces a provenance-aware linear/affine-operator IR and
+planner that preserves or recovers structure behind dense matmuls. The active
+research goal is stronger: demonstrate that preserved tensor-contraction
+provenance causes an attributable performance improvement in an external
+open-source ML project.
+
+## Active North Star: Open LLM Routed Tensor Program
+
+The provisional target is AllenAI's Apache-2.0
+`allenai/OLMoE-1B-7B-0924` model through Hugging Face Transformers. Its MoE
+layers combine token hidden states, token-to-expert routes, routing weights, and
+3D expert-weight tensors. This is a routed tensor program composed of
+expert-indexed gate/up and down contractions, nonlinear gating, dynamic
+selection, and aggregation. Its token, selected-expert, expert, hidden, and
+intermediate axes should remain visible to lowering decisions.
+
+Current Transformers already has eager, batched, grouped, and optimized expert
+backends. Reproducing an existing eager-versus-grouped speedup is therefore
+background evidence, not Beyond Matmul's result. The target passes only if a
+distinct provenance-enabled change beats the best applicable stock strategy by
+at least 10% on a predefined end-to-end regime, preserves correctness, and
+regresses no required regime by more than 5%. If target validation cannot find
+that attributable gap, OLMoE is rejected before implementation expands.
+
+The decision record and benchmark gate are in
+`docs/olmoe_tensor_contraction_capstone.md`. No general tensor IR is implied by
+this target selection.
 
 ## PEFT Capstone Status
 
@@ -148,6 +176,7 @@ measured artifact at `docs/results/peft_multi_adapter_serving.json`.
   latency win, process-memory reduction, CUDA peak-memory reduction, or
   adapter-switching gain
 
-Current completion status: no unresolved priority-zero or priority-one blocker
-is known against the artifact thesis; `docs/completion_audit.md` records the
-latest issue audit and residual risks.
+Current completion status: the matrix-focused first artifact is historical and
+internally bounded, but the project-level north star is open. Issue #129 tracks
+the tensor-contraction correction; the PEFT CUDA roadmap is paused pending the
+external-target decision. `docs/completion_audit.md` records the distinction.

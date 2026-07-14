@@ -4,33 +4,32 @@
 \usepackage{amsmath}
 \usepackage{hyperref}
 
-\title{Beyond Matmul: Provenance-Aware Computation for Fixed-Weight ML Inference}
+\title{Beyond Matmul: Provenance-Aware Tensor Contractions for Fixed-Weight ML Inference}
 \author{Beyond Matmul Contributors}
-\date{Final draft -- July 2026}
+\date{Research draft -- July 2026}
 
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
-Modern machine-learning systems routinely lower semantically rich computations
-into dense matrix multiplication because dense GEMM is universal, convenient,
-and heavily optimized. That default is useful, but it can erase why a matrix
-exists: a convolution becomes an anonymous Toeplitz matrix, an adapter becomes a
-materialized product, an embedding projection becomes a dense multiply, and a
-quantized operator becomes dequantized storage. This paper explores a
-provenance-aware framing for fixed-weight inference in which dense GEMM remains
-a valid fallback rather than the default semantic intermediate representation.
-We propose a linear and affine operator IR that preserves or recovers structure,
-a planner that selects exact or bounded-error lowerings under backend and reuse
-contracts, and an evaluation program that ties frontend coverage, tests,
-benchmarks, and case studies to the research claims.
+Modern machine-learning systems routinely lower semantically rich tensor
+contractions into generic matrix kernels because GEMM and its batched or grouped
+forms are universal, convenient, and heavily optimized. That default is useful,
+but it can erase named axes, routing, factorization, grouping, sparsity, and the
+reason a tensor exists. This paper explores a provenance-aware framing for
+fixed-weight inference in which matrix multiplication is the rank-2 case and
+generic contraction remains a valid fallback rather than the default semantic
+intermediate representation. The implemented first artifact provides a linear
+and affine operator IR, planner, and bounded evidence. The project-level finish
+line is stronger: one external open-source system must show an attributable
+end-to-end performance improvement caused by a distinct provenance-enabled
+execution.
 \end{abstract}
 
 \section{North Star}
 
-The north star of Beyond Matmul is a completed research artifact with two
-mutually reinforcing outputs:
+The north star of Beyond Matmul has three mutually reinforcing outputs:
 
 \begin{enumerate}
   \item A final whitepaper that explains, evaluates, and bounds the claim that
@@ -39,12 +38,17 @@ mutually reinforcing outputs:
   \item An accompanying codebase that provides executable evidence: operator
   semantics, Torch frontend capture, recovery probes, approximation builders,
   planner decisions, tests, demos, and benchmark data.
+  \item One independently reviewed external open-source integration in which a
+  distinct provenance-enabled tensor-contraction path improves end-to-end
+  inference against the best applicable stock strategy under predefined
+  correctness and regression gates.
 \end{enumerate}
 
-The project is complete when the paper's claims are supported by the codebase
-and its generated evidence, the GitHub wiki concisely defines the project for
-humans and agents, and GitHub issues no longer contain unresolved high-priority
-gaps against the stated research questions.
+The project is complete only when all three exist. A metadata-only integration,
+synthetic proxy, existing upstream optimization, or win against a knowingly
+weak baseline does not satisfy the external result. A negative target result
+rejects or replaces that target; it does not weaken the finish line after
+measurement.
 
 After the first artifact, the PEFT plus Transformers capstone moved the project
 from controlled evidence to an external PyTorch inference stack. The
@@ -68,12 +72,24 @@ dense fallback. The refreshed artifact is benchmark-ready correctness
 evidence, but both
 performance and memory/control claims remain \texttt{none}.
 
+Issue \#129 therefore reopens the project-level north star. The provisional
+target is the Apache-2.0 \texttt{allenai/OLMoE-1B-7B-0924} model through Hugging
+Face Transformers. Its sparse expert layer is a routed tensor program composed
+of expert-indexed gate/up and down contractions, nonlinear gating, dynamic
+selection, and aggregation over token, selected-expert, expert, hidden,
+intermediate, and output axes. Current Transformers already offers eager,
+batched, grouped, and optimized expert backends, so their existing gains are
+background evidence rather than a Beyond Matmul result. The target and
+rejection gate are recorded in
+\texttt{docs/olmoe\_tensor\_contraction\_capstone.md}; no general tensor IR is
+authorized until that gate finds a remaining attributable opportunity.
+
 \section{Problem}
 
-Dense matrix multiplication is an excellent implementation target and a robust
-fallback abstraction. It is not always an excellent semantic representation.
-When a framework lowers a structured computation into an anonymous matrix, it
-often discards facts that matter for inference:
+Generic matrix and tensor contraction kernels are excellent implementation
+targets and robust fallback abstractions. They are not always excellent semantic
+representations. When a framework lowers a structured computation into an
+anonymous product, it can discard facts that matter for inference:
 
 \begin{itemize}
   \item convolution preserves local receptive fields and weight sharing;
@@ -82,40 +98,42 @@ often discards facts that matter for inference:
   \item masks preserve causal, banded, block, or page sparsity;
   \item quantized weights preserve packing, scale, zero point, and codebooks;
   \item diagonal gates preserve elementwise scaling rather than general mixing.
+  \item routed experts preserve token-to-expert identity, routing weights, and
+  expert-axis layout rather than an unordered set of independent GEMMs.
 \end{itemize}
 
-Once these facts are erased, a downstream compiler or runtime must either use
-dense GEMM or rediscover structure heuristically from the dense matrix. The
-first path can waste work and memory; the second path is lossy and expensive to
-trust.
+Once these facts are erased, a downstream compiler or runtime must either use a
+generic contraction or rediscover structure heuristically. The first path can
+waste work and memory; the second path is lossy and expensive to trust.
 
 \section{Thesis}
 
-Many matrix multiplications in ML systems are semantically structured
-computations that were densified for convenience. A provenance-aware
-linear-operator IR can preserve or recover that structure and allow a planner to
-choose exact or bounded-error lowerings that are cheaper, clearer, or more
-controllable than dense GEMM for fixed-weight inference.
+Many tensor contractions in ML systems are semantically structured computations
+whose axes and relationships are flattened for convenience. Preserving named
+axes, routing, factorization, grouping, sparsity, layout, reuse, and exactness
+can allow a planner or backend to choose a cheaper execution for fixed-weight
+inference. Matrix multiplication is the rank-2 case of this claim.
 
-The claim is deliberately not ``GEMM is bad.'' Dense GEMM should remain one
-lowering in a richer operator space. The research question is when and how much
-additional provenance lets the system choose something better.
+The claim is deliberately not ``GEMM is bad.'' Dense, batched, and grouped GEMM
+and generic contraction remain lowerings in a richer operator space. The
+research question is when additional provenance causes an external system to
+choose or execute something measurably better.
 
 \section{Scope}
 
-The initial artifact focuses on fixed-weight inference. This scope makes reuse
-contracts explicit: preprocessing can be amortized across calls, weights do not
-mutate during training, and exact dense equivalence can be checked for small
-operators.
+The implemented first artifact focuses on matrix-shaped fixed-weight inference.
+The active research scope broadens to fixed-weight tensor contractions in one
+external inference target while keeping reuse and correctness contracts
+explicit.
 
-Out of scope for the first complete artifact:
+Out of scope for the active capstone:
 
 \begin{itemize}
   \item training-time weight mutation and gradient semantics;
-  \item production GPU kernels;
-  \item claims of hardware-calibrated speedup without benchmark evidence that
-  satisfies the future contract in
-  \texttt{docs/hardware\_backed\_production\_benchmark\_contract.md};
+  \item a general tensor algebra IR or broad kernel platform before the external
+  target passes validation;
+  \item hardware-calibrated speedup claims without a frozen best-stock baseline,
+  correctness gate, and end-to-end artifact;
   \item frontend capture of quantized Torch modules beyond the tested
   per-tensor affine fixed-weight linear contract;
   \item universal Torch operation support in a single pass.
@@ -131,6 +149,8 @@ where the tensor was allocated. A provenance-aware operator records:
   \item input and weight identities;
   \item transformation history, such as convolution to Toeplitz or adapter
   factors to a merged dense weight;
+  \item named tensor axes, contraction axes, routing identities and weights,
+  active groups, and aggregation semantics;
   \item structural metadata, such as rank, sparsity, kernel shape, codebook, or
   quantization layout;
   \item exactness or approximation contract;
@@ -138,8 +158,9 @@ where the tensor was allocated. A provenance-aware operator records:
   \item backend and layout constraints.
 \end{itemize}
 
-This framing lets later passes ask not only ``what matrix is this?'' but ``what
-computation did this matrix come from, and what lowerings are still valid?''
+This framing lets later passes ask not only ``what tensor is this?'' but ``what
+computation did it come from, which axes and relationships remain meaningful,
+and what lowerings are still valid?''
 
 \section{System Design}
 
@@ -176,7 +197,7 @@ is the \texttt{Torch frontend coverage} row in
 
 \subsection{Operator IR and Contracts}
 
-The IR represents fixed-weight linear maps with shape
+The implemented IR represents fixed-weight linear maps with shape
 $(\mathrm{out\_features}, \mathrm{in\_features})$ and affine maps as a linear
 operator plus bias. Applying a linear operator to a row-major batch computes
 $xW^T$; applying an affine operator computes $xW^T + b$. Metadata stores
@@ -185,6 +206,11 @@ data, reuse budget, layout, hardware target, and allowed lowerings. The
 contract is part of the operator rather than an external note: exact operators
 require backend and layout support, while approximate operators additionally
 carry metric, epsilon, observed error, and sample-count evidence.
+
+This matrix-shaped IR is prior evidence, not a claim of general tensor support.
+Issue \#129 explicitly defers any tensor-IR abstraction until the external OLMoE
+target shows which named-axis, routing, layout, and phase fields a measured
+optimization actually requires.
 
 Implemented operator families include dense, diagonal, sparse COO, fixed-mask,
 low-rank, affine, codebook, bitpacked binary, packed affine quantized,
@@ -293,13 +319,16 @@ tests, demos, benchmark artifacts, or future-work boundaries.
 \section{Research Questions}
 
 \begin{enumerate}
+  \item Which external open-source tensor contraction retains enough semantic
+  structure for provenance to cause an attributable end-to-end inference win
+  against the best stock implementation?
   \item Which common fixed-weight Torch inference patterns can be captured
   exactly before they become anonymous dense matrices?
   \item When provenance is missing, which structures can be recovered cheaply
   enough to be useful, and how should uncertainty be represented?
   \item Under what reuse and backend contracts does a structured lowering beat
-  dense GEMM according to operation, memory, preprocessing, or measured latency
-  proxies?
+  generic contraction according to operation, memory, preprocessing, or
+  measured end-to-end latency?
   \item How should approximate lowerings be evaluated so output-level error is
   aligned with real inference behavior?
   \item What minimum wiki, issue, and automation loop keeps agentic development
@@ -325,6 +354,11 @@ workload case studies.
 \subsection{Workload Case Studies}
 
 \begin{itemize}
+  \item provisional OLMoE routed tensor program through Transformers, composed
+  of expert-indexed contractions plus nonlinear gating, selection, and
+  aggregation,
+  subject to the best-stock-backend and rejection gate in
+  \texttt{docs/olmoe\_tensor\_contraction\_capstone.md};
   \item Conv1d module and functional Conv1d capture before dense
   materialization;
   \item LoRA or adapter weights merged into a dense projection;
@@ -695,14 +729,23 @@ exercise small fixed-weight cases, record planner cost and memory proxies, and
 include pure-Python timing fields where the benchmark script measures them.
 These artifacts are useful for comparing planner choices and generating paper
 figures, but they are not hardware-calibrated speedup evidence and do not
-stand in for production kernels. Claims about GPU kernels, production runtime
-speedups, or backend-specific scheduling are deliberately out of scope until a
-future backend study adds measured runtime evidence. The benchmark contract in
+stand in for production kernels. They therefore do not satisfy the active
+project-level north star. The benchmark contract in
 \texttt{docs/hardware\_backed\_production\_benchmark\_contract.md} defines the
-future PEFT multi-adapter CUDA readiness bar for such evidence, including
+now-paused PEFT multi-adapter CUDA readiness bar, including
 correctness-first interpretation, latency, memory, preprocessing,
 adapter-switching/control, and dense-fallback fields. That contract is not
 itself evidence for a hardware speedup or memory/control win.
+
+The provisional OLMoE target has an additional threat: current Transformers
+already preserves routed-expert structure through grouped, batched, and
+optimized backends. A benchmark that compares only against eager or omits an
+applicable compiled stock configuration would launder an existing upstream
+optimization into a new contribution. The target-validation gate in
+\texttt{docs/olmoe\_tensor\_contraction\_capstone.md} therefore requires the best
+applicable stock configuration per regime, a distinct changed execution,
+end-to-end prefill or decode evidence, and rejection of OLMoE if no remaining
+opportunity is found.
 
 Recovery after provenance is lost is weaker than preserving provenance before
 dense lowering. The analyzer confidence values are probe-specific heuristic
@@ -747,9 +790,15 @@ new follow-up issue by itself.
 
 \section{Completion Criteria}
 
-The project reaches its north star when:
+The project reaches its north star only when:
 
 \begin{enumerate}
+  \item one external open-source project contains an externally reviewable,
+  distinct provenance-enabled tensor-contraction execution;
+  \item that execution improves median end-to-end inference latency or
+  throughput by at least 10\% against the best applicable stock strategy for at
+  least one predefined regime, regresses no required regime by more than 5\%,
+  and passes correctness everywhere before performance is interpreted;
   \item the whitepaper is internally consistent and all major claims map to
   tests, demos, benchmark artifacts, or clearly labeled future work, with the
   current mapping recorded in \texttt{docs/evidence\_matrix.md};
@@ -760,30 +809,28 @@ The project reaches its north star when:
   \item the wiki concisely defines the project, north star, coverage boundary,
   issue loop, and artifact map;
   \item GitHub issues show no unresolved priority-zero or priority-one blockers
-  against the paper thesis;
+  against the external-result thesis;
   \item retrospective review finds no major duplication, stale claims, or stuck
   PRs that would change the conclusions.
 \end{enumerate}
 
 \section{Completion Audit}
 
-The July 2026 draft now contains the final first-artifact argument: motivation,
+The July 2026 matrix draft contains the bounded first-artifact argument: motivation,
 scope, provenance-aware IR and contracts, frontend capture, recovery,
 approximation builders, planner selection, controlled benchmark evidence,
 workload case-study evidence, recovery and approximation evaluation, related
 work boundaries, limitations, and conclusion. The claim-to-evidence mapping is
 centralized in \texttt{docs/evidence\_matrix.md}; the separate completion note
 in \texttt{docs/completion\_audit.md} records the final audit of claims,
-evidence, limitations, local validation commands, and remaining optional
-follow-up issues.
+evidence, limitations, local validation commands, and remaining follow-up
+issues. It is not the final project result.
 
-The live issue audit found no unresolved priority-zero or priority-one blocker
-that changes the paper thesis. The first-artifact roadmap tracker is historical
-coordination rather than the current roadmap. Quantized workload evidence now
-covers the tested fixed per-tensor affine linear path, while quantized
-convolution capture remains optional follow-up work. These boundaries are
-already reflected in the scope, frontend, IR, evidence, and limitations
-sections above.
+The earlier live issue audit found no unresolved priority-zero or priority-one
+blocker against the bounded matrix artifact. Issue \#129 supersedes that
+project-level completion interpretation: the missing attributable external
+performance result is now an active priority-zero gap. The matrix artifact and
+its quantized, Conv1d, and PEFT boundaries remain accurate historical evidence.
 
 \section{Capstone Boundaries}
 
@@ -809,22 +856,24 @@ threshold win, process-memory reduction, CUDA peak-memory reduction, or
 adapter-switching gain, and keeps performance and memory/control claims at
 \texttt{none}.
 
-The next production/performance step is explicitly contractual rather than
-evidentiary. \texttt{docs/hardware\_backed\_production\_benchmark\_contract.md}
-selects the same OPT-125M two-adapter PEFT serving workload as the minimal
-future CUDA target. Issue \#112 adds CPU process memory/control
-instrumentation, and issue \#113 adds CPU fp32 structured low-rank execution
-selection; CUDA allocator and production-kernel gates must still be satisfied
-before any latency, memory, adapter-switching, or hardware-backed structured
-execution result can support a stronger claim.
+The PEFT hardware contract and issues \#123 through \#126 are paused rather than
+erased. The active next step is the OLMoE target-validation gate in
+\texttt{docs/olmoe\_tensor\_contraction\_capstone.md}. OLMoE is fully open and
+its routed experts form a tensor program around expert-indexed contraction
+subgraphs, but current Transformers already has optimized expert backends. A
+follow-up may implement only after it identifies a remaining cost that
+preserved route, axis, layout, or phase provenance can remove. Otherwise the
+target must be rejected without generalizing the IR.
 
 \section{Conclusion}
 
-Beyond Matmul treats dense multiplication as a powerful lowering, not the only
-truth a compiler or runtime should remember. By preserving computation reason
-provenance, the project aims to make structured inference paths measurable,
-testable, and available to a planner. The final success condition is not a large
-surface area of code; it is a clear research argument with enough executable
-evidence to make the argument hard to dismiss.
+Beyond Matmul treats dense, batched, and grouped multiplication as powerful
+lowerings, not the only truth a compiler or runtime should remember. By
+preserving tensor axes, routing, structure, layout, and computation reason, the
+project aims to make structured inference paths measurable, testable, and
+available to a planner. The final success condition is not a large surface area
+of code or a well-labeled negative artifact; it is one attributable external
+performance result with enough executable evidence to make the argument hard to
+dismiss.
 
 \end{document}
