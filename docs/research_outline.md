@@ -2,10 +2,17 @@
 
 ## Thesis
 
-Many matmuls in ML systems are semantically structured computations that were
-densified for convenience. A provenance-aware linear-operator IR can preserve or
-recover that structure and allow a planner to choose exact or bounded-error
-lowerings that are cheaper than dense GEMM for fixed-weight inference.
+Many tensor contractions in ML systems are lowered into generic matrix kernels
+after facts such as named axes, routing, factorization, sparsity, grouping, and
+reuse have been erased. Preserving those facts can enable a planner or backend
+to choose an exact or bounded-error lowering that is cheaper than premature
+generic contraction. Matrix multiplication is the rank-2 case, and GEMM remains
+a valid fallback.
+
+The project-level claim is not complete until one external open-source project
+shows an attributable end-to-end inference improvement caused by a distinct
+provenance-enabled execution. The current matrix IR is enabling and historical
+evidence, not that final result.
 
 ## Minimum Viable Artifact
 
@@ -29,6 +36,24 @@ lowerings that are cheaper than dense GEMM for fixed-weight inference.
 9. A completion audit in `docs/completion_audit.md` that records final-draft
    claim support, limitations, blocker status, validation commands, and
    optional follow-up issues.
+10. One independently reviewed external-project capstone that beats the best
+    applicable stock strategy by the predefined threshold while preserving
+    correctness and fallbacks.
+
+## Active External Target Validation
+
+The provisional target is `allenai/OLMoE-1B-7B-0924` through Hugging Face
+Transformers. The routed expert computation combines token hidden states,
+token-to-expert assignments, routing weights, and 3D expert tensors. Its target
+definition and rejection gate are in
+`docs/olmoe_tensor_contraction_capstone.md`.
+
+Current Transformers already supports eager, batched, grouped, and fused MoE
+backends. Their existing gains are background evidence that routing provenance
+matters; they are not a Beyond Matmul contribution. Target validation must find
+a remaining cost and a distinct, externally reviewable execution that could
+beat the best applicable stock backend. Otherwise OLMoE is rejected before a
+general tensor IR or broad kernel platform is built.
 
 ## Prototype Modules
 
@@ -88,7 +113,7 @@ Current workload case-study artifacts:
 - A fixed per-tensor affine quantized linear module preserving packed integer
   payload, scale, and zero point before dense dequantized fallback.
 
-Future workload case studies still outside the current artifact:
+Future workload case studies still outside the implemented matrix artifact:
 
 - Attention projection with fixed structured weights; full masked attention,
   broadcast mask contracts, score masking, softmax, KV-cache layout, and
@@ -177,7 +202,7 @@ Closed PEFT multi-adapter serving follow-up:
   process-memory savings, CUDA peak-memory savings, adapter-switching gains,
   training, generation loops, GPU kernels, or universal Transformer speedups.
 
-Future hardware-backed production/performance contract:
+Paused PEFT hardware-backed production/performance contract:
 
 - The contract is
   `docs/hardware_backed_production_benchmark_contract.md`: a design target for
@@ -189,19 +214,23 @@ Future hardware-backed production/performance contract:
 - The contract distinguishes forward latency, CUDA memory, preprocessing,
   adapter-switching/control, and dense fallback readiness fields before any
   performance claim can be interpreted.
-- This is future work only. It is not current hardware evidence and does not
-  move GPU speedups, memory savings, production kernels, or universal
-  Transformer acceleration into the supported claim set.
+- This remains a valid historical contract, but issue #129 pauses issues #123
+  through #126 while the external tensor-contraction target is selected. It is
+  not current hardware evidence and does not move GPU speedups, memory savings,
+  production kernels, or universal Transformer acceleration into the supported
+  claim set.
 
 Metrics:
 
 - wall-clock latency
+- end-to-end prefill and decode throughput against the best stock strategy
 - operation-count proxy
 - memory footprint proxy
 - preprocessing cost
 - required calls to amortize preprocessing
 - matrix reconstruction error
 - product/output error on representative inputs
+- tensor-axis, route, layout, and phase provenance needed for attribution
 
 Current bounded evidence: `benchmarks/approximation_error_ablation.py` emits a
 deterministic JSON artifact for one synthetic dense matrix and one fixed sample

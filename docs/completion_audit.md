@@ -9,7 +9,28 @@ companion to `whitepaper/main.tex`,
 `docs/evidence_matrix.md`, and `docs/benchmark_artifacts.md`, not a
 replacement for those sources of truth.
 
-## Final Draft Status
+## July 14 North-Star Correction
+
+The phrase "final first artifact" is historical, not the current project-level
+completion state. Issue #129 restores the stronger finish line: preserved
+tensor-contraction provenance must cause an attributable inference performance
+improvement in an external open-source project. Matrix multiplication is the
+rank-2 case, and the implemented matrix IR remains bounded prior work.
+
+`allenai/OLMoE-1B-7B-0924` through Transformers is the provisional target. Its
+routed expert computation is a higher-order contraction over token, selected
+expert, expert, hidden, intermediate, and output axes. Current Transformers
+already provides provenance-aware grouped, batched, and fused expert backends,
+so reproducing an existing eager-versus-optimized win cannot satisfy the new
+capstone. `docs/olmoe_tensor_contraction_capstone.md` defines the best-stock
+baseline, 10% win, 5% regression, correctness, external-review, and rejection
+gates.
+
+The project is therefore not complete. No general tensor IR should be added
+until target validation finds a remaining attributable OLMoE opportunity. The
+PEFT CUDA roadmap in issues #123 through #126 is paused pending this decision.
+
+## Historical Final Draft Status
 
 `whitepaper/main.tex` now integrates the project motivation, fixed-weight
 scope, provenance-aware IR, frontend capture, recovery analyzer, approximation
@@ -40,12 +61,13 @@ curation is paper-polish work that does not change the executable evidence.
 ## Open Blocker Audit
 
 Live GitHub issue state on 2026-07-08 showed no unresolved priority-zero or
-priority-one blocker against the first-artifact thesis. On 2026-07-09, #109
+priority-one blocker against the bounded first-artifact thesis. On 2026-07-09, #109
 corrected the PEFT capstone shape grid from invalid seq128 rows to valid
 seq100 rows and refreshed the measured artifact. The newly opened
-production/performance roadmap issues (#110 through #114) are follow-on work
-for stronger future claims; they do not invalidate the bounded first-artifact
-completion state.
+production/performance roadmap issues (#110 through #114) were follow-on work
+for stronger claims. Issue #129 now records that the missing external result
+does invalidate project-level completion, without changing the accuracy of the
+historical first-artifact audit.
 
 After the final-draft work merged, the first-artifact completion state became
 historical context rather than an active blocker:
@@ -140,6 +162,8 @@ adapter-switch threshold win is claimed, and `summary.performance_claim` plus
   to this audit for the final status.
 - PEFT reader pointers are historical capstone and serving evidence, not a next
   capstone target.
+- `docs/olmoe_tensor_contraction_capstone.md` is the active target decision and
+  rejection gate; it is not benchmark evidence.
 
 ## Validation Commands
 
@@ -163,6 +187,11 @@ scripts/ci_local
 - Benchmark timings remain pure-Python proxies.
 - Live Conv1d and external PEFT runs are measured local CPU artifacts, not
   production performance evidence.
+- OLMoE is only a provisional candidate, current Transformers already has
+  strong routed-expert backends, and no remaining attributable gap has been
+  measured.
+- The hardware cohort required to run the pinned full OLMoE model has not yet
+  been selected or secured.
 - Recovery confidence remains heuristic and sample-limited.
 - Quantized convolution, per-axis/per-channel or dynamic quantization, full
   masked attention, Conv2d, broader CNN blocks, production integer kernels, and

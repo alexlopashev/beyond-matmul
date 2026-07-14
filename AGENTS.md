@@ -1,9 +1,12 @@
 # Agent Operating Contract
 
 This repository is an R&D artifact for the Beyond Matmul project. The north
-star is a final whitepaper, supported by a compact codebase and evidence, that
-shows how preserving computation provenance can make fixed-weight ML inference
-cheaper, clearer, or more controllable than premature dense GEMM lowering.
+star is one independently reviewed result in an external open-source ML project
+showing that preserved tensor-contraction provenance causes an attributable
+inference performance improvement. Matrix multiplication is the rank-2 case;
+dense GEMM, batched GEMM, grouped GEMM, and generic contraction remain valid
+fallbacks. The whitepaper and compact codebase explain, reproduce, and bound
+that external result.
 
 ## Non-Negotiables
 
@@ -14,6 +17,11 @@ cheaper, clearer, or more controllable than premature dense GEMM lowering.
 - Treat GitHub issues as the state of the world.
 - Do not self-merge implementation PRs.
 - Keep wiki, docs, and whitepaper claims synchronized with executable evidence.
+- Do not count metadata-only provenance, a synthetic proxy, an existing
+  upstream optimization, or a comparison against a knowingly weak baseline as
+  the external performance result.
+- Do not generalize the matrix IR into a universal tensor IR before the active
+  external target passes its documented validation gate.
 
 ## Worktree Discipline
 
@@ -70,8 +78,8 @@ git config core.hooksPath .githooks
   the issue explicitly requires it.
 - Keep benchmarks honest: distinguish pure-Python proxies from performance
   evidence.
-- Preserve dense GEMM as a valid fallback. The claim is richer operator space,
-  not "matmul bad."
+- Preserve dense GEMM, batched GEMM, grouped GEMM, and generic contraction as
+  valid fallbacks. The claim is richer operator space, not "matmul bad."
 
 ## Issue State
 
@@ -112,6 +120,11 @@ criteria, current coverage, and operating loop. Avoid duplicated slop.
 The whitepaper in `whitepaper/` is the cumulative research argument. Keep it
 accurate to the codebase. Do not make claims that are not backed by tests,
 demos, benchmark artifacts, or clearly marked future work.
+
+The project-level north star is not complete merely because unsupported claims
+are labeled as future work. Completion requires the external attributable
+performance result defined above; a negative target-validation result should
+reject or replace the target rather than redefine success after measurement.
 
 ## Definition Of Done
 

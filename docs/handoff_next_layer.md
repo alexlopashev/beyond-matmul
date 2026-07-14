@@ -2,11 +2,18 @@
 
 Date: 2026-07-05
 
-Final-draft status is tracked in `whitepaper/main.tex`,
+Status update: 2026-07-14
+
+The cumulative research draft is tracked in `whitepaper/main.tex`,
 `docs/evidence_matrix.md`, and `docs/completion_audit.md`. This handoff remains
-useful for next-layer engineering context, but the completion audit is the
-current source for first-artifact claim support, limitations, validation
-commands, and optional follow-up issues.
+useful for historical engineering context, but the OLMoE capstone document is
+the current roadmap source and the completion audit distinguishes first-artifact
+claim support from project-level completion.
+
+This file's original recommended frontend/Conv1d work is historical and has
+already landed. The active next layer is the external OLMoE tensor-contraction
+target validation in `docs/olmoe_tensor_contraction_capstone.md`. Do not use the
+old suggested PR at the end of this file as current roadmap state.
 
 ## Current State
 
@@ -101,6 +108,17 @@ after dense materialization.
 - Approximation search is basic and not learned or hardware aware.
 
 ## Recommended Next Layer
+
+Superseded by issue #129. The current order is:
+
+1. Freeze one OLMoE hardware/dependency cohort and benchmark every applicable
+   stock experts backend.
+2. Reject OLMoE if no cost remains beyond the best stock strategy.
+3. Only after the gate passes, implement one distinct provenance-enabled routed
+   contraction and measure full-model prefill and decode.
+4. Generalize the local IR only from concepts required by that result.
+
+The recommendations below are retained as historical context.
 
 1. Harden Torch FX capture further.
 
