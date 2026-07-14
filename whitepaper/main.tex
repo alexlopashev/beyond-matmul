@@ -410,10 +410,14 @@ backend/compilation configuration, including explicit exclusions and failures,
 without loading OLMoE or measuring performance. The real path pins the model
 and Transformers revisions, compares last-token logits with uncompiled eager,
 and records GPU/driver identity, CUDA-event latency, wall time, throughput,
-setup, allocator, and effective stage-backend fields. Grouped/default decode
-rows reproduce the upstream grouped-prefill to batched-decode switch rather
-than timing a direct grouped cached forward that stock generation would not
-use. No real CUDA OLMoE artifact exists yet; the harness therefore keeps
+setup, allocator, and effective stage-backend fields. Serving prefill includes
+KV-cache construction, while decode excludes prompt construction from the
+one-token timing and allocator peak but records the resident cache baseline.
+The real path refuses a reduced compilation inventory and checks the full
+DeepGEMM \texttt{nvcc} toolkit version. Grouped/default decode rows reproduce
+the upstream grouped-prefill to batched-decode switch rather than timing a
+direct grouped cached forward that stock generation would not use. No real
+CUDA OLMoE artifact exists yet; the harness therefore keeps
 \texttt{target\_decision\_ready=false} and
 \texttt{performance\_claim=none}. Issue \#133 owns the measured stock cohort,
 profiling, and accept-or-reject decision.

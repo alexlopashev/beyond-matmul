@@ -164,7 +164,13 @@ regime/configuration cross product and explicit exclusions without running the
 model. The real path pins the model and Transformers revisions, uses
 uncompiled eager last-token logits as the semantic reference, and fixes maximum
 absolute `0.125` plus relative-L2 `0.01` tolerances before any candidate exists.
-It records routing attribution as still required rather than fabricating it.
+Real mode refuses a reduced compile inventory. Serving prefill constructs the
+KV cache inside its timed region; decode constructs the prompt cache outside
+the one-token timed and allocator-peak regions while retaining its resident
+bytes as the decode baseline. DeepGEMM readiness checks the full `nvcc` toolkit
+version required by the pinned integration, not only PyTorch's bundled CUDA
+runtime. It records routing attribution as still required rather than
+fabricating it.
 Issue #133 owns the real CUDA artifact, profiling, and binary target decision;
 neither a smoke artifact nor a row-complete stock cohort is a performance result
 or permission to open an optimization issue.

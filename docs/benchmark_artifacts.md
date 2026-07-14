@@ -31,9 +31,10 @@ after prompt lengths 128 and 512. Prompt prefill is setup for decode and is not
 included in the per-token timed region. A stock grouped/default decode row uses
 grouped prompt prefill and the same grouped-to-batched stage switch that
 Transformers generation applies; both effective backends are recorded. Inputs
-are deterministic token IDs, and correctness compares last-token logits with
-stock uncompiled eager using fixed maximum-absolute `0.125` and relative-L2
-`0.01` tolerances.
+are deterministic token IDs. Full-model prefill uses `use_cache=true`; KV-cache
+construction is part of the prefill timed region. Correctness compares
+last-token logits with stock uncompiled eager using fixed maximum-absolute
+`0.125` and relative-L2 `0.01` tolerances.
 
 For every regime, the inventory contains stock default, eager, `batched_mm`,
 `grouped_mm`, `deepgemm`, and `sonicmoe`. It also contains the runtime-supported
@@ -42,7 +43,8 @@ For every regime, the inventory contains stock default, eager, `batched_mm`,
 kernels that do not apply. GPU UUID, device properties, NVIDIA driver, CUDA
 runtime, pinned Transformers source revision, model revision, compilation mode,
 and external-kernel dependencies are checked or recorded rather than silently
-skipped.
+skipped. Real mode refuses a reduced compile-mode list, so a caller cannot
+silently turn a partial search into a complete cohort.
 
 Run the schema-only CI smoke with:
 
@@ -56,11 +58,11 @@ pinned source and external-kernel dependencies:
 ```bash
 mise exec -- uv run \
   --with 'transformers @ git+https://github.com/huggingface/transformers.git@a6895655b289cc3fdd29afec36904e0b8545ef92' \
-  --with accelerate \
-  --with safetensors \
-  --with huggingface_hub \
-  --with kernels \
-  --with nvidia-cutlass-dsl \
+  --with accelerate==1.14.0 \
+  --with safetensors==0.8.0 \
+  --with huggingface-hub==1.23.0 \
+  --with kernels==0.15.2 \
+  --with nvidia-cutlass-dsl==4.6.0 \
   python benchmarks/olmoe_stock_baseline.py \
   --real \
   --warmup-repetitions 5 \
@@ -70,18 +72,28 @@ mise exec -- uv run \
 
 Each successful row records eager-relative correctness, CUDA-event and wall
 samples and medians, token throughput, setup/warmup timing, decode prompt
-prefill timing, CUDA allocator state, and the resolved experts backend. Routing
-overhead remains explicitly `requires_profiled_target_validation` until issue
-#133 adds the profiler attribution required for the accept-or-reject decision.
-Failed, blocked, hardware-inapplicable, and contract-excluded rows remain in the
-artifact with reasons.
+prefill timing, CUDA allocator state, and the resolved experts backend. Decode
+allocator peaks reset only after prompt prefill and backend switching, record
+the resident KV-cache baseline, and exclude prompt setup from the one-token
+peak. DeepGEMM preflight separately records the `nvcc` path and full CUDA
+toolkit version because the pinned Transformers integration has no NVRTC
+fallback; Hopper requires toolkit 12.3 or newer and Blackwell requires 12.9 or
+newer. Routing overhead remains explicitly
+`requires_profiled_target_validation` until issue #133 adds the profiler
+attribution required for the accept-or-reject decision. Failed, blocked,
+hardware-inapplicable, and contract-excluded rows remain in the artifact with
+reasons.
 
 The harness contains no candidate implementation or candidate field. A smoke
 artifact is not performance evidence, and a future real artifact may set
-`cohort_complete=true` only after every applicable stock configuration passes
-correctness and measurement. It always keeps `target_decision_ready=false` and
-`performance_claim=none`; issue #133 owns profiling, best-stock interpretation,
-and the binary OLMoE accept-or-reject decision.
+`cohort_complete=true` only after every applicable stock configuration has an
+explicit terminal attempt and every regime has at least one correct successful
+stock row. Interpretable upstream configuration failures remain as warnings and
+are never eligible for best-stock selection; blocked, missing, or nonterminal
+attempts keep the cohort incomplete. The artifact always keeps
+`target_decision_ready=false` and `performance_claim=none`; issue #133 owns
+profiling, best-successful-stock interpretation, and the binary OLMoE
+accept-or-reject decision.
 
 ## Live Conv1d Whisper Dense-vs-Direct Benchmark
 

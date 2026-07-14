@@ -2,6 +2,7 @@ import importlib.util
 import json
 import tempfile
 import unittest
+from contextlib import nullcontext
 from unittest import mock
 from pathlib import Path
 
@@ -29,6 +30,7 @@ class OlmoeStockBaselineTests(unittest.TestCase):
             benchmark.TRANSFORMERS_REVISION,
             "a6895655b289cc3fdd29afec36904e0b8545ef92",
         )
+        self.assertEqual(benchmark.PINNED_DEPENDENCY_VERSIONS["kernels"], "0.15.2")
 
     def test_required_regimes_cover_prefill_and_decode_grid(self):
         benchmark = _load_benchmark_module()
@@ -123,6 +125,11 @@ class OlmoeStockBaselineTests(unittest.TestCase):
         self.assertEqual(artifact["summary"]["candidate_measurements_present"], False)
         self.assertIn("contract_smoke_not_performance_evidence", artifact["summary"]["readiness_blockers"])
         self.assertEqual(artifact["best_stock_by_regime"], [])
+        self.assertTrue(artifact["measurement_contract"]["prefill_builds_kv_cache"])
+        self.assertEqual(
+            artifact["pins"]["compile_modes"],
+            list(benchmark.DEFAULT_COMPILE_MODES),
+        )
 
         required_fields = {
             "regime_id",
@@ -174,7 +181,7 @@ class OlmoeStockBaselineTests(unittest.TestCase):
 
         artifact = benchmark.collect_results(
             mode="real",
-            compile_modes=["default", "max-autotune-no-cudagraphs"],
+            compile_modes=benchmark.DEFAULT_COMPILE_MODES,
             environment=environment,
             run_configuration=run_configuration,
             command=["python", "benchmarks/olmoe_stock_baseline.py", "--real"],
@@ -190,6 +197,19 @@ class OlmoeStockBaselineTests(unittest.TestCase):
             {"sonicmoe__uncompiled"},
         )
 
+    def test_real_collection_rejects_a_reduced_compile_inventory(self):
+        benchmark = _load_benchmark_module()
+
+        with self.assertRaisesRegex(ValueError, "full pinned compile mode inventory"):
+            benchmark.collect_results(
+                mode="real",
+                compile_modes=["default"],
+                environment=_available_environment(benchmark),
+                run_configuration=lambda _configuration, regimes: [
+                    _successful_measurement(regime, 1.0) for regime in regimes
+                ],
+            )
+
     def test_missing_executor_regime_becomes_an_explicit_failure(self):
         benchmark = _load_benchmark_module()
         environment = _available_environment(benchmark)
@@ -202,7 +222,7 @@ class OlmoeStockBaselineTests(unittest.TestCase):
 
         artifact = benchmark.collect_results(
             mode="real",
-            compile_modes=["default"],
+            compile_modes=benchmark.DEFAULT_COMPILE_MODES,
             environment=environment,
             run_configuration=omit_last_regime,
         )
@@ -214,12 +234,56 @@ class OlmoeStockBaselineTests(unittest.TestCase):
         ]
         required_configuration_count = sum(
             row["eligibility"] == "required"
-            for row in benchmark.configuration_inventory(["default"])
+            for row in benchmark.configuration_inventory(benchmark.DEFAULT_COMPILE_MODES)
         )
         self.assertEqual(len(failures), required_configuration_count)
         self.assertTrue(artifact["summary"]["row_inventory_complete"])
         self.assertFalse(artifact["summary"]["cohort_complete"])
-        self.assertIn("required_measurements_failed", artifact["summary"]["readiness_blockers"])
+        self.assertIn("required_measurements_incomplete", artifact["summary"]["readiness_blockers"])
+        self.assertEqual(artifact["best_stock_by_regime"], [])
+
+    def test_interpretable_stock_failure_still_allows_best_successful_selection(self):
+        benchmark = _load_benchmark_module()
+        environment = _available_environment(benchmark)
+
+        def fail_deepgemm(configuration, regimes):
+            if configuration["experts_backend"] == "deepgemm":
+                raise RuntimeError("upstream kernel rejected this configuration")
+            return [_successful_measurement(regime, 1.0) for regime in regimes]
+
+        artifact = benchmark.collect_results(
+            mode="real",
+            compile_modes=benchmark.DEFAULT_COMPILE_MODES,
+            environment=environment,
+            run_configuration=fail_deepgemm,
+        )
+
+        self.assertTrue(artifact["summary"]["cohort_complete"])
+        self.assertIn("stock_configuration_failures", artifact["summary"]["warnings"])
+        self.assertNotIn("required_measurements_failed", artifact["summary"]["readiness_blockers"])
+        self.assertEqual(len(artifact["best_stock_by_regime"]), 8)
+
+    def test_dependency_failure_keeps_the_real_cohort_incomplete(self):
+        benchmark = _load_benchmark_module()
+        environment = _available_environment(benchmark)
+
+        def fail_deepgemm_dependency(configuration, regimes):
+            if configuration["experts_backend"] == "deepgemm":
+                raise ImportError("kernel package could not load")
+            return [_successful_measurement(regime, 1.0) for regime in regimes]
+
+        artifact = benchmark.collect_results(
+            mode="real",
+            compile_modes=benchmark.DEFAULT_COMPILE_MODES,
+            environment=environment,
+            run_configuration=fail_deepgemm_dependency,
+        )
+
+        self.assertFalse(artifact["summary"]["cohort_complete"])
+        self.assertIn(
+            "required_measurements_incomplete",
+            artifact["summary"]["readiness_blockers"],
+        )
         self.assertEqual(artifact["best_stock_by_regime"], [])
 
     def test_incorrect_faster_row_is_never_selected_as_best_stock(self):
@@ -281,7 +345,7 @@ class OlmoeStockBaselineTests(unittest.TestCase):
 
         artifact = benchmark.collect_results(
             mode="real",
-            compile_modes=["default"],
+            compile_modes=benchmark.DEFAULT_COMPILE_MODES,
             environment=environment,
             run_configuration=lambda _configuration, regimes: [
                 _successful_measurement(regime, 1.0) for regime in regimes
@@ -317,7 +381,7 @@ class OlmoeStockBaselineTests(unittest.TestCase):
         with mock.patch.object(benchmark, "RealConfigurationRunner", FakeRunner):
             artifact = benchmark.collect_results(
                 mode="real",
-                compile_modes=["default"],
+                compile_modes=benchmark.DEFAULT_COMPILE_MODES,
                 environment=environment,
                 warmup_repetitions=2,
                 measured_repetitions=3,
@@ -373,30 +437,78 @@ class OlmoeStockBaselineTests(unittest.TestCase):
 
     def test_backend_preflight_distinguishes_hardware_exclusion_from_missing_dependency(self):
         benchmark = _load_benchmark_module()
+        compatible_dependencies = {
+            "kernels": benchmark.PINNED_DEPENDENCY_VERSIONS["kernels"],
+            "nvidia-cutlass-dsl": benchmark.PINNED_DEPENDENCY_VERSIONS[
+                "nvidia-cutlass-dsl"
+            ],
+        }
 
         ampere = benchmark.backend_availability(
             cuda_available=True,
             compute_capability=(8, 0),
             cuda_runtime="12.8",
             available_modules=set(),
+            cuda_toolkit_version=None,
+            nvcc_available=False,
+            dependency_versions={},
         )
         hopper_without_kernels = benchmark.backend_availability(
             cuda_available=True,
             compute_capability=(9, 0),
             cuda_runtime="12.8",
             available_modules=set(),
+            cuda_toolkit_version="12.8",
+            nvcc_available=True,
+            dependency_versions={},
         )
         hopper_ready = benchmark.backend_availability(
             cuda_available=True,
             compute_capability=(9, 0),
             cuda_runtime="12.8",
             available_modules={"kernels", "cutlass"},
+            cuda_toolkit_version="12.8",
+            nvcc_available=True,
+            dependency_versions=compatible_dependencies,
         )
         blackwell_old_runtime = benchmark.backend_availability(
             cuda_available=True,
             compute_capability=(10, 0),
             cuda_runtime="12.8",
             available_modules={"kernels", "cutlass"},
+            cuda_toolkit_version="12.8",
+            nvcc_available=True,
+            dependency_versions=compatible_dependencies,
+        )
+        blackwell_old_toolkit = benchmark.backend_availability(
+            cuda_available=True,
+            compute_capability=(10, 0),
+            cuda_runtime="13.0",
+            available_modules={"kernels", "cutlass"},
+            cuda_toolkit_version="12.8",
+            nvcc_available=True,
+            dependency_versions=compatible_dependencies,
+        )
+        hopper_without_toolkit = benchmark.backend_availability(
+            cuda_available=True,
+            compute_capability=(9, 0),
+            cuda_runtime="12.8",
+            available_modules={"kernels", "cutlass"},
+            cuda_toolkit_version=None,
+            nvcc_available=False,
+            dependency_versions=compatible_dependencies,
+        )
+        incompatible_kernels = benchmark.backend_availability(
+            cuda_available=True,
+            compute_capability=(9, 0),
+            cuda_runtime="12.8",
+            available_modules={"kernels", "cutlass"},
+            cuda_toolkit_version="12.8",
+            nvcc_available=True,
+            dependency_versions={
+                **compatible_dependencies,
+                "kernels": "0.16.0",
+            },
         )
 
         self.assertEqual(ampere["deepgemm"]["status"], "not_applicable")
@@ -405,8 +517,121 @@ class OlmoeStockBaselineTests(unittest.TestCase):
         self.assertEqual(hopper_without_kernels["sonicmoe"]["status"], "blocked")
         self.assertEqual(hopper_ready["deepgemm"]["status"], "available")
         self.assertEqual(hopper_ready["sonicmoe"]["status"], "available")
+        self.assertEqual(hopper_without_toolkit["deepgemm"]["status"], "blocked")
+        self.assertIn("nvcc", hopper_without_toolkit["deepgemm"]["reason"])
+        self.assertEqual(incompatible_kernels["deepgemm"]["status"], "blocked")
+        self.assertIn("incompatible_kernels_version", incompatible_kernels["deepgemm"]["reason"])
         self.assertEqual(blackwell_old_runtime["deepgemm"]["status"], "blocked")
         self.assertIn("12_9", blackwell_old_runtime["deepgemm"]["reason"])
+        self.assertEqual(blackwell_old_toolkit["deepgemm"]["status"], "blocked")
+        self.assertIn("nvcc_toolkit_12_9", blackwell_old_toolkit["deepgemm"]["reason"])
+
+    def test_cuda_toolkit_probe_records_the_nvcc_version_used_by_deepgemm(self):
+        benchmark = _load_benchmark_module()
+        completed = mock.Mock(
+            returncode=0,
+            stdout="Cuda compilation tools, release 12.9, V12.9.41\n",
+            stderr="",
+        )
+
+        with mock.patch.object(benchmark.os.path, "isfile", return_value=True):
+            metadata = benchmark.probe_cuda_toolkit_metadata(
+                environ={"CUDA_HOME": "/opt/cuda"},
+                run_command=mock.Mock(return_value=completed),
+            )
+
+        self.assertEqual(metadata["status"], "measured")
+        self.assertEqual(metadata["nvcc_path"], "/opt/cuda/bin/nvcc")
+        self.assertEqual(metadata["cuda_toolkit_version"], "12.9")
+
+    def test_core_dependency_preflight_requires_accelerate_and_exact_pins(self):
+        benchmark = _load_benchmark_module()
+        dependencies = dict(benchmark.PINNED_DEPENDENCY_VERSIONS)
+
+        self.assertEqual(benchmark.dependency_readiness_blockers(dependencies), [])
+        dependencies["accelerate"] = None
+        self.assertIn(
+            "accelerate_unavailable",
+            benchmark.dependency_readiness_blockers(dependencies),
+        )
+        dependencies["accelerate"] = "0.1.0"
+        self.assertIn(
+            "accelerate_version_mismatch",
+            benchmark.dependency_readiness_blockers(dependencies),
+        )
+
+    def test_prefill_builds_cache_and_decode_resets_allocator_after_prompt_setup(self):
+        benchmark = _load_benchmark_module()
+
+        prefill_log = []
+        prefill_torch = _FakeTorch(prefill_log)
+        prefill_model = _FakeModel(prefill_log)
+        with mock.patch.object(
+            benchmark,
+            "_deterministic_tokens",
+            return_value=_FakeTensor(),
+        ):
+            prefill_measurement, _ = benchmark._measure_regime(
+                prefill_model,
+                benchmark.required_regimes()[0],
+                prefill_torch,
+                resolved_backend="eager",
+                warmup_repetitions=0,
+                measured_repetitions=1,
+            )
+
+        prefill_calls = [entry for entry in prefill_log if entry[0] == "model"]
+        self.assertEqual(len(prefill_calls), 1)
+        self.assertTrue(prefill_calls[0][1]["use_cache"])
+        self.assertTrue(prefill_measurement["allocator"]["cache_construction_in_timed_region"])
+
+        decode_log = []
+        decode_torch = _FakeTorch(decode_log)
+        decode_model = _FakeModel(decode_log)
+        decode_regime = next(
+            regime for regime in benchmark.required_regimes() if regime["phase"] == "decode"
+        )
+        with mock.patch.object(
+            benchmark,
+            "_deterministic_tokens",
+            return_value=_FakeTensor(),
+        ):
+            decode_measurement, _ = benchmark._measure_regime(
+                decode_model,
+                decode_regime,
+                decode_torch,
+                resolved_backend="grouped_mm",
+                warmup_repetitions=0,
+                measured_repetitions=2,
+            )
+
+        decode_calls = [entry for entry in decode_log if entry[0] == "model"]
+        self.assertEqual(len(decode_calls), 4)
+        for prompt, token in zip(decode_calls[::2], decode_calls[1::2]):
+            self.assertTrue(prompt[1]["use_cache"])
+            self.assertNotIn("past_key_values", prompt[1])
+            self.assertTrue(token[1]["use_cache"])
+            self.assertIn("past_key_values", token[1])
+        reset_indices = [index for index, entry in enumerate(decode_log) if entry[0] == "reset_peak"]
+        prompt_indices = [
+            index
+            for index, entry in enumerate(decode_log)
+            if entry[0] == "model" and "past_key_values" not in entry[1]
+        ]
+        token_indices = [
+            index
+            for index, entry in enumerate(decode_log)
+            if entry[0] == "model" and "past_key_values" in entry[1]
+        ]
+        self.assertEqual(len(reset_indices), 2)
+        self.assertTrue(
+            all(prompt < reset < token for prompt, reset, token in zip(prompt_indices, reset_indices, token_indices))
+        )
+        self.assertTrue(decode_measurement["allocator"]["decode_prompt_setup_excluded"])
+        self.assertEqual(
+            decode_measurement["allocator"]["cache_resident_allocated_bytes"],
+            [100, 100],
+        )
 
     def test_loaded_model_revision_must_match_the_pin(self):
         benchmark = _load_benchmark_module()
@@ -515,6 +740,86 @@ def _successful_measurement(regime, median_cuda_seconds):
         "routing_overhead": {"status": "not_measured", "median_seconds": None},
         "allocator": {"status": "measured", "peak_allocated_bytes": 1024},
     }
+
+
+class _FakeTensor:
+    def detach(self):
+        return self
+
+    def to(self, **_kwargs):
+        return self
+
+
+class _FakeOutput:
+    def __init__(self):
+        self.logits = _FakeTensor()
+        self.past_key_values = object()
+
+
+class _FakeEvent:
+    def __init__(self, log):
+        self.log = log
+
+    def record(self):
+        self.log.append(("event_record",))
+
+    def elapsed_time(self, _other):
+        return 1.0
+
+
+class _FakeCuda:
+    def __init__(self, log):
+        self.log = log
+
+    def synchronize(self):
+        self.log.append(("synchronize",))
+
+    def reset_peak_memory_stats(self, _device):
+        self.log.append(("reset_peak",))
+
+    def memory_allocated(self, _device):
+        self.log.append(("memory_allocated",))
+        return 100
+
+    def max_memory_allocated(self, _device):
+        self.log.append(("max_memory_allocated",))
+        return 150
+
+    def Event(self, *, enable_timing):
+        assert enable_timing
+        return _FakeEvent(self.log)
+
+
+class _FakeTorch:
+    long = object()
+    float32 = object()
+
+    def __init__(self, log):
+        self.cuda = _FakeCuda(log)
+
+    def inference_mode(self):
+        return nullcontext()
+
+    def ones_like(self, *_args, **_kwargs):
+        return _FakeTensor()
+
+    def ones(self, *_args, **_kwargs):
+        return _FakeTensor()
+
+
+class _FakeModel:
+    class config:
+        vocab_size = 16
+
+    def __init__(self, log):
+        self.log = log
+
+    def __call__(self, **kwargs):
+        self.log.append(("model", kwargs))
+        return _FakeOutput()
+
+    def set_experts_implementation(self, backend):
+        self.log.append(("set_backend", backend))
 
 
 if __name__ == "__main__":

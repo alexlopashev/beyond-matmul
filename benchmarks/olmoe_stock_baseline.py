@@ -12,6 +12,8 @@ import json
 import math
 import os
 import platform
+import re
+import shutil
 import statistics
 import subprocess
 import sys
@@ -48,6 +50,16 @@ DEFAULT_COMPILE_MODES = (
 )
 GROUPED_MM_COMPILE_MODES = {"default", "max-autotune-no-cudagraphs"}
 EXTERNAL_KERNEL_BACKENDS = {"deepgemm", "sonicmoe"}
+PINNED_DEPENDENCY_VERSIONS = {
+    "accelerate": "1.14.0",
+    "safetensors": "0.8.0",
+    "huggingface-hub": "1.23.0",
+    "kernels": "0.15.2",
+    "nvidia-cutlass-dsl": "4.6.0",
+}
+CORE_DEPENDENCIES = {"accelerate", "safetensors", "huggingface-hub"}
+KERNELS_MIN_VERSION = "0.15.2"
+KERNELS_MAX_VERSION = "0.16.0"
 
 RunConfiguration = Callable[[Mapping[str, Any], Sequence[Mapping[str, Any]]], Sequence[Mapping[str, Any]]]
 
@@ -153,8 +165,17 @@ def collect_results(
     if mode not in {"contract-smoke", "real"}:
         raise ValueError(f"unsupported mode: {mode}")
 
+    resolved_compile_modes = _validate_compile_modes(
+        compile_modes or DEFAULT_COMPILE_MODES
+    )
+    if mode == "real" and set(resolved_compile_modes) != set(DEFAULT_COMPILE_MODES):
+        raise ValueError(
+            "real mode requires the full pinned compile mode inventory: "
+            + ", ".join(DEFAULT_COMPILE_MODES)
+        )
+
     regimes = required_regimes()
-    configurations = configuration_inventory(compile_modes)
+    configurations = configuration_inventory(resolved_compile_modes)
     resolved_environment = dict(
         environment
         if environment is not None
@@ -240,25 +261,60 @@ def collect_results(
         if row["configuration_eligibility"] == "required"
         and row["runtime_applicability"] != "not_applicable"
     ]
-    cohort_complete = bool(required_results) and all(
-        row["status"] == "ok" and row["correctness"]["status"] == "passed"
+    incomplete_failures = [
+        row
         for row in required_results
+        if row["status"] == "failed" and _is_incomplete_failure_reason(row["reason"])
+    ]
+    blocked_results = [row for row in required_results if row["status"] == "blocked"]
+    nonterminal_results = [
+        row
+        for row in required_results
+        if row["status"] not in {"ok", "failed", "blocked"}
+    ]
+    regimes_with_correct_stock = {
+        row["regime_id"]
+        for row in required_results
+        if row["status"] == "ok" and row["correctness"]["status"] == "passed"
+    }
+    all_regimes_have_correct_stock = regimes_with_correct_stock == {
+        regime["regime_id"] for regime in regimes
+    }
+    cohort_complete = (
+        mode == "real"
+        and bool(required_results)
+        and row_inventory_complete
+        and not blocked_results
+        and not nonterminal_results
+        and not incomplete_failures
+        and all_regimes_have_correct_stock
     )
     readiness_blockers = list(resolved_environment.get("readiness_blockers", []))
+    warnings: List[str] = []
     if mode == "contract-smoke":
         readiness_blockers.append("contract_smoke_not_performance_evidence")
     if not row_inventory_complete:
         readiness_blockers.append("required_row_inventory_incomplete")
-    if any(row["status"] == "failed" for row in required_results):
-        readiness_blockers.append("required_measurements_failed")
+    if blocked_results and mode == "real":
+        readiness_blockers.append("required_measurements_blocked")
+    if (incomplete_failures or nonterminal_results) and mode == "real":
+        readiness_blockers.append("required_measurements_incomplete")
+    if not all_regimes_have_correct_stock and mode == "real":
+        readiness_blockers.append("no_correct_stock_configuration_for_every_regime")
+    if any(
+        row["status"] == "failed" and row not in incomplete_failures
+        for row in required_results
+    ):
+        warnings.append("stock_configuration_failures")
     if any(
         row["status"] == "ok" and row["correctness"]["status"] != "passed"
         for row in required_results
     ):
-        readiness_blockers.append("correctness_checks_failed")
+        warnings.append("stock_configuration_correctness_failures")
     if not cohort_complete and mode == "real" and not readiness_blockers:
         readiness_blockers.append("required_measurements_incomplete")
     readiness_blockers = _deduplicate(readiness_blockers)
+    warnings = _deduplicate(warnings)
 
     best_stock = select_best_stock_rows(results) if mode == "real" and cohort_complete else []
     return {
@@ -274,6 +330,8 @@ def collect_results(
             "transformers_revision": TRANSFORMERS_REVISION,
             "dtype": DTYPE,
             "input_seed": INPUT_SEED,
+            "compile_modes": list(DEFAULT_COMPILE_MODES),
+            "dependency_versions": dict(PINNED_DEPENDENCY_VERSIONS),
         },
         "correctness_contract": {
             "reference_configuration": "eager__uncompiled",
@@ -284,8 +342,11 @@ def collect_results(
         "measurement_contract": {
             "warmup_repetitions": warmup_repetitions,
             "measured_repetitions": measured_repetitions,
-            "prefill_setup_in_timed_region": False,
+            "input_preparation_in_timed_region": False,
+            "prefill_builds_kv_cache": True,
+            "prefill_cache_construction_in_timed_region": True,
             "decode_prompt_prefill_in_timed_region": False,
+            "decode_allocator_peak_excludes_prompt_prefill": True,
             "primary_timing": "cuda_event_median_seconds",
         },
         "environment": resolved_environment,
@@ -300,6 +361,7 @@ def collect_results(
             "candidate_measurements_present": False,
             "performance_claim": "none",
             "readiness_blockers": readiness_blockers,
+            "warnings": warnings,
         },
     }
 
@@ -390,6 +452,9 @@ def backend_availability(
     compute_capability: Sequence[int] | None,
     cuda_runtime: str | None,
     available_modules: set[str],
+    cuda_toolkit_version: str | None,
+    nvcc_available: bool,
+    dependency_versions: Mapping[str, str | None],
 ) -> Dict[str, Dict[str, str | None]]:
     if not cuda_available:
         return {
@@ -402,6 +467,7 @@ def backend_availability(
         for backend in STOCK_BACKENDS
     }
     capability = tuple(compute_capability or ())
+    capability_major = capability[0] if capability else 0
     if capability < (9, 0):
         for backend in EXTERNAL_KERNEL_BACKENDS:
             availability[backend] = {
@@ -410,27 +476,65 @@ def backend_availability(
             }
         return availability
 
-    if capability >= (10, 0) and _version_tuple(cuda_runtime) < (12, 9):
+    if capability_major not in {9, 10}:
         availability["deepgemm"] = {
-            "status": "blocked",
-            "reason": "deepgemm_blackwell_requires_cuda_12_9_or_newer",
+            "status": "not_applicable",
+            "reason": "deepgemm_supports_only_compute_capability_9_or_10",
         }
-    elif _version_tuple(cuda_runtime) < (12, 3):
-        availability["deepgemm"] = {
-            "status": "blocked",
-            "reason": "deepgemm_requires_cuda_12_3_or_newer",
-        }
-    elif "kernels" not in available_modules:
-        availability["deepgemm"] = {
-            "status": "blocked",
-            "reason": "deepgemm_requires_kernels_package",
-        }
+    else:
+        minimum_cuda = (12, 9) if capability_major == 10 else (12, 3)
+        minimum_label = "12_9" if capability_major == 10 else "12_3"
+        if _version_tuple(cuda_runtime) < minimum_cuda:
+            availability["deepgemm"] = {
+                "status": "blocked",
+                "reason": f"deepgemm_requires_cuda_runtime_{minimum_label}_or_newer",
+            }
+        elif not nvcc_available or cuda_toolkit_version is None:
+            availability["deepgemm"] = {
+                "status": "blocked",
+                "reason": "deepgemm_requires_nvcc_cuda_toolkit",
+            }
+        elif _version_tuple(cuda_toolkit_version) < minimum_cuda:
+            availability["deepgemm"] = {
+                "status": "blocked",
+                "reason": f"deepgemm_requires_nvcc_toolkit_{minimum_label}_or_newer",
+            }
+        elif "kernels" not in available_modules:
+            availability["deepgemm"] = {
+                "status": "blocked",
+                "reason": "deepgemm_requires_kernels_package",
+            }
+        elif not _version_in_half_open_range(
+            dependency_versions.get("kernels"),
+            KERNELS_MIN_VERSION,
+            KERNELS_MAX_VERSION,
+        ):
+            availability["deepgemm"] = {
+                "status": "blocked",
+                "reason": "deepgemm_incompatible_kernels_version",
+            }
 
     missing_sonic_modules = sorted({"kernels", "cutlass"} - available_modules)
     if missing_sonic_modules:
         availability["sonicmoe"] = {
             "status": "blocked",
             "reason": "sonicmoe_missing_modules:" + ",".join(missing_sonic_modules),
+        }
+    elif not _version_in_half_open_range(
+        dependency_versions.get("kernels"),
+        KERNELS_MIN_VERSION,
+        KERNELS_MAX_VERSION,
+    ):
+        availability["sonicmoe"] = {
+            "status": "blocked",
+            "reason": "sonicmoe_incompatible_kernels_version",
+        }
+    elif dependency_versions.get("nvidia-cutlass-dsl") != PINNED_DEPENDENCY_VERSIONS[
+        "nvidia-cutlass-dsl"
+    ]:
+        availability["sonicmoe"] = {
+            "status": "blocked",
+            "reason": "sonicmoe_nvidia_cutlass_dsl_version_mismatch",
         }
     return availability
 
@@ -634,6 +738,7 @@ def _measure_regime(
     measured_repetitions: int,
 ) -> tuple[Dict[str, Any], Any]:
     stage_backends = stage_experts_backends(str(regime["phase"]), resolved_backend)
+    phase = str(regime["phase"])
     input_start = time.perf_counter()
     input_ids = _deterministic_tokens(
         torch,
@@ -645,7 +750,7 @@ def _measure_regime(
     attention_mask = torch.ones_like(input_ids, dtype=torch.long, device="cuda:0")
     decode_token = None
     decode_attention_mask = None
-    if regime["phase"] == "decode":
+    if phase == "decode":
         decode_token = _deterministic_tokens(
             torch,
             batch_size=int(regime["batch_size"]),
@@ -660,79 +765,121 @@ def _measure_regime(
         )
     input_preparation_seconds = time.perf_counter() - input_start
 
-    def prepare_call() -> tuple[Callable[[], Any], float]:
-        if regime["phase"] == "prefill":
-            return (
-                lambda: model(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    use_cache=False,
-                    logits_to_keep=1,
-                ),
-                0.0,
-            )
-
-        if stage_backends["setup"] != stage_backends["timed"]:
-            _set_model_experts_backend(model, stage_backends["setup"])
-        torch.cuda.synchronize()
-        setup_start = time.perf_counter()
-        prompt_output = model(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            use_cache=True,
-            logits_to_keep=1,
-        )
-        torch.cuda.synchronize()
-        setup_seconds = time.perf_counter() - setup_start
-        past_key_values = prompt_output.past_key_values
-        if stage_backends["setup"] != stage_backends["timed"]:
-            _set_model_experts_backend(model, stage_backends["timed"])
-        return (
-            lambda: model(
-                input_ids=decode_token,
-                attention_mask=decode_attention_mask,
-                past_key_values=past_key_values,
-                use_cache=True,
-                logits_to_keep=1,
-            ),
-            setup_seconds,
-        )
-
     warmup_start = time.perf_counter()
     with torch.inference_mode():
         for _ in range(warmup_repetitions):
-            call, _ = prepare_call()
-            call()
-            torch.cuda.synchronize()
+            if phase == "prefill":
+                warmup_output = model(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    use_cache=True,
+                    logits_to_keep=1,
+                )
+                torch.cuda.synchronize()
+                del warmup_output
+            else:
+                if stage_backends["setup"] != stage_backends["timed"]:
+                    _set_model_experts_backend(model, stage_backends["setup"])
+                prompt_output = model(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    use_cache=True,
+                    logits_to_keep=1,
+                )
+                torch.cuda.synchronize()
+                past_key_values = prompt_output.past_key_values
+                del prompt_output
+                if stage_backends["setup"] != stage_backends["timed"]:
+                    _set_model_experts_backend(model, stage_backends["timed"])
+                warmup_output = model(
+                    input_ids=decode_token,
+                    attention_mask=decode_attention_mask,
+                    past_key_values=past_key_values,
+                    use_cache=True,
+                    logits_to_keep=1,
+                )
+                torch.cuda.synchronize()
+                del warmup_output
+                del past_key_values
+            gc.collect()
     warmup_seconds = time.perf_counter() - warmup_start
 
-    torch.cuda.reset_peak_memory_stats(0)
-    allocated_before_bytes = int(torch.cuda.memory_allocated(0))
     cuda_event_seconds: List[float] = []
     wall_seconds: List[float] = []
     decode_prefill_setup_seconds: List[float] = []
-    output = None
+    cleanup_seconds: List[float] = []
+    allocated_before_bytes: List[int] = []
+    peak_allocated_bytes: List[int] = []
+    cache_resident_allocated_bytes: List[int] = []
+    last_token_logits = None
     with torch.inference_mode():
         for _ in range(measured_repetitions):
-            call, setup_seconds = prepare_call()
-            decode_prefill_setup_seconds.append(setup_seconds)
-            start_event = torch.cuda.Event(enable_timing=True)
-            end_event = torch.cuda.Event(enable_timing=True)
-            torch.cuda.synchronize()
-            wall_start = time.perf_counter()
-            start_event.record()
-            output = call()
-            end_event.record()
-            torch.cuda.synchronize()
-            wall_seconds.append(time.perf_counter() - wall_start)
-            cuda_event_seconds.append(float(start_event.elapsed_time(end_event)) / 1000.0)
+            if phase == "decode":
+                if stage_backends["setup"] != stage_backends["timed"]:
+                    _set_model_experts_backend(model, stage_backends["setup"])
+                torch.cuda.synchronize()
+                setup_start = time.perf_counter()
+                prompt_output = model(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    use_cache=True,
+                    logits_to_keep=1,
+                )
+                torch.cuda.synchronize()
+                decode_prefill_setup_seconds.append(time.perf_counter() - setup_start)
+                past_key_values = prompt_output.past_key_values
+                del prompt_output
+                if stage_backends["setup"] != stage_backends["timed"]:
+                    _set_model_experts_backend(model, stage_backends["timed"])
+                torch.cuda.synchronize()
+                cache_resident = int(torch.cuda.memory_allocated(0))
+                cache_resident_allocated_bytes.append(cache_resident)
+                torch.cuda.reset_peak_memory_stats(0)
+                allocated_before_bytes.append(cache_resident)
+                output, cuda_seconds, elapsed_wall_seconds = _timed_cuda_forward(
+                    torch,
+                    lambda: model(
+                        input_ids=decode_token,
+                        attention_mask=decode_attention_mask,
+                        past_key_values=past_key_values,
+                        use_cache=True,
+                        logits_to_keep=1,
+                    ),
+                )
+            else:
+                torch.cuda.synchronize()
+                torch.cuda.reset_peak_memory_stats(0)
+                allocated_before_bytes.append(int(torch.cuda.memory_allocated(0)))
+                output, cuda_seconds, elapsed_wall_seconds = _timed_cuda_forward(
+                    torch,
+                    lambda: model(
+                        input_ids=input_ids,
+                        attention_mask=attention_mask,
+                        use_cache=True,
+                        logits_to_keep=1,
+                    ),
+                )
 
-    assert output is not None
+            cuda_event_seconds.append(cuda_seconds)
+            wall_seconds.append(elapsed_wall_seconds)
+            peak_allocated_bytes.append(int(torch.cuda.max_memory_allocated(0)))
+            last_token_logits = output.logits.detach().to(dtype=torch.float32, device="cpu")
+            cleanup_start = time.perf_counter()
+            del output
+            if phase == "decode":
+                del past_key_values
+            gc.collect()
+            cleanup_seconds.append(time.perf_counter() - cleanup_start)
+
+    assert last_token_logits is not None
     cuda_median = float(statistics.median(cuda_event_seconds))
     wall_median = float(statistics.median(wall_seconds))
     tokens_per_forward = int(regime["tokens_per_timed_forward"])
     throughput = tokens_per_forward / cuda_median if cuda_median > 0.0 else None
-    last_token_logits = output.logits.detach().to(dtype=torch.float32, device="cpu")
+    peak_increments = [
+        max(0, peak - allocated)
+        for peak, allocated in zip(peak_allocated_bytes, allocated_before_bytes)
+    ]
     return (
         {
             "regime_id": regime["regime_id"],
@@ -754,8 +901,11 @@ def _measure_regime(
                 "warmup_seconds": warmup_seconds,
                 "decode_prompt_prefill_median_seconds": (
                     float(statistics.median(decode_prefill_setup_seconds))
-                    if regime["phase"] == "decode"
+                    if phase == "decode"
                     else None
+                ),
+                "inter_iteration_cleanup_median_seconds": float(
+                    statistics.median(cleanup_seconds)
                 ),
                 "included_in_timed_region": False,
             },
@@ -765,12 +915,39 @@ def _measure_regime(
             },
             "allocator": {
                 "status": "measured_cuda_allocator",
-                "allocated_before_bytes": allocated_before_bytes,
-                "peak_allocated_bytes": int(torch.cuda.max_memory_allocated(0)),
+                "scope": "timed_phase_forward_only",
+                "allocated_before_bytes": int(statistics.median(allocated_before_bytes)),
+                "allocated_before_bytes_samples": allocated_before_bytes,
+                "peak_allocated_bytes": max(peak_allocated_bytes),
+                "peak_allocated_bytes_samples": peak_allocated_bytes,
+                "peak_increment_bytes": max(peak_increments),
+                "peak_increment_bytes_samples": peak_increments,
+                "cache_construction_in_timed_region": phase == "prefill",
+                "decode_prompt_setup_excluded": phase == "decode",
+                "cache_resident_allocated_bytes": (
+                    cache_resident_allocated_bytes if phase == "decode" else None
+                ),
             },
         },
         last_token_logits,
     )
+
+
+def _timed_cuda_forward(
+    torch: Any,
+    call: Callable[[], Any],
+) -> tuple[Any, float, float]:
+    start_event = torch.cuda.Event(enable_timing=True)
+    end_event = torch.cuda.Event(enable_timing=True)
+    torch.cuda.synchronize()
+    wall_start = time.perf_counter()
+    start_event.record()
+    output = call()
+    end_event.record()
+    torch.cuda.synchronize()
+    wall_seconds = time.perf_counter() - wall_start
+    cuda_seconds = float(start_event.elapsed_time(end_event)) / 1000.0
+    return output, cuda_seconds, wall_seconds
 
 
 def _set_model_experts_backend(model: Any, backend: str) -> None:
@@ -867,11 +1044,24 @@ def probe_environment() -> Dict[str, Any]:
             "torch",
             "transformers",
             "accelerate",
+            "safetensors",
+            "huggingface-hub",
             "kernels",
             "nvidia-cutlass-dsl",
         )
     }
+    blockers.extend(dependency_readiness_blockers(dependencies))
     cuda_runtime = getattr(torch.version, "cuda", None)
+    cuda_toolkit = (
+        probe_cuda_toolkit_metadata()
+        if cuda_available
+        else {
+            "status": "unavailable",
+            "reason": "cuda_unavailable",
+            "nvcc_path": None,
+            "cuda_toolkit_version": None,
+        }
+    )
     nvidia_smi = (
         probe_nvidia_smi_metadata()
         if cuda_available
@@ -900,6 +1090,10 @@ def probe_environment() -> Dict[str, Any]:
         "nvidia_smi_status": nvidia_smi["status"],
         "nvidia_smi_reason": nvidia_smi.get("reason"),
         "cuda_runtime": cuda_runtime,
+        "cuda_toolkit_status": cuda_toolkit["status"],
+        "cuda_toolkit_reason": cuda_toolkit.get("reason"),
+        "cuda_toolkit_version": cuda_toolkit["cuda_toolkit_version"],
+        "nvcc_path": cuda_toolkit["nvcc_path"],
         "torch_version": torch.__version__,
         "transformers_version": transformers_version,
         "transformers_revision": transformers_revision,
@@ -911,8 +1105,99 @@ def probe_environment() -> Dict[str, Any]:
             compute_capability=compute_capability,
             cuda_runtime=cuda_runtime,
             available_modules=available_modules,
+            cuda_toolkit_version=cuda_toolkit["cuda_toolkit_version"],
+            nvcc_available=cuda_toolkit["status"] == "measured",
+            dependency_versions=dependencies,
         ),
         "compile_mode_availability": _compile_mode_availability(torch),
+    }
+
+
+def dependency_readiness_blockers(
+    dependency_versions: Mapping[str, str | None],
+) -> List[str]:
+    blockers = []
+    for dependency in sorted(CORE_DEPENDENCIES):
+        observed = dependency_versions.get(dependency)
+        expected = PINNED_DEPENDENCY_VERSIONS[dependency]
+        blocker_name = dependency.replace("-", "_")
+        if observed is None:
+            blockers.append(f"{blocker_name}_unavailable")
+        elif observed != expected:
+            blockers.append(f"{blocker_name}_version_mismatch")
+    return blockers
+
+
+def probe_cuda_toolkit_metadata(
+    *,
+    environ: Mapping[str, str] | None = None,
+    run_command: Callable[..., Any] | None = None,
+) -> Dict[str, Any]:
+    environment = os.environ if environ is None else environ
+    cuda_home = environment.get("CUDA_HOME") or environment.get("CUDA_PATH")
+    nvcc_path = None
+    if cuda_home:
+        candidate = os.path.join(cuda_home, "bin", "nvcc")
+        if os.path.isfile(candidate):
+            nvcc_path = candidate
+        else:
+            return {
+                "status": "unavailable",
+                "reason": "nvcc_missing_from_cuda_home",
+                "nvcc_path": candidate,
+                "cuda_toolkit_version": None,
+            }
+    else:
+        nvcc_path = shutil.which("nvcc")
+        if nvcc_path is None and os.path.isdir("/usr/local/cuda"):
+            candidate = "/usr/local/cuda/bin/nvcc"
+            if os.path.isfile(candidate):
+                nvcc_path = candidate
+    if nvcc_path is None:
+        return {
+            "status": "unavailable",
+            "reason": "nvcc_unavailable",
+            "nvcc_path": None,
+            "cuda_toolkit_version": None,
+        }
+
+    runner = run_command or subprocess.run
+    try:
+        result = runner(
+            [nvcc_path, "--version"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=10,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError) as exc:
+        return {
+            "status": "unavailable",
+            "reason": f"nvcc_failed:{type(exc).__name__}",
+            "nvcc_path": nvcc_path,
+            "cuda_toolkit_version": None,
+        }
+    if result.returncode != 0:
+        return {
+            "status": "unavailable",
+            "reason": f"nvcc_exit_{result.returncode}",
+            "nvcc_path": nvcc_path,
+            "cuda_toolkit_version": None,
+        }
+    match = re.search(r"\brelease\s+(\d+\.\d+)\b", result.stdout)
+    if match is None:
+        return {
+            "status": "unavailable",
+            "reason": "nvcc_unparseable_output",
+            "nvcc_path": nvcc_path,
+            "cuda_toolkit_version": None,
+        }
+    return {
+        "status": "measured",
+        "reason": None,
+        "nvcc_path": nvcc_path,
+        "cuda_toolkit_version": match.group(1),
     }
 
 
@@ -1061,7 +1346,16 @@ def _execute_configuration(
 ) -> Sequence[Mapping[str, Any]]:
     try:
         rows = executor(configuration, regimes)
-    except Exception as exc:  # pragma: no cover - exercised by real dependency failures.
+    except (ImportError, ModuleNotFoundError) as exc:
+        return [
+            {
+                "regime_id": regime["regime_id"],
+                "status": "failed",
+                "reason": f"configuration_dependency_failed:{type(exc).__name__}:{exc}",
+            }
+            for regime in regimes
+        ]
+    except Exception as exc:  # pragma: no cover - exercised by real stock failures.
         return [
             {
                 "regime_id": regime["regime_id"],
@@ -1071,6 +1365,14 @@ def _execute_configuration(
             for regime in regimes
         ]
     return list(rows)
+
+
+def _is_incomplete_failure_reason(reason: Any) -> bool:
+    text = str(reason)
+    return text in {
+        "executor_missing_required_regime",
+        "real_executor_not_configured",
+    } or text.startswith("configuration_dependency_failed:")
 
 
 def _unconfigured_real_executor(
@@ -1203,6 +1505,15 @@ def _version_tuple(version: str | None) -> tuple[int, ...]:
             break
         components.append(int(digits))
     return tuple(components)
+
+
+def _version_in_half_open_range(
+    version: str | None,
+    minimum: str,
+    maximum: str,
+) -> bool:
+    parsed = _version_tuple(version)
+    return _version_tuple(minimum) <= parsed < _version_tuple(maximum)
 
 
 def _deduplicate(values: Sequence[Any]) -> List[str]:
