@@ -176,8 +176,10 @@ Issue #136 adds `benchmarks/olmoe_stock_profile.py`. The profiler consumes only
 a complete real stock artifact, verifies that it is running on the same frozen
 hardware and software cohort, and binds one full-model profile to the selected
 best stock configuration in every regime. It requires runtime CUPTI device
-events and assigns aggregated self time exactly once across the predeclared
-categories, retaining every unknown event name as `unclassified`.
+kernel events—not merely CUDA memcpy or memset events—and assigns aggregated
+frontend-operator self time exactly once across the predeclared categories.
+Raw CUDA rows are excluded because their durations are already attached to
+frontend operators; every unknown retained event name remains `unclassified`.
 
 The same profiler captures the input and output of zero-based sparse layer 8
 during a real `prefill_b1_s512` forward, then replays that exposed router and

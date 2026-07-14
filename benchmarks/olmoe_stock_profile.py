@@ -232,6 +232,21 @@ def merge_attributions(attributions: Sequence[Mapping[str, Any]]) -> Dict[str, A
     return summarize_events(events)
 
 
+def summarize_profiler(
+    profiler: Any,
+    *,
+    default_scope: str,
+) -> Dict[str, Any]:
+    """Attribute frontend CPU rows whose device time already owns linked kernels."""
+
+    frontend_events = [
+        event
+        for event in profiler.key_averages()
+        if _device_type_name(getattr(event, "device_type", None)) == "CPU"
+    ]
+    return summarize_events(frontend_events, default_scope=default_scope)
+
+
 def require_device_attribution(attribution: Mapping[str, Any]) -> None:
     device_time = attribution.get("totals", {}).get("self_device_time_us")
     if not isinstance(device_time, (int, float)) or float(device_time) <= 0.0:
@@ -248,9 +263,11 @@ def require_cupti_trace(profiler: Any) -> None:
     events_method = getattr(results, "events", None)
     events = events_method() if callable(events_method) else []
     has_cuda_kernel = any(
-        "CUDA" in str(event.device_type()).upper()
+        _device_type_name(event.device_type()) == "CUDA"
+        and str(event.activity_type()).lower() == "kernel"
         for event in events
         if callable(getattr(event, "device_type", None))
+        and callable(getattr(event, "activity_type", None))
     )
     if not has_cuda_kernel:
         raise RuntimeError(
@@ -642,7 +659,7 @@ def _profile_full_model_regime(
             output = call()
             torch.cuda.synchronize()
     require_cupti_trace(profiler)
-    attribution = summarize_events(profiler.key_averages(), default_scope="full_model")
+    attribution = summarize_profiler(profiler, default_scope="full_model")
     require_device_attribution(attribution)
     attribution["cupti_trace_status"] = "cuda_kernel_events_present"
     assert output is not None
@@ -741,7 +758,7 @@ def _profile_callable(
         output = call()
         torch.cuda.synchronize()
     require_cupti_trace(profiler)
-    attribution = summarize_events(profiler.key_averages(), default_scope=scope)
+    attribution = summarize_profiler(profiler, default_scope=scope)
     require_device_attribution(attribution)
     attribution["cupti_trace_status"] = "cuda_kernel_events_present"
     return output, attribution
@@ -1018,6 +1035,10 @@ def _event_value(event: Any, key: str, default: Any) -> Any:
     if isinstance(event, Mapping):
         return event.get(key, default)
     return getattr(event, key, default)
+
+
+def _device_type_name(value: Any) -> str:
+    return str(value).rsplit(".", 1)[-1].upper()
 
 
 def _nonnegative_float(value: Any) -> float:

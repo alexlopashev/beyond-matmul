@@ -106,12 +106,15 @@ pin, missing best row, incorrect best row, or metadata that does not match the
 selected stock configuration. The profiler must run on the same GPU UUID,
 driver, CUDA runtime, PyTorch build, Transformers revision, model revision, and
 dtype recorded by the baseline artifact. CUDA profiler activity and Kineto are
-required before execution; positive device self time is required after every
-profile so missing CUPTI device events cannot silently become zero-cost rows.
+required before execution. Every profile must contain a CUPTI event whose
+activity type is an actual CUDA kernel, not only a CUDA memcpy or memset, and
+must report positive device self time.
 
 Every required prefill/decode regime receives one full-model profile bound to
-its independently selected best stock configuration. Aggregated profiler events
-use self CPU and self device time, so each event group is counted exactly once.
+its independently selected best stock configuration. Attribution uses only
+aggregated frontend CPU operator rows: their device self time already owns the
+linked kernel durations, so raw CUDA rows are excluded instead of counting the
+same kernels again. Each retained event group is classified exactly once.
 The ordered categories are routing/top-k, sorting/permutation,
 offsets/histogram, expert contractions, activation/gating,
 aggregation/scatter, layout/copy conversion, allocation, compilation, and

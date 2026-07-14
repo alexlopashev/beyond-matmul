@@ -424,8 +424,11 @@ CUDA OLMoE artifact exists yet; the harness therefore keeps
 Issue \#136 adds
 \texttt{benchmarks/olmoe\_stock\_profile.py}. It accepts only a complete stock
 artifact from the same GPU/software cohort, profiles the best stock row for all
-eight regimes, requires CUPTI device events, and conserves aggregated profiler
-self time across explicit categories while retaining unknown event names. Its
+eight regimes, requires an actual CUPTI CUDA-kernel activity rather than only
+memcpy or memset events, and conserves aggregated frontend-operator self time
+across explicit categories while retaining unknown event names. Raw CUDA rows
+are excluded because their durations are already attached to those frontend
+operators. Its
 real-activation diagnostic captures the input and output of sparse layer 8 from
 a full-model \texttt{prefill\_b1\_s512} forward, then profiles the exposed
 router and expert replay with correctness metadata. The replay is isolated,

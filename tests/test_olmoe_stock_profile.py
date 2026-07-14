@@ -151,6 +151,34 @@ class OlmoeStockProfileTests(unittest.TestCase):
             ["routing_top_k", "expert_contractions"],
         )
 
+    def test_profiler_summary_excludes_raw_cuda_rows_already_attached_to_cpu_ops(self):
+        profile = _load_profile_module()
+        frontend = SimpleNamespace(
+            key="aten::mm",
+            device_type="DeviceType.CPU",
+            self_cpu_time_total=3.0,
+            self_device_time_total=11.0,
+            count=1,
+        )
+        raw_kernel = SimpleNamespace(
+            key="sm80_xmma_gemm",
+            device_type="DeviceType.CUDA",
+            self_cpu_time_total=0.0,
+            self_device_time_total=11.0,
+            count=1,
+        )
+        profiler = SimpleNamespace(key_averages=lambda: [frontend, raw_kernel])
+
+        attribution = profile.summarize_profiler(
+            profiler,
+            default_scope="expert_layer",
+        )
+
+        self.assertEqual(attribution["event_group_count"], 1)
+        self.assertEqual(attribution["totals"]["self_device_time_us"], 11.0)
+        self.assertEqual(attribution["events"][0]["name"], "aten::mm")
+        self.assertEqual(attribution["events"][0]["category"], "expert_contractions")
+
     def test_device_timing_is_required_for_real_cupti_attribution(self):
         profile = _load_profile_module()
         attribution = profile.summarize_events(
@@ -165,20 +193,37 @@ class OlmoeStockProfileTests(unittest.TestCase):
         profile = _load_profile_module()
 
         class Event:
-            def __init__(self, device_type):
+            def __init__(self, device_type, activity_type):
                 self._device_type = device_type
+                self._activity_type = activity_type
 
             def device_type(self):
                 return self._device_type
+
+            def activity_type(self):
+                return self._activity_type
 
         def profiler(events):
             results = SimpleNamespace(events=lambda: events)
             return SimpleNamespace(profiler=SimpleNamespace(kineto_results=results))
 
         with self.assertRaisesRegex(RuntimeError, "CUPTI.*CUDA kernel trace"):
-            profile.require_cupti_trace(profiler([Event("DeviceType.CPU")]))
+            profile.require_cupti_trace(
+                profiler([Event("DeviceType.CPU", "cpu_op")])
+            )
+        with self.assertRaisesRegex(RuntimeError, "CUPTI.*CUDA kernel trace"):
+            profile.require_cupti_trace(
+                profiler(
+                    [
+                        Event("DeviceType.CUDA", "gpu_memcpy"),
+                        Event("DeviceType.CUDA", "gpu_memset"),
+                    ]
+                )
+            )
 
-        profile.require_cupti_trace(profiler([Event("DeviceType.CUDA")]))
+        profile.require_cupti_trace(
+            profiler([Event("DeviceType.CUDA", "kernel")])
+        )
 
     def test_contract_smoke_is_row_complete_but_contains_no_measurements(self):
         profile = _load_profile_module()
