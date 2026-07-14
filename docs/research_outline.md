@@ -55,13 +55,13 @@ a remaining cost and a distinct, externally reviewable execution that could
 beat the best applicable stock backend. Otherwise OLMoE is rejected before a
 general tensor IR or broad kernel platform is built.
 
-Merged issue #129/PR #131 fixed the target contract. Issue #132 now supplies
-`benchmarks/olmoe_stock_baseline.py`, a baseline-only harness with the complete
-prefill/decode regime grid, stock backend and compilation inventory, explicit
-unavailable-row semantics, eager-relative correctness, and CUDA timing fields.
-Its CI smoke is schema evidence only. Issue #133 remains blocked until the
-harness merges and owns the real CUDA cohort, profiling, and binary target
-decision.
+Merged issue #129/PR #131 fixed the target contract. Merged issue #132/PR #134
+supplies `benchmarks/olmoe_stock_baseline.py`, a baseline-only harness with the
+complete prefill/decode regime grid, stock backend and compilation inventory,
+explicit unavailable-row semantics, eager-relative correctness, and CUDA
+timing fields.
+Its CI smoke is schema evidence only. Ready issue #133 owns the real CUDA
+cohort, profiling, and binary target decision.
 
 ## Prototype Modules
 

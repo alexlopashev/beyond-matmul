@@ -32,14 +32,13 @@ The project is therefore not complete. No general tensor IR should be added
 until target validation finds a remaining attributable OLMoE opportunity. The
 PEFT CUDA roadmap in issues #123 through #126 is paused pending this decision.
 
-Issue #132 adds the baseline-only harness
+Merged issue #132/PR #134 adds the baseline-only harness
 `benchmarks/olmoe_stock_baseline.py`. It pins the eight required full-model
 prefill/decode regimes, the stock backend and `torch.compile` inventory,
 explicit exclusion/failure rows, correctness-first interpretation, and the
 machine-readable timing schema. Its CI smoke performs no OLMoE inference and
-supports no performance claim. Issue #133 remains blocked until the harness
-merges; it owns the real CUDA cohort, profiling, and binary accept-or-reject
-decision.
+supports no performance claim. Ready issue #133 owns the real CUDA cohort,
+profiling, and binary accept-or-reject decision.
 
 ## Historical Final Draft Status
 
@@ -79,9 +78,9 @@ seq100 rows and refreshed the measured artifact. The newly opened
 production/performance roadmap issues (#110 through #114) were follow-on work
 for stronger claims. Merged issue #129/PR #131 records that the missing external
 result does invalidate project-level completion, without changing the accuracy
-of the historical first-artifact audit. Issue #132 is the claimed harness task;
-#133 is blocked on it for the measured target decision, and #130 remains ready
-for concise wiki synchronization.
+of the historical first-artifact audit. Issue #132/PR #134 completed the
+baseline harness; #133 is ready for the measured target decision, and
+#130/PR #135 synchronizes the concise wiki.
 
 After the final-draft work merged, the first-artifact completion state became
 historical context rather than an active blocker:
