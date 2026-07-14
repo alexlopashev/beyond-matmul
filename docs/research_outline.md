@@ -48,7 +48,7 @@ token-to-expert assignments, routing weights, and 3D expert tensors. Its target
 definition and rejection gate are in
 `docs/olmoe_tensor_contraction_capstone.md`.
 
-Current Transformers already supports eager, batched, grouped, and fused MoE
+Current Transformers already supports eager, batched, grouped, and optimized MoE
 backends. Their existing gains are background evidence that routing provenance
 matters; they are not a Beyond Matmul contribution. Target validation must find
 a remaining cost and a distinct, externally reviewable execution that could

@@ -18,13 +18,14 @@ improvement in an external open-source project. Matrix multiplication is the
 rank-2 case, and the implemented matrix IR remains bounded prior work.
 
 `allenai/OLMoE-1B-7B-0924` through Transformers is the provisional target. Its
-routed expert computation is a higher-order contraction over token, selected
-expert, expert, hidden, intermediate, and output axes. Current Transformers
-already provides provenance-aware grouped, batched, and fused expert backends,
-so reproducing an existing eager-versus-optimized win cannot satisfy the new
-capstone. `docs/olmoe_tensor_contraction_capstone.md` defines the best-stock
-baseline, 10% win, 5% regression, correctness, external-review, and rejection
-gates.
+routed expert computation is a tensor program composed of expert-indexed
+gate/up and down contractions, nonlinear gating, dynamic selection, and
+aggregation over token, selected-expert, expert, hidden, intermediate, and
+output axes. Current Transformers already provides provenance-aware grouped,
+batched, and optimized expert backends, so reproducing an existing
+eager-versus-optimized win cannot satisfy the new capstone.
+`docs/olmoe_tensor_contraction_capstone.md` defines the best-stock baseline,
+10% win, 5% regression, correctness, external-review, and rejection gates.
 
 The project is therefore not complete. No general tensor IR should be added
 until target validation finds a remaining attributable OLMoE opportunity. The

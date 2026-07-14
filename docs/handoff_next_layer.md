@@ -112,10 +112,10 @@ after dense materialization.
 Superseded by issue #129. The current order is:
 
 1. Freeze one OLMoE hardware/dependency cohort and benchmark every applicable
-   stock experts backend.
+   stock expert configuration, including compiled variants.
 2. Reject OLMoE if no cost remains beyond the best stock strategy.
 3. Only after the gate passes, implement one distinct provenance-enabled routed
-   contraction and measure full-model prefill and decode.
+   tensor program and measure full-model prefill and decode.
 4. Generalize the local IR only from concepts required by that result.
 
 The recommendations below are retained as historical context.

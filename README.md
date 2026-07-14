@@ -86,7 +86,7 @@ uv run python examples/torch_fx_frontend_demo.py
 - `docs/hardware_backed_production_benchmark_contract.md`: future-work
   contract for the now-paused PEFT hardware roadmap
 - `docs/olmoe_tensor_contraction_capstone.md`: provisional open-LLM target,
-  routed tensor-contraction definition, upstream baseline audit, and rejection
+  routed tensor-program definition, upstream baseline audit, and rejection
   gate
 - `docs/peft_fork_setup.md`: setup, sync, branch, and issue-mapping rules for
   the PEFT fork integration branch
@@ -110,16 +110,17 @@ research goal is stronger: demonstrate that preserved tensor-contraction
 provenance causes an attributable performance improvement in an external
 open-source ML project.
 
-## Active North Star: Open LLM Tensor Contraction
+## Active North Star: Open LLM Routed Tensor Program
 
 The provisional target is AllenAI's Apache-2.0
 `allenai/OLMoE-1B-7B-0924` model through Hugging Face Transformers. Its MoE
 layers combine token hidden states, token-to-expert routes, routing weights, and
-3D expert-weight tensors. This is an expert-indexed tensor contraction whose
-token, selected-expert, expert, hidden, and intermediate axes should remain
-visible to lowering decisions.
+3D expert-weight tensors. This is a routed tensor program composed of
+expert-indexed gate/up and down contractions, nonlinear gating, dynamic
+selection, and aggregation. Its token, selected-expert, expert, hidden, and
+intermediate axes should remain visible to lowering decisions.
 
-Current Transformers already has eager, batched, grouped, and fused expert
+Current Transformers already has eager, batched, grouped, and optimized expert
 backends. Reproducing an existing eager-versus-grouped speedup is therefore
 background evidence, not Beyond Matmul's result. The target passes only if a
 distinct provenance-enabled change beats the best applicable stock strategy by

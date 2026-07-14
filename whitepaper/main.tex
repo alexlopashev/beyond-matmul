@@ -74,11 +74,13 @@ performance and memory/control claims remain \texttt{none}.
 
 Issue \#129 therefore reopens the project-level north star. The provisional
 target is the Apache-2.0 \texttt{allenai/OLMoE-1B-7B-0924} model through Hugging
-Face Transformers. Its sparse expert layer is an expert-indexed tensor
-contraction over token, selected-expert, expert, hidden, intermediate, and output
-axes. Current Transformers already offers eager, batched, grouped, and fused
-expert backends, so their existing gains are background evidence rather than a
-Beyond Matmul result. The target and rejection gate are recorded in
+Face Transformers. Its sparse expert layer is a routed tensor program composed
+of expert-indexed gate/up and down contractions, nonlinear gating, dynamic
+selection, and aggregation over token, selected-expert, expert, hidden,
+intermediate, and output axes. Current Transformers already offers eager,
+batched, grouped, and optimized expert backends, so their existing gains are
+background evidence rather than a Beyond Matmul result. The target and
+rejection gate are recorded in
 \texttt{docs/olmoe\_tensor\_contraction\_capstone.md}; no general tensor IR is
 authorized until that gate finds a remaining attributable opportunity.
 
@@ -352,7 +354,9 @@ workload case studies.
 \subsection{Workload Case Studies}
 
 \begin{itemize}
-  \item provisional OLMoE routed-expert tensor contraction through Transformers,
+  \item provisional OLMoE routed tensor program through Transformers, composed
+  of expert-indexed contractions plus nonlinear gating, selection, and
+  aggregation,
   subject to the best-stock-backend and rejection gate in
   \texttt{docs/olmoe\_tensor\_contraction\_capstone.md};
   \item Conv1d module and functional Conv1d capture before dense
@@ -734,13 +738,14 @@ adapter-switching/control, and dense-fallback fields. That contract is not
 itself evidence for a hardware speedup or memory/control win.
 
 The provisional OLMoE target has an additional threat: current Transformers
-already preserves routed-expert structure through grouped, batched, and fused
-backends. A benchmark that compares only against eager would launder an existing
-upstream optimization into a new contribution. The target-validation gate in
+already preserves routed-expert structure through grouped, batched, and
+optimized backends. A benchmark that compares only against eager or omits an
+applicable compiled stock configuration would launder an existing upstream
+optimization into a new contribution. The target-validation gate in
 \texttt{docs/olmoe\_tensor\_contraction\_capstone.md} therefore requires the best
-applicable stock backend per regime, a distinct changed execution, end-to-end
-prefill or decode evidence, and rejection of OLMoE if no remaining opportunity
-is found.
+applicable stock configuration per regime, a distinct changed execution,
+end-to-end prefill or decode evidence, and rejection of OLMoE if no remaining
+opportunity is found.
 
 Recovery after provenance is lost is weaker than preserving provenance before
 dense lowering. The analyzer confidence values are probe-specific heuristic
@@ -854,11 +859,11 @@ adapter-switching gain, and keeps performance and memory/control claims at
 The PEFT hardware contract and issues \#123 through \#126 are paused rather than
 erased. The active next step is the OLMoE target-validation gate in
 \texttt{docs/olmoe\_tensor\_contraction\_capstone.md}. OLMoE is fully open and
-its routed experts provide a genuine higher-order contraction, but current
-Transformers already has optimized expert backends. A follow-up may implement
-only after it identifies a remaining cost that preserved route, axis, layout,
-or phase provenance can remove. Otherwise the target must be rejected without
-generalizing the IR.
+its routed experts form a tensor program around expert-indexed contraction
+subgraphs, but current Transformers already has optimized expert backends. A
+follow-up may implement only after it identifies a remaining cost that
+preserved route, axis, layout, or phase provenance can remove. Otherwise the
+target must be rejected without generalizing the IR.
 
 \section{Conclusion}
 

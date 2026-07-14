@@ -1,4 +1,4 @@
-# OLMoE Tensor-Contraction Capstone
+# OLMoE Routed Tensor-Program Capstone
 
 Status: provisional target-validation candidate
 
@@ -40,18 +40,20 @@ Dependency and hardware pins for a measured cohort must be frozen in the
 follow-up benchmark contract. A later upstream revision creates a separate
 cohort; measurements from different cohorts must not be pooled.
 
-## The Routed Tensor Contraction
+## The Routed Tensor Program
 
 For flattened token index `t`, selected-expert slot `j`, hidden axis `h`,
 intermediate axis `i`, and output hidden axis `o`, let:
 
 - `X[t, h]` be the token hidden states;
 - `E[t, j]` be the selected expert identities;
-- `R[t, j]` be the normalized routing weights;
+- `R[t, j]` be the selected routing weights, globally softmax-normalized before
+  top-k selection but not renormalized over the selected experts in the pinned
+  configuration;
 - `G[e, 2i, h]` be the expert gate/up projection tensor; and
 - `D[e, o, i]` be the expert down-projection tensor.
 
-The MoE contribution is:
+The MoE contribution is a routed tensor program:
 
 ```text
 Z[t, j, i] = act(sum_h G_gate[E[t, j], i, h] * X[t, h])
@@ -60,10 +62,14 @@ Y[t, o] = sum_j R[t, j] * sum_i D[E[t, j], o, i] * Z[t, j, i]
 ```
 
 This notation is schematic; the benchmark uses the upstream implementation as
-the semantic reference. The important fact is that the operation has token,
+the semantic reference. The complete program is not one tensor contraction: it
+combines expert-indexed gate/up and down contractions with a data-dependent
+gather, nonlinear activation, elementwise gating, and routed aggregation. The
+important fact is that provenance connects those operations across token,
 selected-expert, expert, hidden, intermediate, and output axes plus a routing
-relation. Lowering it into a loop of independent GEMMs or an opaque grouped GEMM
-can discard facts needed for scheduling, fusion, layout, reuse, and fallback.
+relation. Lowering the contraction subgraphs into independent GEMMs or an
+opaque grouped GEMM can discard facts needed for scheduling, fusion, layout,
+reuse, and fallback.
 
 The provenance record needed for target validation includes:
 
@@ -97,8 +103,9 @@ At the audited Transformers revision:
   eager;
 - generation can switch a grouped backend to `batched_mm` for the low-token
   decode stage;
-- DeepGEMM and SonicMoE provide additional fused paths on supported Hopper or
-  newer NVIDIA hardware.
+- an optimized DeepGEMM grouped path and a fused SonicMoE routed path are
+  available on supported Hopper or newer NVIDIA hardware; the audited BF16
+  DeepGEMM path still dispatches separate up and down grouped multiplications.
 
 These are already provenance-aware optimizations. The OLMoE project README's
 statement that the Transformers implementation is slow is useful historical
@@ -121,9 +128,9 @@ opened:
 4. Is the proposed change externally reviewable in Transformers, OLMoE, or a
    reusable kernel project?
 
-Candidate hypotheses include a fused routed contraction on hardware not served
-by the existing fused backends, or a route-aware lowering that removes work the
-best stock backend still performs. These are hypotheses, not claims.
+Candidate hypotheses include a fused routed tensor program on hardware not
+served by the existing fused backend, or a route-aware lowering that removes
+work the best stock backend still performs. These are hypotheses, not claims.
 
 ## Benchmark Gate
 
@@ -138,9 +145,14 @@ It must include:
   512, separating prefill from per-token decode;
 - a real-activation OLMoE expert-layer diagnostic for attribution, without
   substituting that layer result for end-to-end evidence;
-- stock eager, stock default, `grouped_mm`, `batched_mm`, and every fused backend
-  applicable to the frozen hardware;
-- the best successful stock backend per regime as the comparison baseline;
+- stock eager, stock default, `grouped_mm`, `batched_mm`, and every optimized or
+  fused backend applicable to the frozen hardware;
+- both uncompiled and `torch.compile` stock variants, including each supported
+  compilation mode applicable to the frozen model and hardware; any exclusion
+  must be fixed and justified before candidate measurement, and a candidate's
+  compilation settings must also be tested on every capable stock backend;
+- the best successful stock configuration per regime as the comparison
+  baseline;
 - output parity against the stock eager reference, with tolerances fixed by the
   contract before candidate measurements;
 - CUDA-event latency, wall time, throughput, preprocessing, routing overhead,
