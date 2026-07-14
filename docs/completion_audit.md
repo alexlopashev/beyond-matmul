@@ -79,8 +79,8 @@ production/performance roadmap issues (#110 through #114) were follow-on work
 for stronger claims. Merged issue #129/PR #131 records that the missing external
 result does invalidate project-level completion, without changing the accuracy
 of the historical first-artifact audit. Issue #132/PR #134 completed the
-baseline harness; #133 is ready for the measured target decision, and #130 is
-claimed for concise wiki synchronization.
+baseline harness; #133 is ready for the measured target decision, and
+#130/PR #135 synchronizes the concise wiki.
 
 After the final-draft work merged, the first-artifact completion state became
 historical context rather than an active blocker:
