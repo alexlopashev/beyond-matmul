@@ -2,9 +2,11 @@
 
 > **Roadmap status (2026-07-14): paused.** This PEFT contract remains a valid
 > historical design artifact, but it is not the active project finish line.
-> Issue #129 reopens target selection around an external LLM tensor contraction.
-> Work on issues #123 through #126 should not resume until that decision either
-> reselects PEFT or records why this contract is still the highest-leverage path.
+> Merged issue #129/PR #131 selects the OLMoE routed tensor program for
+> validation; issues #132 and #133 own its stock harness and measured target
+> decision. Work on issues #123 through #126 should not resume unless that
+> decision reselects PEFT or records why this contract is again the
+> highest-leverage path.
 
 This contract defines the first hardware-backed production/performance target
 for Beyond Matmul. It is a benchmark design target, not benchmark evidence. It

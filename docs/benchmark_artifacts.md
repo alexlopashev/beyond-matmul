@@ -13,6 +13,87 @@
 | `docs/results/peft_multi_adapter_serving_smoke.json` | `mise exec -- uv run python benchmarks/peft_multi_adapter_serving.py --smoke --json-output docs/results/peft_multi_adapter_serving_smoke.json` | Contract-shaped PEFT multi-adapter serving smoke artifact for schema, switching metadata, fallback metadata, and correctness summaries. | CI smoke uses a tiny torch-only synthetic path; it is not external PEFT performance evidence and keeps `summary.benchmark_ready=false`. |
 | `docs/results/peft_multi_adapter_serving.json` | `mise exec -- uv run --with transformers --with accelerate --with safetensors --with huggingface_hub python benchmarks/peft_multi_adapter_serving.py --json-output docs/results/peft_multi_adapter_serving.json` | Real PEFT multi-adapter serving matrix for the contract-defined OPT-125M base model, two LoRA adapters, switching baselines, dense merged cache, and provenance-preserving factor path. | Measured local CPU run, not CI smoke. The committed run is benchmark-ready correctness evidence: all required rows are present, all baselines pass correctness, 12 Beyond Matmul rows report `execution_path=structured_low_rank`, and no latency, memory, or control win is claimed. |
 | `docs/results/live_conv1d_whisper.json` | `mise exec -- uv run --with transformers --with librosa --with soundfile --with safetensors --with huggingface_hub python benchmarks/live_conv1d_whisper.py --json-output docs/results/live_conv1d_whisper.json` | Real Whisper encoder Conv1d dense-vs-direct layer benchmark for the contract-defined model revision, audio trace, prefixes, and exact dense Toeplitz fallback. | Measured local CPU layer run, not CI smoke or end-to-end ASR. Correctness passes for all required rows; dense matrix byte counts expose materialized fallback footprint, not measured peak memory. The dense materialized fallback is slower on this run and `summary.performance_claim` is `none`. |
+| `docs/results/olmoe_stock_baseline_smoke.json` | `mise exec -- uv run python benchmarks/olmoe_stock_baseline.py --smoke --json-output docs/results/olmoe_stock_baseline_smoke.json` | Contract-shaped OLMoE stock-backend inventory covering every required prefill/decode regime and explicit compilation exclusion. | CI smoke performs no OLMoE inference, keeps every measurement empty, and records `cohort_complete=false`, `target_decision_ready=false`, and `performance_claim=none`. |
+| `docs/results/olmoe_stock_baseline.json` | See the pinned CUDA command below. | Future hardware-pinned stock-only OLMoE cohort used to choose the best successful upstream configuration per regime. | Not yet generated or committed. Even a row-complete stock cohort is target-validation input, not a Beyond Matmul speedup or an accept decision by itself. |
+
+## OLMoE Stock-Baseline Harness
+
+`benchmarks/olmoe_stock_baseline.py` implements the baseline-only measurement
+surface for issues #132 and #133 under the gate in
+`docs/olmoe_tensor_contraction_capstone.md`. It pins
+`allenai/OLMoE-1B-7B-0924` at
+`bd1c52f59153f724c1ad11ca1791edc77bab3806` and Transformers at
+`a6895655b289cc3fdd29afec36904e0b8545ef92`.
+
+The required grid has four BF16 full-model prefill regimes—batch 1 and 4 at
+sequence lengths 128 and 512—and four one-token decode regimes—batch 1 and 8
+after prompt lengths 128 and 512. Prompt prefill is setup for decode and is not
+included in the per-token timed region. A stock grouped/default decode row uses
+grouped prompt prefill and the same grouped-to-batched stage switch that
+Transformers generation applies; both effective backends are recorded. Inputs
+are deterministic token IDs. Full-model prefill uses `use_cache=true`; KV-cache
+construction is part of the prefill timed region. Correctness compares
+last-token logits with stock uncompiled eager using fixed maximum-absolute
+`0.125` and relative-L2 `0.01` tolerances.
+
+For every regime, the inventory contains stock default, eager, `batched_mm`,
+`grouped_mm`, `deepgemm`, and `sonicmoe`. It also contains the runtime-supported
+`torch.compile` modes for default, eager, and batched execution, the audited
+`grouped_mm` modes, and explicit excluded rows for compilation modes or external
+kernels that do not apply. GPU UUID, device properties, NVIDIA driver, CUDA
+runtime, pinned Transformers source revision, model revision, compilation mode,
+and external-kernel dependencies are checked or recorded rather than silently
+skipped. Real mode refuses a reduced compile-mode list, so a caller cannot
+silently turn a partial search into a complete cohort.
+
+Run the schema-only CI smoke with:
+
+```bash
+mise exec -- uv run python benchmarks/olmoe_stock_baseline.py --smoke --json-output docs/results/olmoe_stock_baseline_smoke.json
+```
+
+On the CUDA machine selected by issue #133, run the real stock cohort with the
+pinned source and external-kernel dependencies:
+
+```bash
+mise exec -- uv run \
+  --with 'transformers @ git+https://github.com/huggingface/transformers.git@a6895655b289cc3fdd29afec36904e0b8545ef92' \
+  --with accelerate==1.14.0 \
+  --with safetensors==0.8.0 \
+  --with huggingface-hub==1.23.0 \
+  --with kernels==0.15.2 \
+  --with nvidia-cutlass-dsl==4.6.0 \
+  python benchmarks/olmoe_stock_baseline.py \
+  --real \
+  --warmup-repetitions 5 \
+  --measured-repetitions 20 \
+  --json-output docs/results/olmoe_stock_baseline.json
+```
+
+Each successful row records eager-relative correctness, CUDA-event and wall
+samples and medians, token throughput, setup/warmup timing, decode prompt
+prefill timing, CUDA allocator state, and the resolved experts backend. Decode
+allocator peaks reset only after prompt prefill and backend switching, record
+the resident KV-cache baseline, and exclude prompt setup from the one-token
+peak. DeepGEMM preflight separately records the `nvcc` path and full CUDA
+toolkit version because the pinned Transformers integration has no NVRTC
+fallback; Hopper requires toolkit 12.3 or newer and Blackwell requires 12.9 or
+newer. Routing overhead remains explicitly
+`requires_profiled_target_validation` until issue #133 adds the profiler
+attribution required for the accept-or-reject decision. Failed, blocked,
+hardware-inapplicable, and contract-excluded rows remain in the artifact with
+reasons.
+
+The harness contains no candidate implementation or candidate field. A smoke
+artifact is not performance evidence, and a future real artifact may set
+`cohort_complete=true` only after every applicable stock configuration has an
+explicit terminal attempt and every regime has at least one correct successful
+stock row. Interpretable upstream configuration failures remain as warnings and
+are never eligible for best-stock selection; blocked, missing, or nonterminal
+attempts keep the cohort incomplete. The artifact always keeps
+`target_decision_ready=false` and `performance_claim=none`; issue #133 owns
+profiling, best-successful-stock interpretation, and the binary OLMoE
+accept-or-reject decision.
 
 ## Live Conv1d Whisper Dense-vs-Direct Benchmark
 

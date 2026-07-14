@@ -55,6 +55,14 @@ a remaining cost and a distinct, externally reviewable execution that could
 beat the best applicable stock backend. Otherwise OLMoE is rejected before a
 general tensor IR or broad kernel platform is built.
 
+Merged issue #129/PR #131 fixed the target contract. Issue #132 now supplies
+`benchmarks/olmoe_stock_baseline.py`, a baseline-only harness with the complete
+prefill/decode regime grid, stock backend and compilation inventory, explicit
+unavailable-row semantics, eager-relative correctness, and CUDA timing fields.
+Its CI smoke is schema evidence only. Issue #133 remains blocked until the
+harness merges and owns the real CUDA cohort, profiling, and binary target
+decision.
+
 ## Prototype Modules
 
 - `ir.py`: operator schema and executable semantics.
@@ -68,6 +76,8 @@ general tensor IR or broad kernel platform is built.
   the current matrix-error versus output-error ablation.
 - `benchmarks/planner_contract_ablation.py`: deterministic table source for
   exactness, bounded-error, reuse, backend, and dense fallback planner checks.
+- `benchmarks/olmoe_stock_baseline.py`: pinned stock-only OLMoE prefill/decode
+  harness and contract smoke for the target-validation gate.
 - `examples/case_study_artifacts.py`: machine-readable adapter, Conv1d,
   fixed-mask, and quantized-linear workload case-study evidence with dense
   fallback comparisons.
@@ -214,11 +224,11 @@ Paused PEFT hardware-backed production/performance contract:
 - The contract distinguishes forward latency, CUDA memory, preprocessing,
   adapter-switching/control, and dense fallback readiness fields before any
   performance claim can be interpreted.
-- This remains a valid historical contract, but issue #129 pauses issues #123
-  through #126 while the external tensor-contraction target is selected. It is
-  not current hardware evidence and does not move GPU speedups, memory savings,
-  production kernels, or universal Transformer acceleration into the supported
-  claim set.
+- This remains a valid historical contract, but merged issue #129/PR #131
+  pauses issues #123 through #126 while OLMoE is validated under the stronger
+  gate. It is not current hardware evidence and does not move GPU speedups,
+  memory savings, production kernels, or universal Transformer acceleration
+  into the supported claim set.
 
 Metrics:
 

@@ -158,6 +158,23 @@ It must include:
 - CUDA-event latency, wall time, throughput, preprocessing, routing overhead,
   and allocator measurements with setup separated from steady state.
 
+Issue #132 implements this stock-only surface in
+`benchmarks/olmoe_stock_baseline.py`. Its CI smoke enumerates the complete
+regime/configuration cross product and explicit exclusions without running the
+model. The real path pins the model and Transformers revisions, uses
+uncompiled eager last-token logits as the semantic reference, and fixes maximum
+absolute `0.125` plus relative-L2 `0.01` tolerances before any candidate exists.
+Real mode refuses a reduced compile inventory. Serving prefill constructs the
+KV cache inside its timed region; decode constructs the prompt cache outside
+the one-token timed and allocator-peak regions while retaining its resident
+bytes as the decode baseline. DeepGEMM readiness checks the full `nvcc` toolkit
+version required by the pinned integration, not only PyTorch's bundled CUDA
+runtime. It records routing attribution as still required rather than
+fabricating it.
+Issue #133 owns the real CUDA artifact, profiling, and binary target decision;
+neither a smoke artifact nor a row-complete stock cohort is a performance result
+or permission to open an optimization issue.
+
 The capstone succeeds only if a distinct provenance-enabled path:
 
 - improves median end-to-end latency or throughput by at least 10% against the

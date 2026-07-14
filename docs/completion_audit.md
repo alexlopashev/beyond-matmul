@@ -1,6 +1,6 @@
 # Completion Audit
 
-Date: 2026-07-09
+Last updated: 2026-07-14
 
 This note records the final first-artifact audit for the Beyond Matmul
 whitepaper after the July 8 live Conv1d and PEFT multi-adapter evidence
@@ -12,7 +12,8 @@ replacement for those sources of truth.
 ## July 14 North-Star Correction
 
 The phrase "final first artifact" is historical, not the current project-level
-completion state. Issue #129 restores the stronger finish line: preserved
+completion state. Merged issue #129 and PR #131 restore the stronger finish
+line: preserved
 tensor-contraction provenance must cause an attributable inference performance
 improvement in an external open-source project. Matrix multiplication is the
 rank-2 case, and the implemented matrix IR remains bounded prior work.
@@ -30,6 +31,15 @@ eager-versus-optimized win cannot satisfy the new capstone.
 The project is therefore not complete. No general tensor IR should be added
 until target validation finds a remaining attributable OLMoE opportunity. The
 PEFT CUDA roadmap in issues #123 through #126 is paused pending this decision.
+
+Issue #132 adds the baseline-only harness
+`benchmarks/olmoe_stock_baseline.py`. It pins the eight required full-model
+prefill/decode regimes, the stock backend and `torch.compile` inventory,
+explicit exclusion/failure rows, correctness-first interpretation, and the
+machine-readable timing schema. Its CI smoke performs no OLMoE inference and
+supports no performance claim. Issue #133 remains blocked until the harness
+merges; it owns the real CUDA cohort, profiling, and binary accept-or-reject
+decision.
 
 ## Historical Final Draft Status
 
@@ -55,7 +65,8 @@ curation is paper-polish work that does not change the executable evidence.
 | Recovery after lost provenance | `beyond_matmul/analyzer.py`, `tests/test_analyzer.py`, `examples/fixed_weight_inference_demo.py`, `docs/evidence_matrix.md` | Supported as heuristic recovery plus sample validation; not calibrated provenance proof. |
 | Planner exactness and fallback | `beyond_matmul/planner.py`, `tests/test_ir_planner.py`, `benchmarks/planner_contract_ablation.py`, `docs/benchmark_artifacts.md` | Supported as deterministic contract evidence; planner costs are estimates unless separately benchmarked. |
 | Approximation and error contracts | `beyond_matmul/approximations.py`, `tests/test_ir_planner.py`, `benchmarks/approximation_error_ablation.py`, `docs/benchmark_artifacts.md` | Supported for the bounded output-aware acceptance claim, not broad model-quality conclusions. |
-| Benchmark and cost claims | `benchmarks/fixed_weight.py`, `docs/results/fixed_weight.json`, `docs/results/live_conv1d_whisper.json`, `docs/results/peft_transformers_lora_inference.json`, `docs/results/peft_multi_adapter_serving.json`, `tests/test_benchmark_artifacts.py`, `tests/test_live_conv1d_whisper.py`, `tests/test_peft_transformers_lora_inference.py`, `tests/test_peft_multi_adapter_serving.py`, `scripts/ci_local`, `docs/benchmark_artifacts.md` | Supported as generated research artifacts, pure-Python proxies, live layer-level Conv1d evidence, and bounded PEFT capstone/serving evidence; not production performance evidence. |
+| Benchmark and cost claims | `benchmarks/fixed_weight.py`, `docs/results/fixed_weight.json`, `docs/results/live_conv1d_whisper.json`, `docs/results/peft_transformers_lora_inference.json`, `docs/results/peft_multi_adapter_serving.json`, `benchmarks/olmoe_stock_baseline.py`, `tests/test_benchmark_artifacts.py`, `tests/test_live_conv1d_whisper.py`, `tests/test_peft_transformers_lora_inference.py`, `tests/test_peft_multi_adapter_serving.py`, `tests/test_olmoe_stock_baseline.py`, `scripts/ci_local`, `docs/benchmark_artifacts.md` | Supported as generated research artifacts, pure-Python proxies, live layer-level Conv1d evidence, bounded PEFT capstone/serving evidence, and an OLMoE baseline contract smoke; not an OLMoE measurement, target decision, or production performance result. |
+| OLMoE stock-baseline capability | `benchmarks/olmoe_stock_baseline.py`, `tests/test_olmoe_stock_baseline.py`, `docs/benchmark_artifacts.md`, `scripts/ci_local` | Supported for pinned regime/configuration enumeration, explicit unavailable rows, correctness/timing schema, and best-correct-stock selection. The smoke contains no model execution; issue #133 must produce and profile the real CUDA cohort. |
 | External PEFT provenance | `docs/results/peft_transformers_lora_inference.json`, `docs/results/peft_multi_adapter_serving.json`, `docs/benchmark_artifacts.md`, `docs/evidence_matrix.md`, `whitepaper/main.tex` | Supported for metadata-level LoRA provenance and dense-fallback visibility on the measured CPU fp32 workloads; not production kernels, memory savings, adapter-switching gains, broader PEFT coverage, or universal Transformer speedups. |
 | Workload narratives | Torch examples, `examples/case_study_artifacts.py`, `docs/results/workload_case_studies.json`, `tests/test_case_study_artifacts.py` | Supported for adapter, Conv1d, grouped/depthwise Conv1d, fixed-mask, and per-tensor affine quantized-linear rows; broader workloads remain future work. |
 
@@ -66,9 +77,11 @@ priority-one blocker against the bounded first-artifact thesis. On 2026-07-09, #
 corrected the PEFT capstone shape grid from invalid seq128 rows to valid
 seq100 rows and refreshed the measured artifact. The newly opened
 production/performance roadmap issues (#110 through #114) were follow-on work
-for stronger claims. Issue #129 now records that the missing external result
-does invalidate project-level completion, without changing the accuracy of the
-historical first-artifact audit.
+for stronger claims. Merged issue #129/PR #131 records that the missing external
+result does invalidate project-level completion, without changing the accuracy
+of the historical first-artifact audit. Issue #132 is the claimed harness task;
+#133 is blocked on it for the measured target decision, and #130 remains ready
+for concise wiki synchronization.
 
 After the final-draft work merged, the first-artifact completion state became
 historical context rather than an active blocker:
@@ -164,7 +177,8 @@ adapter-switch threshold win is claimed, and `summary.performance_claim` plus
 - PEFT reader pointers are historical capstone and serving evidence, not a next
   capstone target.
 - `docs/olmoe_tensor_contraction_capstone.md` is the active target decision and
-  rejection gate; it is not benchmark evidence.
+  rejection gate; the executable harness and its evidence boundary are in
+  `benchmarks/olmoe_stock_baseline.py` and `docs/benchmark_artifacts.md`.
 
 ## Validation Commands
 
@@ -178,6 +192,7 @@ mise exec -- uv run python benchmarks/planner_contract_ablation.py --json-output
 mise exec -- uv run --with transformers --with librosa --with soundfile --with safetensors --with huggingface_hub python benchmarks/live_conv1d_whisper.py --json-output docs/results/live_conv1d_whisper.json
 mise exec -- uv run --with transformers --with accelerate --with safetensors --with huggingface_hub python benchmarks/peft_transformers_lora_inference.py --json-output docs/results/peft_transformers_lora_inference.json
 mise exec -- uv run --with transformers --with accelerate --with safetensors --with huggingface_hub python benchmarks/peft_multi_adapter_serving.py --json-output docs/results/peft_multi_adapter_serving.json
+mise exec -- uv run python benchmarks/olmoe_stock_baseline.py --smoke --json-output docs/results/olmoe_stock_baseline_smoke.json
 scripts/ci_local
 ```
 
@@ -191,6 +206,8 @@ scripts/ci_local
 - OLMoE is only a provisional candidate, current Transformers already has
   strong routed-expert backends, and no remaining attributable gap has been
   measured.
+- The OLMoE harness has not been exercised on a real CUDA cohort; its CI smoke
+  proves only row/schema and failure-boundary behavior.
 - The hardware cohort required to run the pinned full OLMoE model has not yet
   been selected or secured.
 - Recovery confidence remains heuristic and sample-limited.
