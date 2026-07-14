@@ -45,3 +45,4 @@ cd "$PROJECT_DIR"
 "$MISE_BIN" exec -- uv run python benchmarks/peft_transformers_lora_inference.py --smoke --json-output docs/results/peft_transformers_lora_inference_smoke.json
 "$MISE_BIN" exec -- uv run python benchmarks/peft_multi_adapter_serving.py --smoke --json-output docs/results/peft_multi_adapter_serving_smoke.json
 "$MISE_BIN" exec -- uv run python benchmarks/peft_multi_adapter_serving.py --hardware-contract-smoke --json-output docs/results/hardware_backed_peft_multi_adapter_serving_smoke.json
+"$MISE_BIN" exec -- uv run python benchmarks/olmoe_stock_baseline.py --smoke --json-output docs/results/olmoe_stock_baseline_smoke.json

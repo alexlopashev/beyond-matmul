@@ -88,6 +88,9 @@ uv run python examples/torch_fx_frontend_demo.py
 - `docs/olmoe_tensor_contraction_capstone.md`: provisional open-LLM target,
   routed tensor-program definition, upstream baseline audit, and rejection
   gate
+- `benchmarks/olmoe_stock_baseline.py`: pinned stock-only OLMoE prefill/decode
+  harness with explicit backend, compilation, correctness, timing, and
+  unavailable-row semantics
 - `docs/peft_fork_setup.md`: setup, sync, branch, and issue-mapping rules for
   the PEFT fork integration branch
 - `docs/peft_low_rank_provenance_design.md`: first PEFT low-rank provenance
@@ -130,7 +133,10 @@ that attributable gap, OLMoE is rejected before implementation expands.
 
 The decision record and benchmark gate are in
 `docs/olmoe_tensor_contraction_capstone.md`. No general tensor IR is implied by
-this target selection.
+this target selection. Merged issue #129/PR #131 establishes that contract;
+issue #132 implements the stock-only harness, and issue #133 remains blocked on
+the real CUDA cohort and accept-or-reject decision. The harness CI smoke runs no
+OLMoE inference and supports no performance claim.
 
 ## PEFT Capstone Status
 
@@ -177,6 +183,7 @@ measured artifact at `docs/results/peft_multi_adapter_serving.json`.
   adapter-switching gain
 
 Current completion status: the matrix-focused first artifact is historical and
-internally bounded, but the project-level north star is open. Issue #129 tracks
-the tensor-contraction correction; the PEFT CUDA roadmap is paused pending the
-external-target decision. `docs/completion_audit.md` records the distinction.
+internally bounded, but the project-level north star is open. Issue #129 and PR
+#131 merged the tensor-program correction; issues #132 and #133 now separate
+the baseline harness from the measured target decision. The PEFT CUDA roadmap
+remains paused. `docs/completion_audit.md` records the distinction.

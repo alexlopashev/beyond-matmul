@@ -208,9 +208,9 @@ require backend and layout support, while approximate operators additionally
 carry metric, epsilon, observed error, and sample-count evidence.
 
 This matrix-shaped IR is prior evidence, not a claim of general tensor support.
-Issue \#129 explicitly defers any tensor-IR abstraction until the external OLMoE
-target shows which named-axis, routing, layout, and phase fields a measured
-optimization actually requires.
+Merged issue \#129 and PR \#131 explicitly defer any tensor-IR abstraction
+until the external OLMoE target shows which named-axis, routing, layout, and
+phase fields a measured optimization actually requires.
 
 Implemented operator families include dense, diagonal, sparse COO, fixed-mask,
 low-rank, affine, codebook, bitpacked binary, packed affine quantized,
@@ -401,6 +401,19 @@ The main fixed-weight benchmark is regenerated with
 docs/results/fixed\_weight.json}; local CI also regenerates the workload
 case-study, approximation-error, and planner-contract JSON artifacts documented
 in \texttt{docs/benchmark\_artifacts.md}.
+
+Issue \#132 adds
+\texttt{benchmarks/olmoe\_stock\_baseline.py}, a stock-only OLMoE harness for
+the gate in \texttt{docs/olmoe\_tensor\_contraction\_capstone.md}. Its CI smoke
+enumerates all eight required full-model prefill/decode regimes and every stock
+backend/compilation configuration, including explicit exclusions and failures,
+without loading OLMoE or measuring performance. The real path pins the model
+and Transformers revisions, compares last-token logits with uncompiled eager,
+and records CUDA-event latency, wall time, throughput, setup, and allocator
+fields. No real CUDA OLMoE artifact exists yet; the harness therefore keeps
+\texttt{target\_decision\_ready=false} and
+\texttt{performance\_claim=none}. Issue \#133 owns the measured stock cohort,
+profiling, and accept-or-reject decision.
 
 In the fixed-weight benchmark, the planner request allows approximate
 lowerings with a maximum relative error of $0.05$ over a batch of $32$ and
@@ -747,6 +760,13 @@ applicable stock configuration per regime, a distinct changed execution,
 end-to-end prefill or decode evidence, and rejection of OLMoE if no remaining
 opportunity is found.
 
+The issue \#132 harness closes only the measurement-capability gap. Its CI
+smoke executes no model, and its future real rows contain only stock
+configurations. Routing attribution remains explicitly unmeasured until issue
+\#133 profiles the frozen CUDA cohort. Consequently, row/schema completeness,
+or even a complete stock cohort, cannot be interpreted as target acceptance or
+as a Beyond Matmul performance result.
+
 Recovery after provenance is lost is weaker than preserving provenance before
 dense lowering. The analyzer confidence values are probe-specific heuristic
 scores, not statistically calibrated probabilities, and output-relative
@@ -827,10 +847,12 @@ evidence, limitations, local validation commands, and remaining follow-up
 issues. It is not the final project result.
 
 The earlier live issue audit found no unresolved priority-zero or priority-one
-blocker against the bounded matrix artifact. Issue \#129 supersedes that
-project-level completion interpretation: the missing attributable external
-performance result is now an active priority-zero gap. The matrix artifact and
-its quantized, Conv1d, and PEFT boundaries remain accurate historical evidence.
+blocker against the bounded matrix artifact. Merged issue \#129/PR \#131
+supersedes that project-level completion interpretation: the missing
+attributable external performance result is now an active priority-zero gap.
+Issue \#132 provides the baseline harness, while blocked issue \#133 still owns
+the real CUDA cohort and target decision. The matrix artifact and its
+quantized, Conv1d, and PEFT boundaries remain accurate historical evidence.
 
 \section{Capstone Boundaries}
 
@@ -860,10 +882,11 @@ The PEFT hardware contract and issues \#123 through \#126 are paused rather than
 erased. The active next step is the OLMoE target-validation gate in
 \texttt{docs/olmoe\_tensor\_contraction\_capstone.md}. OLMoE is fully open and
 its routed experts form a tensor program around expert-indexed contraction
-subgraphs, but current Transformers already has optimized expert backends. A
-follow-up may implement only after it identifies a remaining cost that
-preserved route, axis, layout, or phase provenance can remove. Otherwise the
-target must be rejected without generalizing the IR.
+subgraphs, but current Transformers already has optimized expert backends. The
+issue \#132 harness is baseline-only and does not change this boundary. A
+follow-up optimization issue may be opened only after issue \#133 identifies a
+remaining cost that preserved route, axis, layout, or phase provenance can
+remove. Otherwise the target must be rejected without generalizing the IR.
 
 \section{Conclusion}
 
