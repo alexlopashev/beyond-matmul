@@ -171,9 +171,27 @@ bytes as the decode baseline. DeepGEMM readiness checks the full `nvcc` toolkit
 version required by the pinned integration, not only PyTorch's bundled CUDA
 runtime. It records routing attribution as still required rather than
 fabricating it.
-Issue #133 owns the real CUDA artifact, profiling, and binary target decision;
-neither a smoke artifact nor a row-complete stock cohort is a performance result
-or permission to open an optimization issue.
+
+Issue #136 adds `benchmarks/olmoe_stock_profile.py`. The profiler consumes only
+a complete real stock artifact, verifies that it is running on the same frozen
+hardware and software cohort, and binds one full-model profile to the selected
+best stock configuration in every regime. It requires runtime CUPTI device
+kernel events—not merely CUDA memcpy or memset events—and assigns aggregated
+frontend-operator self time exactly once across the predeclared categories.
+Raw CUDA rows are excluded because their durations are already attached to
+frontend operators; every unknown retained event name remains `unclassified`.
+
+The same profiler captures the input and output of zero-based sparse layer 8
+during a real `prefill_b1_s512` forward, then replays that exposed router and
+expert program for attribution and correctness. This replay is diagnostic only.
+It cannot replace any full-model row, and when the selected full-model path is
+compiled the diagnostic remains an uncompiled same-backend replay while the
+bound full-model profile owns compiler attribution.
+
+Issue #133 owns the real CUDA baseline/profile artifacts and binary target
+decision; neither smoke artifact, a row-complete stock cohort, nor the isolated
+layer diagnostic is a performance result or permission to open an optimization
+issue.
 
 The capstone succeeds only if a distinct provenance-enabled path:
 

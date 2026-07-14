@@ -60,8 +60,12 @@ supplies `benchmarks/olmoe_stock_baseline.py`, a baseline-only harness with the
 complete prefill/decode regime grid, stock backend and compilation inventory,
 explicit unavailable-row semantics, eager-relative correctness, and CUDA
 timing fields.
-Its CI smoke is schema evidence only. Ready issue #133 owns the real CUDA
-cohort, profiling, and binary target decision.
+Issue #136 supplies `benchmarks/olmoe_stock_profile.py`: it binds full-model
+profiles to the best stock row in every regime and captures the input to sparse
+layer 8 from a real `prefill_b1_s512` model forward for router/expert replay.
+Profiler self time is classified once, with unknown event names preserved.
+Both CI smokes are schema evidence only. Issue #133 owns the real CUDA cohort,
+the measured profile artifact, and the binary target decision.
 
 ## Prototype Modules
 
@@ -78,6 +82,8 @@ cohort, profiling, and binary target decision.
   exactness, bounded-error, reuse, backend, and dense fallback planner checks.
 - `benchmarks/olmoe_stock_baseline.py`: pinned stock-only OLMoE prefill/decode
   harness and contract smoke for the target-validation gate.
+- `benchmarks/olmoe_stock_profile.py`: best-stock profiler and real-activation
+  expert-layer diagnostic; its smoke contains no timings.
 - `examples/case_study_artifacts.py`: machine-readable adapter, Conv1d,
   fixed-mask, and quantized-linear workload case-study evidence with dense
   fallback comparisons.

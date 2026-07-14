@@ -15,6 +15,8 @@
 | `docs/results/live_conv1d_whisper.json` | `mise exec -- uv run --with transformers --with librosa --with soundfile --with safetensors --with huggingface_hub python benchmarks/live_conv1d_whisper.py --json-output docs/results/live_conv1d_whisper.json` | Real Whisper encoder Conv1d dense-vs-direct layer benchmark for the contract-defined model revision, audio trace, prefixes, and exact dense Toeplitz fallback. | Measured local CPU layer run, not CI smoke or end-to-end ASR. Correctness passes for all required rows; dense matrix byte counts expose materialized fallback footprint, not measured peak memory. The dense materialized fallback is slower on this run and `summary.performance_claim` is `none`. |
 | `docs/results/olmoe_stock_baseline_smoke.json` | `mise exec -- uv run python benchmarks/olmoe_stock_baseline.py --smoke --json-output docs/results/olmoe_stock_baseline_smoke.json` | Contract-shaped OLMoE stock-backend inventory covering every required prefill/decode regime and explicit compilation exclusion. | CI smoke performs no OLMoE inference, keeps every measurement empty, and records `cohort_complete=false`, `target_decision_ready=false`, and `performance_claim=none`. |
 | `docs/results/olmoe_stock_baseline.json` | See the pinned CUDA command below. | Future hardware-pinned stock-only OLMoE cohort used to choose the best successful upstream configuration per regime. | Not yet generated or committed. Even a row-complete stock cohort is target-validation input, not a Beyond Matmul speedup or an accept decision by itself. |
+| `docs/results/olmoe_stock_profile_smoke.json` | `mise exec -- uv run python benchmarks/olmoe_stock_profile.py --smoke --json-output docs/results/olmoe_stock_profile_smoke.json` | Contract-shaped inventory for eight best-stock full-model profiles and one pinned real-activation expert-layer diagnostic. | CI smoke performs no model execution, leaves every timing field unavailable, and records `profile_complete=false`, `target_decision_ready=false`, and `performance_claim=none`. |
+| `docs/results/olmoe_stock_profile.json` | See the pinned CUDA command below. | Future same-cohort profiler attribution for every best stock regime plus a layer-8 router/expert diagnostic driven by a captured `prefill_b1_s512` activation. | Not yet generated or committed. Profiler self time is diagnostic evidence; the isolated layer replay is not an end-to-end result or a Beyond Matmul candidate measurement. |
 
 ## OLMoE Stock-Baseline Harness
 
@@ -79,8 +81,9 @@ peak. DeepGEMM preflight separately records the `nvcc` path and full CUDA
 toolkit version because the pinned Transformers integration has no NVRTC
 fallback; Hopper requires toolkit 12.3 or newer and Blackwell requires 12.9 or
 newer. Routing overhead remains explicitly
-`requires_profiled_target_validation` until issue #133 adds the profiler
-attribution required for the accept-or-reject decision. Failed, blocked,
+`requires_profiled_target_validation` in the baseline artifact; issue #136 adds
+the separate bound profiler artifact described below rather than retroactively
+mixing profiler overhead into baseline timing. Failed, blocked,
 hardware-inapplicable, and contract-excluded rows remain in the artifact with
 reasons.
 
@@ -94,6 +97,71 @@ attempts keep the cohort incomplete. The artifact always keeps
 `target_decision_ready=false` and `performance_claim=none`; issue #133 owns
 profiling, best-successful-stock interpretation, and the binary OLMoE
 accept-or-reject decision.
+
+## OLMoE Best-Stock Profiler And Expert Diagnostic
+
+`benchmarks/olmoe_stock_profile.py` consumes a complete real
+`olmoe_stock_baseline.json`. It rejects a schema smoke, partial cohort, changed
+pin, missing best row, incorrect best row, or metadata that does not match the
+selected stock configuration. The profiler must run on the same GPU UUID,
+driver, CUDA runtime, PyTorch build, Transformers revision, model revision, and
+dtype recorded by the baseline artifact. CUDA profiler activity and Kineto are
+required before execution. Every profile must contain a CUPTI event whose
+activity type is an actual CUDA kernel, not only a CUDA memcpy or memset, and
+must report positive device self time.
+
+Every required prefill/decode regime receives one full-model profile bound to
+its independently selected best stock configuration. Attribution uses only
+aggregated frontend CPU operator rows: their device self time already owns the
+linked kernel durations, so raw CUDA rows are excluded instead of counting the
+same kernels again. Each retained event group is classified exactly once.
+The ordered categories are routing/top-k, sorting/permutation,
+offsets/histogram, expert contractions, activation/gating,
+aggregation/scatter, layout/copy conversion, allocation, compilation, and
+`unclassified`. Raw event names and explicit unclassified totals remain in the
+artifact. Generic full-model `linear`, `mm`, and `bmm` events are deliberately
+left unclassified because their names alone do not distinguish attention,
+output projection, routing, and expert work.
+
+The separate diagnostic freezes zero-based sparse layer 8 and
+`prefill_b1_s512`. It hooks `model.layers.8.mlp` during one real full-model
+forward, clones that layer's actual input and output, and replays the exposed
+router and expert program. Router and expert profiles are kept in separate
+semantic scopes, then combined with total conservation and replay correctness
+metadata. The replay preserves the selected experts backend. It remains
+uncompiled even when the winning full-model row is compiled; compiler behavior
+belongs to the bound full-model profile, and the artifact records this boundary
+explicitly.
+
+Run the schema-only CI smoke with:
+
+```bash
+mise exec -- uv run python benchmarks/olmoe_stock_profile.py --smoke --json-output docs/results/olmoe_stock_profile_smoke.json
+```
+
+After the complete stock artifact has been produced on the frozen CUDA host,
+run the profiler in the same pinned dependency environment:
+
+```bash
+mise exec -- uv run \
+  --with 'transformers @ git+https://github.com/huggingface/transformers.git@a6895655b289cc3fdd29afec36904e0b8545ef92' \
+  --with accelerate==1.14.0 \
+  --with safetensors==0.8.0 \
+  --with huggingface-hub==1.23.0 \
+  --with kernels==0.15.2 \
+  --with nvidia-cutlass-dsl==4.6.0 \
+  python benchmarks/olmoe_stock_profile.py \
+  --real \
+  --baseline-artifact docs/results/olmoe_stock_baseline.json \
+  --profile-warmups 1 \
+  --json-output docs/results/olmoe_stock_profile.json
+```
+
+The profile artifact always keeps `candidate_measurements_present=false`,
+`target_decision_ready=false`, and `performance_claim=none`. Issue #133 must
+interpret the baseline and profiler together, state one distinct
+provenance-enabled intervention or reject OLMoE, and keep any future candidate
+measurement in a later issue.
 
 ## Live Conv1d Whisper Dense-vs-Direct Benchmark
 
