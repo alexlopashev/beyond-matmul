@@ -12,10 +12,10 @@ claim support from project-level completion.
 
 This file's original recommended frontend/Conv1d work is historical and has
 already landed. Merged issue #129/PR #131 established the external OLMoE target
-gate in `docs/olmoe_tensor_contraction_capstone.md`. The active work is issue
-#132, the stock-only baseline harness; issue #133 is blocked on it for the real
-CUDA cohort and accept-or-reject decision. Do not use the old suggested PR at
-the end of this file as current roadmap state.
+gate in `docs/olmoe_tensor_contraction_capstone.md`. Merged issue #132/PR #134
+provides the stock-only baseline harness. Ready issue #133 is the active work
+for the real CUDA cohort, profiling, and accept-or-reject decision. Do not use
+the old suggested PR at the end of this file as current roadmap state.
 
 ## Current State
 
@@ -111,15 +111,15 @@ after dense materialization.
 
 ## Recommended Next Layer
 
-Superseded by issues #129, #132, and #133. The current order is:
+Superseded by issues #129, #132, and #133. With the harness merged, the current
+order is:
 
-1. Merge the tested OLMoE stock-baseline harness from issue #132.
-2. Freeze one hardware/dependency cohort in issue #133 and benchmark every
+1. Freeze one hardware/dependency cohort in issue #133 and benchmark every
    applicable stock expert configuration, including compiled variants.
-3. Reject OLMoE if no cost remains beyond the best stock strategy.
-4. Only after the gate passes, implement one distinct provenance-enabled routed
+2. Reject OLMoE if no cost remains beyond the best stock strategy.
+3. Only after the gate passes, implement one distinct provenance-enabled routed
    tensor program and measure full-model prefill and decode.
-5. Generalize the local IR only from concepts required by that result.
+4. Generalize the local IR only from concepts required by that result.
 
 The recommendations below are retained as historical context.
 

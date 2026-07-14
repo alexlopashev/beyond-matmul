@@ -133,10 +133,10 @@ that attributable gap, OLMoE is rejected before implementation expands.
 
 The decision record and benchmark gate are in
 `docs/olmoe_tensor_contraction_capstone.md`. No general tensor IR is implied by
-this target selection. Merged issue #129/PR #131 establishes that contract;
-issue #132 implements the stock-only harness, and issue #133 remains blocked on
-the real CUDA cohort and accept-or-reject decision. The harness CI smoke runs no
-OLMoE inference and supports no performance claim.
+this target selection. Merged issue #129/PR #131 establishes that contract, and
+merged issue #132/PR #134 implements the stock-only harness. Ready issue #133
+owns the real CUDA cohort, profiling, and accept-or-reject decision. The harness
+CI smoke runs no OLMoE inference and supports no performance claim.
 
 ## PEFT Capstone Status
 
@@ -184,6 +184,7 @@ measured artifact at `docs/results/peft_multi_adapter_serving.json`.
 
 Current completion status: the matrix-focused first artifact is historical and
 internally bounded, but the project-level north star is open. Issue #129 and PR
-#131 merged the tensor-program correction; issues #132 and #133 now separate
-the baseline harness from the measured target decision. The PEFT CUDA roadmap
-remains paused. `docs/completion_audit.md` records the distinction.
+#131 merged the tensor-program correction, issue #132/PR #134 merged the
+baseline harness, and ready issue #133 owns the measured target decision. The
+PEFT CUDA roadmap remains paused. `docs/completion_audit.md` records the
+distinction.
