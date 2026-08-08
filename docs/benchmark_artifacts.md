@@ -245,8 +245,10 @@ Transformers revision, model revision, or dtype. It validates the complete stock
 artifact by canonical SHA-256, reruns eager outputs for parity, requires exactly
 20 positive CUDA-event samples per regime, recomputes medians, and makes
 incorrect rows ineligible before interpreting timing. An observed eager
-fallback also rejects the candidate. Until this command produces a complete
-accepted artifact, the project retains `performance_claim=none`.
+fallback also rejects the candidate. The artifact binds the clean Beyond Matmul
+git revision and candidate-module SHA-256; real mode refuses a dirty source tree
+or checksum mismatch. Until this command produces a complete accepted artifact,
+the project retains `performance_claim=none`.
 
 ## Live Conv1d Whisper Dense-vs-Direct Benchmark
 

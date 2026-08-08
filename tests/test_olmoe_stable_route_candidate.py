@@ -83,6 +83,16 @@ def _candidate_payload(candidate, baseline, *, ratio=0.88, correctness="passed")
     }
 
 
+def _clean_implementation_binding(candidate):
+    return {
+        "status": "bound",
+        "repository": "https://github.com/alexlopashev/beyond-matmul.git",
+        "revision": "a" * 40,
+        "dirty": False,
+        "candidate_module_sha256": candidate.candidate_module_sha256(),
+    }
+
+
 class OlmoeStableRouteCandidateTests(unittest.TestCase):
     def test_smoke_has_all_eight_rows_and_cannot_make_a_performance_claim(self):
         candidate = _load_candidate_module()
@@ -116,6 +126,7 @@ class OlmoeStableRouteCandidateTests(unittest.TestCase):
             mode="real",
             baseline_artifact=baseline,
             baseline_artifact_path="docs/results/olmoe_stock_baseline.json",
+            implementation_binding=_clean_implementation_binding(candidate),
             environment=baseline["environment"],
             run_candidate=lambda *_args, **_kwargs: _candidate_payload(candidate, baseline),
             warmup_repetitions=5,
@@ -127,6 +138,8 @@ class OlmoeStableRouteCandidateTests(unittest.TestCase):
             artifact["baseline_binding"]["sha256"],
             candidate.artifact_sha256(baseline),
         )
+        self.assertEqual(artifact["implementation_binding"]["revision"], "a" * 40)
+        self.assertFalse(artifact["implementation_binding"]["dirty"])
         self.assertTrue(artifact["summary"]["candidate_measurements_present"])
         self.assertTrue(artifact["summary"]["correctness_all_passed"])
         self.assertTrue(artifact["summary"]["success_threshold_met"])
@@ -146,6 +159,7 @@ class OlmoeStableRouteCandidateTests(unittest.TestCase):
         artifact = candidate.collect_results(
             mode="real",
             baseline_artifact=baseline,
+            implementation_binding=_clean_implementation_binding(candidate),
             environment=baseline["environment"],
             run_candidate=lambda *_args, **_kwargs: _candidate_payload(
                 candidate, baseline, ratio=0.5, correctness="failed"
@@ -173,6 +187,7 @@ class OlmoeStableRouteCandidateTests(unittest.TestCase):
         artifact = candidate.collect_results(
             mode="real",
             baseline_artifact=baseline,
+            implementation_binding=_clean_implementation_binding(candidate),
             environment=baseline["environment"],
             run_candidate=lambda *_args, **_kwargs: payload,
             warmup_repetitions=5,
@@ -193,6 +208,7 @@ class OlmoeStableRouteCandidateTests(unittest.TestCase):
             candidate.collect_results(
                 mode="real",
                 baseline_artifact=baseline,
+                implementation_binding=_clean_implementation_binding(candidate),
                 environment=environment,
                 run_candidate=lambda *_args, **_kwargs: {},
                 warmup_repetitions=5,
@@ -215,6 +231,7 @@ class OlmoeStableRouteCandidateTests(unittest.TestCase):
         artifact = candidate.collect_results(
             mode="real",
             baseline_artifact=baseline,
+            implementation_binding=_clean_implementation_binding(candidate),
             environment=baseline["environment"],
             run_candidate=lambda *_args, **_kwargs: payload,
             warmup_repetitions=5,
@@ -237,10 +254,28 @@ class OlmoeStableRouteCandidateTests(unittest.TestCase):
             candidate.collect_results(
                 mode="real",
                 baseline_artifact=baseline,
+                implementation_binding=_clean_implementation_binding(candidate),
                 environment=baseline["environment"],
                 run_candidate=lambda *_args, **_kwargs: {},
                 warmup_repetitions=1,
                 measured_repetitions=2,
+            )
+
+    def test_real_mode_rejects_a_dirty_candidate_source_tree(self):
+        candidate = _load_candidate_module()
+        baseline = _real_baseline_artifact()
+        binding = _clean_implementation_binding(candidate)
+        binding["dirty"] = True
+
+        with self.assertRaisesRegex(RuntimeError, "candidate_source_tree_dirty"):
+            candidate.collect_results(
+                mode="real",
+                baseline_artifact=baseline,
+                implementation_binding=binding,
+                environment=baseline["environment"],
+                run_candidate=lambda *_args, **_kwargs: {},
+                warmup_repetitions=5,
+                measured_repetitions=20,
             )
 
 

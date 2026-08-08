@@ -11,6 +11,7 @@ import json
 import math
 import os
 import statistics
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Sequence
@@ -74,6 +75,7 @@ def collect_results(
     mode: str,
     baseline_artifact: Mapping[str, Any] | None = None,
     baseline_artifact_path: str | None = None,
+    implementation_binding: Mapping[str, Any] | None = None,
     environment: Mapping[str, Any] | None = None,
     run_candidate: CandidateExecutor | None = None,
     warmup_repetitions: int = DEFAULT_WARMUP_REPETITIONS,
@@ -92,6 +94,11 @@ def collect_results(
     measurement_contract = _measurement_contract(
         warmup_repetitions, measured_repetitions
     )
+    resolved_implementation_binding = dict(
+        implementation_binding
+        if implementation_binding is not None
+        else probe_implementation_binding()
+    )
     if mode == "contract-smoke":
         return {
             "schema_version": 1,
@@ -107,6 +114,7 @@ def collect_results(
                 "sha256": None,
                 "cohort_complete": False,
             },
+            "implementation_binding": resolved_implementation_binding,
             "measurement_contract": measurement_contract,
             "environment": _smoke_environment(),
             "candidate_configuration": configuration,
@@ -133,6 +141,14 @@ def collect_results(
         raise ValueError("real mode requires five warmups and 20 measured repetitions")
     if baseline_artifact is None:
         raise ValueError("real mode requires the complete stock baseline artifact")
+    implementation_blockers = implementation_readiness_blockers(
+        resolved_implementation_binding
+    )
+    if implementation_blockers:
+        raise RuntimeError(
+            "candidate implementation preflight blocked: "
+            + ", ".join(implementation_blockers)
+        )
     best_stock_rows = profile.validate_baseline_artifact(baseline_artifact)
     resolved_environment = dict(environment or baseline.probe_environment())
     environment_blockers = candidate_readiness_blockers(
@@ -233,6 +249,7 @@ def collect_results(
             "sha256": artifact_sha256(baseline_artifact),
             "cohort_complete": True,
         },
+        "implementation_binding": resolved_implementation_binding,
         "measurement_contract": measurement_contract,
         "environment": resolved_environment,
         "candidate_configuration": configuration,
@@ -300,6 +317,64 @@ def artifact_sha256(artifact: Mapping[str, Any]) -> str:
         "utf-8"
     )
     return hashlib.sha256(payload).hexdigest()
+
+
+def candidate_module_sha256() -> str:
+    return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+
+
+def probe_implementation_binding() -> Dict[str, Any]:
+    repository_root = Path(__file__).resolve().parents[1]
+
+    def git(*args: str) -> str:
+        completed = subprocess.run(
+            ["git", "-C", str(repository_root), *args],
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        return completed.stdout.strip()
+
+    try:
+        revision = git("rev-parse", "HEAD")
+        repository = git("remote", "get-url", "origin")
+        dirty = bool(git("status", "--porcelain", "--untracked-files=no"))
+    except (OSError, subprocess.CalledProcessError):
+        return {
+            "status": "unavailable",
+            "repository": None,
+            "revision": None,
+            "dirty": None,
+            "candidate_module_sha256": candidate_module_sha256(),
+        }
+    return {
+        "status": "bound",
+        "repository": repository,
+        "revision": revision,
+        "dirty": dirty,
+        "candidate_module_sha256": candidate_module_sha256(),
+    }
+
+
+def implementation_readiness_blockers(
+    implementation: Mapping[str, Any],
+) -> List[str]:
+    blockers: List[str] = []
+    revision = implementation.get("revision")
+    if implementation.get("status") != "bound":
+        blockers.append("candidate_source_revision_unavailable")
+    if not (
+        isinstance(revision, str)
+        and len(revision) == 40
+        and all(character in "0123456789abcdef" for character in revision.lower())
+    ):
+        blockers.append("candidate_source_revision_invalid")
+    if implementation.get("dirty") is not False:
+        blockers.append("candidate_source_tree_dirty")
+    if implementation.get("candidate_module_sha256") != candidate_module_sha256():
+        blockers.append("candidate_module_checksum_mismatch")
+    return _deduplicate(blockers)
 
 
 def _bind_and_normalize_results(

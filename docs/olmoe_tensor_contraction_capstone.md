@@ -283,7 +283,8 @@ it is not CUDA or performance evidence.
 canonical checksum and environment of `olmoe_stock_baseline.json`, reruns an
 eager output reference, requires five warmups and 20 CUDA-event samples for all
 eight regimes, recomputes each median, and records an aggregate execution-path
-audit. Its CI smoke has eight empty contract rows and
+audit. It also records the clean candidate git revision and module checksum and
+rejects a dirty source tree. Its CI smoke has eight empty contract rows and
 `performance_claim=none`. Only a real artifact that observes the new path with
 no fallback and clears every gate below may change that claim.
 
