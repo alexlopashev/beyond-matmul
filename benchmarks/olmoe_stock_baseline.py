@@ -56,6 +56,7 @@ PINNED_DEPENDENCY_VERSIONS = {
     "huggingface-hub": "1.23.0",
     "kernels": "0.15.2",
     "nvidia-cutlass-dsl": "4.6.0",
+    "apache-tvm-ffi": "0.1.13.post2",
 }
 CORE_DEPENDENCIES = {"accelerate", "safetensors", "huggingface-hub"}
 KERNELS_MIN_VERSION = "0.15.2"
@@ -521,7 +522,9 @@ def backend_availability(
                 "reason": "deepgemm_kernels_version_pin_mismatch",
             }
 
-    missing_sonic_modules = sorted({"kernels", "cutlass"} - available_modules)
+    missing_sonic_modules = sorted(
+        {"kernels", "cutlass", "tvm_ffi"} - available_modules
+    )
     if missing_sonic_modules:
         availability["sonicmoe"] = {
             "status": "blocked",
@@ -549,6 +552,13 @@ def backend_availability(
         availability["sonicmoe"] = {
             "status": "blocked",
             "reason": "sonicmoe_nvidia_cutlass_dsl_version_mismatch",
+        }
+    elif dependency_versions.get("apache-tvm-ffi") != PINNED_DEPENDENCY_VERSIONS[
+        "apache-tvm-ffi"
+    ]:
+        availability["sonicmoe"] = {
+            "status": "blocked",
+            "reason": "sonicmoe_apache_tvm_ffi_version_mismatch",
         }
     return availability
 
@@ -1049,7 +1059,7 @@ def probe_environment() -> Dict[str, Any]:
 
     available_modules = {
         module_name
-        for module_name in ("kernels", "cutlass")
+        for module_name in ("kernels", "cutlass", "tvm_ffi")
         if importlib.util.find_spec(module_name) is not None
     }
     dependencies = {
@@ -1062,6 +1072,7 @@ def probe_environment() -> Dict[str, Any]:
             "huggingface-hub",
             "kernels",
             "nvidia-cutlass-dsl",
+            "apache-tvm-ffi",
         )
     }
     blockers.extend(dependency_readiness_blockers(dependencies))

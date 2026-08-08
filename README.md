@@ -85,9 +85,9 @@ uv run python examples/torch_fx_frontend_demo.py
   with dense merged serving strategies
 - `docs/hardware_backed_production_benchmark_contract.md`: future-work
   contract for the now-paused PEFT hardware roadmap
-- `docs/olmoe_tensor_contraction_capstone.md`: provisional open-LLM target,
-  routed tensor-program definition, upstream baseline audit, and rejection
-  gate
+- `docs/olmoe_tensor_contraction_capstone.md`: measured open-LLM target
+  decision, routed tensor-program definition, upstream baseline audit, and
+  candidate success/rejection gate
 - `benchmarks/olmoe_stock_baseline.py`: pinned stock-only OLMoE prefill/decode
   harness with explicit backend, compilation, correctness, timing, and
   unavailable-row semantics
@@ -115,9 +115,9 @@ research goal is stronger: demonstrate that preserved tensor-contraction
 provenance causes an attributable performance improvement in an external
 open-source ML project.
 
-## Active North Star: Open LLM Routed Tensor Program
+## Active North Star: OLMoE Stable Route-Plan Experiment
 
-The provisional target is AllenAI's Apache-2.0
+The accepted experimental target is AllenAI's Apache-2.0
 `allenai/OLMoE-1B-7B-0924` model through Hugging Face Transformers. Its MoE
 layers combine token hidden states, token-to-expert routes, routing weights, and
 3D expert-weight tensors. This is a routed tensor program composed of
@@ -125,21 +125,31 @@ expert-indexed gate/up and down contractions, nonlinear gating, dynamic
 selection, and aggregation. Its token, selected-expert, expert, hidden, and
 intermediate axes should remain visible to lowering decisions.
 
-Current Transformers already has eager, batched, grouped, and optimized expert
-backends. Reproducing an existing eager-versus-grouped speedup is therefore
-background evidence, not Beyond Matmul's result. The target passes only if a
-distinct provenance-enabled change beats the best applicable stock strategy by
-at least 10% on a predefined end-to-end regime, preserves correctness, and
-regresses no required regime by more than 5%. If target validation cannot find
-that attributable gap, OLMoE is rejected before implementation expands.
+The measured H100 cohort in `docs/results/olmoe_stock_baseline.json` is complete:
+all 288 inventory rows are explicit, all 160 required rows reached a terminal
+outcome, and only uncompiled eager passed the predeclared correctness tolerance
+in all eight regimes. The same-cohort CUPTI artifact in
+`docs/results/olmoe_stock_profile.json` completes all eight bound full-model
+profiles and an exact layer-8 replay. That diagnostic attributes 29.40% of
+device self time to sorting/permutation, 28.63% to expert contractions, and
+8.97% to aggregation/scatter.
+
+Issue #133 therefore accepts one narrow stable route-plan experiment: preserve
+eager token/expert ordering and accumulation semantics while constructing route
+membership and offsets once for expert execution. Current Transformers already
+has eager, batched, grouped, and optimized expert backends, so reproducing their
+existing gain remains background evidence. The candidate succeeds only if its
+distinct execution beats the best correct stock strategy by at least 10% on a
+predefined end-to-end regime, preserves correctness, and regresses no required
+regime by more than 5%.
 
 The decision record and benchmark gate are in
 `docs/olmoe_tensor_contraction_capstone.md`. No general tensor IR is implied by
-this target selection. Merged issue #129/PR #131 establishes that contract, and
-merged issue #132/PR #134 implements the stock-only harness. Issue #136 adds the
-profiler and real-activation diagnostic surface that issue #133 consumes for
-the CUDA cohort and accept-or-reject decision. Both CI smokes run no OLMoE
-inference and support no performance claim.
+this target selection. Merged issue #129/PR #131 establishes that contract,
+merged issue #132/PR #134 implements the stock-only harness, and issue #136
+adds the profiler and real-activation diagnostic. Issue #133 contributes the
+real H100 artifacts and measured accept decision. The artifacts contain no
+candidate measurement and keep `performance_claim=none`.
 
 ## PEFT Capstone Status
 
@@ -186,8 +196,7 @@ measured artifact at `docs/results/peft_multi_adapter_serving.json`.
   adapter-switching gain
 
 Current completion status: the matrix-focused first artifact is historical and
-internally bounded, but the project-level north star is open. Issue #129 and PR
-#131 merged the tensor-program correction, issue #132/PR #134 merged the
-baseline harness, and issue #136 adds the stock profiler prerequisite. Issue
-#133 owns the still-unmeasured target decision. The PEFT CUDA roadmap remains
+internally bounded, but the project-level north star is open. The OLMoE target
+decision is now measured and accepted for one scoped implementation experiment;
+no candidate or external speedup exists yet. The PEFT CUDA roadmap remains
 paused. `docs/completion_audit.md` records the distinction.

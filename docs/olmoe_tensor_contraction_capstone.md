@@ -1,24 +1,33 @@
 # OLMoE Routed Tensor-Program Capstone
 
-Status: provisional target-validation candidate
+Status: accepted for one scoped implementation experiment; no speedup claim
 
-Decision date: 2026-07-14
+Decision date: 2026-08-08
 
-Tracking issue: #129
+Tracking issues: #129 (contract) and #133 (measured decision)
 
 ## Decision
 
-Beyond Matmul will evaluate an open language model before expanding its local
-IR. The first candidate is AllenAI's OLMoE-1B-7B model through Hugging Face
-Transformers. OLMoE is a useful tensor case because its sparse mixture-of-experts
-layer retains token routing, expert identity, routing weights, and 3D expert
-weights rather than presenting the computation as one anonymous matrix.
+Issue #133 accepts OLMoE for exactly one scoped implementation experiment:
+stable route-plan expert execution that preserves eager token order, expert
+identity, routing weights, and accumulation semantics while removing repeated
+per-expert route discovery and materialization. The external patch surface is
+the Transformers expert integration in `src/transformers/integrations/moe.py`
+plus, only if a reusable kernel is required, the Hugging Face `kernels`
+project. Stock eager and generic/dense execution remain explicit fallbacks.
 
-This is a candidate, not a foregone conclusion. Current Transformers already
-contains provenance-aware expert backends. An existing upstream
-eager-versus-grouped win demonstrates the broader thesis but cannot count as a
-Beyond Matmul result. OLMoE must be rejected if target validation cannot find a
-remaining, attributable opportunity against the best stock implementation.
+This is a target-validation decision, not a Beyond Matmul performance result.
+The measured artifacts contain no candidate implementation and retain
+`performance_claim=none`. A later implementation must still clear the fixed
+10% win, 5% cross-regime regression, correctness, fallback, and external-review
+gates below. Failure closes this target rather than weakening those gates.
+
+OLMoE remains a useful tensor case because its sparse mixture-of-experts layer
+retains token routing, expert identity, routing weights, and 3D expert weights
+rather than presenting the computation as one anonymous matrix. Current
+Transformers already contains provenance-aware expert backends; their
+eager-versus-optimized gains are background evidence and cannot count as a
+Beyond Matmul result.
 
 ## Immutable References
 
@@ -132,6 +141,72 @@ Candidate hypotheses include a fused routed tensor program on hardware not
 served by the existing fused backend, or a route-aware lowering that removes
 work the best stock backend still performs. These are hypotheses, not claims.
 
+## Measured H100 Target Decision
+
+Issue #133 ran the frozen cohort on one NVIDIA H100 PCIe 80 GB GPU
+(`GPU-a044420f-519f-3f44-eb83-76272b8d274e`) with driver `580.159.04`, CUDA
+runtime and toolkit `13.0`, PyTorch `2.12.1+cu130`, Python `3.14.6`, the pinned
+Transformers revision, and the dependency versions recorded in
+`docs/results/olmoe_stock_baseline.json`. The real run used five warmups and 20
+measured repetitions. Its 36-configuration inventory contains 20 required and
+16 contract-excluded configurations across eight regimes, for 288 explicit
+rows.
+
+The artifact is row- and cohort-complete with no readiness blocker. Of the 160
+required rows, 96 completed execution and 64 ended in an explicit executor
+failure. Only the eight uncompiled eager rows passed both predeclared
+correctness tolerances. The other 88 executable rows, including default,
+grouped, DeepGEMM, SonicMoE, and compiled variants, failed output parity; their
+lower latencies therefore cannot be interpreted as correct stock baselines or
+as a Beyond Matmul result. The best correct stock row in every regime is:
+
+| Regime | Configuration | CUDA-event median | Throughput |
+| --- | --- | ---: | ---: |
+| `prefill_b1_s128` | `eager__uncompiled` | 296.094 ms | 432.30 tokens/s |
+| `prefill_b1_s512` | `eager__uncompiled` | 231.673 ms | 2,210.01 tokens/s |
+| `prefill_b4_s128` | `eager__uncompiled` | 245.158 ms | 2,088.45 tokens/s |
+| `prefill_b4_s512` | `eager__uncompiled` | 264.093 ms | 7,754.85 tokens/s |
+| `decode_b1_p128` | `eager__uncompiled` | 49.354 ms | 20.26 tokens/s |
+| `decode_b1_p512` | `eager__uncompiled` | 49.372 ms | 20.25 tokens/s |
+| `decode_b8_p128` | `eager__uncompiled` | 120.709 ms | 66.28 tokens/s |
+| `decode_b8_p512` | `eager__uncompiled` | 116.120 ms | 68.89 tokens/s |
+
+The selected eager rows record timed-forward allocator increments from 21.9 MB
+to 351.7 MB for prefill and from 0.68 MB to 18.0 MB for decode after the prompt
+cache is resident. These fields preserve the measurement boundary; they do not
+establish a memory-saving opportunity by themselves.
+
+`docs/results/olmoe_stock_profile.json` binds a successful CUPTI profile to all
+eight selected rows and contains an exact layer-8 diagnostic replay with zero
+maximum-absolute and relative-L2 error. Generic full-model matrix operations
+remain intentionally unclassified, so the scoped diagnostic is the attribution
+evidence. Its device self time is 29.40% sorting/permutation, 28.63% expert
+contractions, 16.18% activation/gating, 11.30% unclassified, 8.97%
+aggregation/scatter, 4.06% layout/copy conversion, and 1.45% routing/top-k.
+Repeated route discovery and permutation therefore cost at least as much as
+the expert contractions in this diagnostic.
+
+The four target-validation questions resolve as follows:
+
+1. The best correct stock path is uncompiled eager in all eight regimes under
+   the immutable tolerance. Faster correctness-failed rows are not eligible.
+2. Stable route construction, permutation, and aggregation remain attributable
+   work around the contractions; the diagnostic exposes 38.37% device self time
+   in sorting/permutation plus aggregation/scatter.
+3. Preserved route and axis provenance enables a distinct stable route plan:
+   construct expert offsets and token membership once, preserve eager token and
+   selected-expert order, reuse that plan across gate/up, activation, down, and
+   weighted aggregation, and retain eager-order accumulation for parity. This
+   is changed execution, not metadata attached to an existing backend.
+4. The intervention is reviewable as a narrow Transformers expert backend,
+   with any reusable kernel isolated in the existing `kernels` integration
+   surface and eager/generic fallbacks retained.
+
+The binary decision is therefore **accept for one scoped experiment**. It does
+not authorize a broad tensor IR, does not treat the diagnostic as end-to-end
+evidence, and does not claim that the intervention will win. No optimization
+issue may begin until this decision is reviewed and merged.
+
 ## Benchmark Gate
 
 The follow-up benchmark contract must freeze the exact GPU, driver, PyTorch,
@@ -188,10 +263,10 @@ It cannot replace any full-model row, and when the selected full-model path is
 compiled the diagnostic remains an uncompiled same-backend replay while the
 bound full-model profile owns compiler attribution.
 
-Issue #133 owns the real CUDA baseline/profile artifacts and binary target
+Issue #133 supplies the real CUDA baseline/profile artifacts and binary target
 decision; neither smoke artifact, a row-complete stock cohort, nor the isolated
-layer diagnostic is a performance result or permission to open an optimization
-issue.
+layer diagnostic is a performance result. The reviewed `accept` decision, not
+artifact completeness alone, is the prerequisite for an optimization issue.
 
 The capstone succeeds only if a distinct provenance-enabled path:
 
