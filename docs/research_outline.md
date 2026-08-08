@@ -40,20 +40,27 @@ evidence, not that final result.
     applicable stock strategy by the predefined threshold while preserving
     correctness and fallbacks.
 
-## Active External Target Validation
+## Active External Target
 
-The provisional target is `allenai/OLMoE-1B-7B-0924` through Hugging Face
+The accepted experimental target is `allenai/OLMoE-1B-7B-0924` through Hugging Face
 Transformers. The routed expert computation combines token hidden states,
 token-to-expert assignments, routing weights, and 3D expert tensors. Its target
 definition and rejection gate are in
 `docs/olmoe_tensor_contraction_capstone.md`.
 
-Current Transformers already supports eager, batched, grouped, and optimized MoE
-backends. Their existing gains are background evidence that routing provenance
-matters; they are not a Beyond Matmul contribution. Target validation must find
-a remaining cost and a distinct, externally reviewable execution that could
-beat the best applicable stock backend. Otherwise OLMoE is rejected before a
-general tensor IR or broad kernel platform is built.
+Current Transformers already supports eager, batched, grouped, and optimized
+MoE backends. Their existing gains are background evidence that routing
+provenance matters; they are not a Beyond Matmul contribution. The issue #133
+H100 target-validation cohort found that only uncompiled eager passed the fixed
+correctness tolerance in all eight regimes. The exact layer-8 replay attributes
+29.40% of device self time to sorting/permutation and 8.97% to
+aggregation/scatter, versus 28.63% to expert contractions.
+
+The accepted intervention is one stable route-plan expert path: construct
+expert membership and offsets once, preserve eager token/expert and accumulation
+order, reuse the route plan across contraction, gating, and aggregation, and
+retain eager/generic fallback. This is an implementation hypothesis, not a
+performance claim or permission to generalize the local IR.
 
 Merged issue #129/PR #131 fixed the target contract. Merged issue #132/PR #134
 supplies `benchmarks/olmoe_stock_baseline.py`, a baseline-only harness with the
@@ -64,8 +71,10 @@ Issue #136 supplies `benchmarks/olmoe_stock_profile.py`: it binds full-model
 profiles to the best stock row in every regime and captures the input to sparse
 layer 8 from a real `prefill_b1_s512` model forward for router/expert replay.
 Profiler self time is classified once, with unknown event names preserved.
-Both CI smokes are schema evidence only. Issue #133 owns the real CUDA cohort,
-the measured profile artifact, and the binary target decision.
+Both CI smokes remain schema evidence only. Issue #133 adds the complete real
+H100 baseline and profile artifacts and the binary `accept` decision. A later
+issue must implement and measure the candidate against the same 10% win, 5%
+regression, correctness, fallback, and external-review gates.
 
 ## Prototype Modules
 
@@ -81,9 +90,10 @@ the measured profile artifact, and the binary target decision.
 - `benchmarks/planner_contract_ablation.py`: deterministic table source for
   exactness, bounded-error, reuse, backend, and dense fallback planner checks.
 - `benchmarks/olmoe_stock_baseline.py`: pinned stock-only OLMoE prefill/decode
-  harness and contract smoke for the target-validation gate.
+  harness, contract smoke, and committed real H100 cohort.
 - `benchmarks/olmoe_stock_profile.py`: best-stock profiler and real-activation
-  expert-layer diagnostic; its smoke contains no timings.
+  expert-layer diagnostic; the committed real artifact binds all eight stock
+  rows while its smoke contains no timings.
 - `examples/case_study_artifacts.py`: machine-readable adapter, Conv1d,
   fixed-mask, and quantized-linear workload case-study evidence with dense
   fallback comparisons.

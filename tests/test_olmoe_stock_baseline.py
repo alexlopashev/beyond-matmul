@@ -31,6 +31,10 @@ class OlmoeStockBaselineTests(unittest.TestCase):
             "a6895655b289cc3fdd29afec36904e0b8545ef92",
         )
         self.assertEqual(benchmark.PINNED_DEPENDENCY_VERSIONS["kernels"], "0.15.2")
+        self.assertEqual(
+            benchmark.PINNED_DEPENDENCY_VERSIONS["apache-tvm-ffi"],
+            "0.1.13.post2",
+        )
 
     def test_required_regimes_cover_prefill_and_decode_grid(self):
         benchmark = _load_benchmark_module()
@@ -442,6 +446,9 @@ class OlmoeStockBaselineTests(unittest.TestCase):
             "nvidia-cutlass-dsl": benchmark.PINNED_DEPENDENCY_VERSIONS[
                 "nvidia-cutlass-dsl"
             ],
+            "apache-tvm-ffi": benchmark.PINNED_DEPENDENCY_VERSIONS[
+                "apache-tvm-ffi"
+            ],
         }
 
         ampere = benchmark.backend_availability(
@@ -466,6 +473,15 @@ class OlmoeStockBaselineTests(unittest.TestCase):
             cuda_available=True,
             compute_capability=(9, 0),
             cuda_runtime="12.8",
+            available_modules={"kernels", "cutlass", "tvm_ffi"},
+            cuda_toolkit_version="12.8",
+            nvcc_available=True,
+            dependency_versions=compatible_dependencies,
+        )
+        hopper_without_tvm_ffi = benchmark.backend_availability(
+            cuda_available=True,
+            compute_capability=(9, 0),
+            cuda_runtime="12.8",
             available_modules={"kernels", "cutlass"},
             cuda_toolkit_version="12.8",
             nvcc_available=True,
@@ -475,7 +491,7 @@ class OlmoeStockBaselineTests(unittest.TestCase):
             cuda_available=True,
             compute_capability=(10, 0),
             cuda_runtime="12.8",
-            available_modules={"kernels", "cutlass"},
+            available_modules={"kernels", "cutlass", "tvm_ffi"},
             cuda_toolkit_version="12.8",
             nvcc_available=True,
             dependency_versions=compatible_dependencies,
@@ -484,7 +500,7 @@ class OlmoeStockBaselineTests(unittest.TestCase):
             cuda_available=True,
             compute_capability=(10, 0),
             cuda_runtime="13.0",
-            available_modules={"kernels", "cutlass"},
+            available_modules={"kernels", "cutlass", "tvm_ffi"},
             cuda_toolkit_version="12.8",
             nvcc_available=True,
             dependency_versions=compatible_dependencies,
@@ -493,7 +509,7 @@ class OlmoeStockBaselineTests(unittest.TestCase):
             cuda_available=True,
             compute_capability=(9, 0),
             cuda_runtime="12.8",
-            available_modules={"kernels", "cutlass"},
+            available_modules={"kernels", "cutlass", "tvm_ffi"},
             cuda_toolkit_version=None,
             nvcc_available=False,
             dependency_versions=compatible_dependencies,
@@ -502,7 +518,7 @@ class OlmoeStockBaselineTests(unittest.TestCase):
             cuda_available=True,
             compute_capability=(9, 0),
             cuda_runtime="12.8",
-            available_modules={"kernels", "cutlass"},
+            available_modules={"kernels", "cutlass", "tvm_ffi"},
             cuda_toolkit_version="12.8",
             nvcc_available=True,
             dependency_versions={
@@ -514,7 +530,7 @@ class OlmoeStockBaselineTests(unittest.TestCase):
             cuda_available=True,
             compute_capability=(9, 0),
             cuda_runtime="12.8",
-            available_modules={"kernels", "cutlass"},
+            available_modules={"kernels", "cutlass", "tvm_ffi"},
             cuda_toolkit_version="12.8",
             nvcc_available=True,
             dependency_versions={
@@ -529,6 +545,9 @@ class OlmoeStockBaselineTests(unittest.TestCase):
         self.assertEqual(hopper_without_kernels["sonicmoe"]["status"], "blocked")
         self.assertEqual(hopper_ready["deepgemm"]["status"], "available")
         self.assertEqual(hopper_ready["sonicmoe"]["status"], "available")
+        self.assertEqual(hopper_without_tvm_ffi["deepgemm"]["status"], "available")
+        self.assertEqual(hopper_without_tvm_ffi["sonicmoe"]["status"], "blocked")
+        self.assertIn("tvm_ffi", hopper_without_tvm_ffi["sonicmoe"]["reason"])
         self.assertEqual(hopper_without_toolkit["deepgemm"]["status"], "blocked")
         self.assertIn("nvcc", hopper_without_toolkit["deepgemm"]["reason"])
         self.assertEqual(incompatible_kernels["deepgemm"]["status"], "blocked")

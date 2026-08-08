@@ -14,9 +14,9 @@
 | `docs/results/peft_multi_adapter_serving.json` | `mise exec -- uv run --with transformers --with accelerate --with safetensors --with huggingface_hub python benchmarks/peft_multi_adapter_serving.py --json-output docs/results/peft_multi_adapter_serving.json` | Real PEFT multi-adapter serving matrix for the contract-defined OPT-125M base model, two LoRA adapters, switching baselines, dense merged cache, and provenance-preserving factor path. | Measured local CPU run, not CI smoke. The committed run is benchmark-ready correctness evidence: all required rows are present, all baselines pass correctness, 12 Beyond Matmul rows report `execution_path=structured_low_rank`, and no latency, memory, or control win is claimed. |
 | `docs/results/live_conv1d_whisper.json` | `mise exec -- uv run --with transformers --with librosa --with soundfile --with safetensors --with huggingface_hub python benchmarks/live_conv1d_whisper.py --json-output docs/results/live_conv1d_whisper.json` | Real Whisper encoder Conv1d dense-vs-direct layer benchmark for the contract-defined model revision, audio trace, prefixes, and exact dense Toeplitz fallback. | Measured local CPU layer run, not CI smoke or end-to-end ASR. Correctness passes for all required rows; dense matrix byte counts expose materialized fallback footprint, not measured peak memory. The dense materialized fallback is slower on this run and `summary.performance_claim` is `none`. |
 | `docs/results/olmoe_stock_baseline_smoke.json` | `mise exec -- uv run python benchmarks/olmoe_stock_baseline.py --smoke --json-output docs/results/olmoe_stock_baseline_smoke.json` | Contract-shaped OLMoE stock-backend inventory covering every required prefill/decode regime and explicit compilation exclusion. | CI smoke performs no OLMoE inference, keeps every measurement empty, and records `cohort_complete=false`, `target_decision_ready=false`, and `performance_claim=none`. |
-| `docs/results/olmoe_stock_baseline.json` | See the pinned CUDA command below. | Future hardware-pinned stock-only OLMoE cohort used to choose the best successful upstream configuration per regime. | Not yet generated or committed. Even a row-complete stock cohort is target-validation input, not a Beyond Matmul speedup or an accept decision by itself. |
+| `docs/results/olmoe_stock_baseline.json` | See the pinned CUDA command below. | Measured H100 stock-only OLMoE cohort used to choose the best correct upstream configuration per regime. | Row- and cohort-complete: 288 inventory rows, 160 required attempts, and eight best-correct-stock rows. Only uncompiled eager passed the fixed correctness tolerance. This is target-validation input, not a Beyond Matmul speedup. |
 | `docs/results/olmoe_stock_profile_smoke.json` | `mise exec -- uv run python benchmarks/olmoe_stock_profile.py --smoke --json-output docs/results/olmoe_stock_profile_smoke.json` | Contract-shaped inventory for eight best-stock full-model profiles and one pinned real-activation expert-layer diagnostic. | CI smoke performs no model execution, leaves every timing field unavailable, and records `profile_complete=false`, `target_decision_ready=false`, and `performance_claim=none`. |
-| `docs/results/olmoe_stock_profile.json` | See the pinned CUDA command below. | Future same-cohort profiler attribution for every best stock regime plus a layer-8 router/expert diagnostic driven by a captured `prefill_b1_s512` activation. | Not yet generated or committed. Profiler self time is diagnostic evidence; the isolated layer replay is not an end-to-end result or a Beyond Matmul candidate measurement. |
+| `docs/results/olmoe_stock_profile.json` | See the pinned CUDA command below. | Measured same-cohort profiler attribution for every best stock regime plus a layer-8 router/expert diagnostic driven by a captured `prefill_b1_s512` activation. | All eight full-model CUPTI profiles and the exact diagnostic replay are complete. Profiler self time is diagnostic evidence; the isolated layer replay is not an end-to-end result or a Beyond Matmul candidate measurement. |
 
 ## OLMoE Stock-Baseline Harness
 
@@ -65,6 +65,7 @@ mise exec -- uv run \
   --with huggingface-hub==1.23.0 \
   --with kernels==0.15.2 \
   --with nvidia-cutlass-dsl==4.6.0 \
+  --with apache-tvm-ffi==0.1.13.post2 \
   python benchmarks/olmoe_stock_baseline.py \
   --real \
   --warmup-repetitions 5 \
@@ -88,15 +89,14 @@ hardware-inapplicable, and contract-excluded rows remain in the artifact with
 reasons.
 
 The harness contains no candidate implementation or candidate field. A smoke
-artifact is not performance evidence, and a future real artifact may set
-`cohort_complete=true` only after every applicable stock configuration has an
+artifact is not performance evidence. The committed real artifact sets
+`cohort_complete=true` only because every applicable stock configuration has an
 explicit terminal attempt and every regime has at least one correct successful
 stock row. Interpretable upstream configuration failures remain as warnings and
 are never eligible for best-stock selection; blocked, missing, or nonterminal
-attempts keep the cohort incomplete. The artifact always keeps
-`target_decision_ready=false` and `performance_claim=none`; issue #133 owns
-profiling, best-successful-stock interpretation, and the binary OLMoE
-accept-or-reject decision.
+attempts would keep the cohort incomplete. The artifact correctly keeps
+`target_decision_ready=false` and `performance_claim=none`; the binary decision
+is a separate reviewed interpretation in the capstone document.
 
 ## OLMoE Best-Stock Profiler And Expert Diagnostic
 
@@ -150,6 +150,7 @@ mise exec -- uv run \
   --with huggingface-hub==1.23.0 \
   --with kernels==0.15.2 \
   --with nvidia-cutlass-dsl==4.6.0 \
+  --with apache-tvm-ffi==0.1.13.post2 \
   python benchmarks/olmoe_stock_profile.py \
   --real \
   --baseline-artifact docs/results/olmoe_stock_baseline.json \
@@ -158,10 +159,45 @@ mise exec -- uv run \
 ```
 
 The profile artifact always keeps `candidate_measurements_present=false`,
-`target_decision_ready=false`, and `performance_claim=none`. Issue #133 must
-interpret the baseline and profiler together, state one distinct
-provenance-enabled intervention or reject OLMoE, and keep any future candidate
-measurement in a later issue.
+`target_decision_ready=false`, and `performance_claim=none`. Issue #133
+interprets the baseline and profiler together in
+`docs/olmoe_tensor_contraction_capstone.md`; any future candidate measurement
+belongs to a later issue.
+
+## OLMoE H100 Measurement Summary
+
+The committed real artifacts were generated together on 2026-08-08 on one
+NVIDIA H100 PCIe 80 GB GPU with driver `580.159.04`, CUDA runtime/toolkit
+`13.0`, and PyTorch `2.12.1+cu130`. The baseline records the exact GPU UUID,
+model and Transformers revisions, Python and dependency versions, compiler
+modes, backend flags, deterministic input seed, five warmups, and 20 measured
+repetitions. Its summary reports `row_inventory_complete=true`,
+`cohort_complete=true`, no readiness blocker, and warnings for explicit stock
+executor and correctness failures.
+
+The 288-row inventory contains 128 contract-excluded rows and 160 required
+attempts. Ninety-six required rows executed, 64 failed explicitly, and only the
+eight `eager__uncompiled` rows passed both the maximum-absolute `0.125` and
+relative-L2 `0.01` correctness tolerances. Those eight eager rows are therefore
+the independently selected best correct stock baselines. Faster rows that
+failed parity are retained for audit but are ineligible for performance
+interpretation.
+
+The bound profile artifact reports `row_inventory_complete=true`,
+`profile_complete=true`, and no readiness blocker. Every full-model row has a
+CUPTI CUDA-kernel trace. The captured layer-8 replay matches the full-model
+expert-layer output exactly. In that diagnostic, device self time is 29.40%
+sorting/permutation, 28.63% expert contractions, 16.18% activation/gating,
+11.30% unclassified, 8.97% aggregation/scatter, 4.06% layout/copy conversion,
+and 1.45% routing/top-k. The artifact keeps every source event and preserves
+total-time conservation.
+
+The binary target decision is `accept` for one later stable route-plan expert
+execution experiment. The proposed path must preserve eager token and expert
+order plus accumulation semantics while removing repeated per-expert route
+discovery/materialization. This decision is not candidate evidence: both real
+artifacts correctly retain `candidate_measurements_present=false`,
+`target_decision_ready=false`, and `performance_claim=none`.
 
 ## Live Conv1d Whisper Dense-vs-Direct Benchmark
 

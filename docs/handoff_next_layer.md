@@ -2,7 +2,7 @@
 
 Date: 2026-07-05
 
-Status update: 2026-07-14
+Status update: 2026-08-08
 
 The cumulative research draft is tracked in `whitepaper/main.tex`,
 `docs/evidence_matrix.md`, and `docs/completion_audit.md`. This handoff remains
@@ -14,9 +14,10 @@ This file's original recommended frontend/Conv1d work is historical and has
 already landed. Merged issue #129/PR #131 established the external OLMoE target
 gate in `docs/olmoe_tensor_contraction_capstone.md`. Merged issue #132/PR #134
 provides the stock-only baseline harness. Issue #136 adds the bound profiler
-and real-activation diagnostic prerequisite; issue #133 owns the real CUDA
-baseline/profile cohort and accept-or-reject decision. Do not use the old
-suggested PR at the end of this file as current roadmap state.
+and real-activation diagnostic prerequisite. Issue #133 now supplies the
+complete real H100 baseline/profile cohort and accepts one scoped stable
+route-plan experiment. Do not use the old suggested PR at the end of this file
+as current roadmap state.
 
 ## Current State
 
@@ -112,15 +113,18 @@ after dense materialization.
 
 ## Recommended Next Layer
 
-Superseded by issues #129, #132, and #133. With the harness merged, the current
-order is:
+Superseded by issues #129, #132, #136, and #133. The frozen H100 cohort and
+target decision are complete. The current order is:
 
-1. Freeze one hardware/dependency cohort in issue #133 and benchmark every
-   applicable stock expert configuration, including compiled variants.
-2. Reject OLMoE if no cost remains beyond the best stock strategy.
-3. Only after the gate passes, implement one distinct provenance-enabled routed
-   tensor program and measure full-model prefill and decode.
-4. Generalize the local IR only from concepts required by that result.
+1. Review and merge the issue #133 stock artifacts and `accept` decision.
+2. Open one implementation issue for stable route-plan expert execution only:
+   construct route membership/offsets once while preserving eager token/expert
+   order and accumulation semantics.
+3. Measure the changed full-model path against all eight selected best-correct
+   stock rows; require the fixed 10% win, 5% regression, correctness, fallback,
+   and external-review gates.
+4. Reject OLMoE if that scoped experiment fails. Generalize the local IR only
+   from concepts required by a successful result.
 
 The recommendations below are retained as historical context.
 
