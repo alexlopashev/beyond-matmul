@@ -19,9 +19,10 @@ complete real H100 baseline/profile cohort and accepts one scoped stable
 route-plan experiment. Issue #139 implements that route plan, deterministic
 fallback demo, frozen candidate harness, and committed source-bound H100
 measurement. All eight rows pass correctness, the execution audit records zero
-fallbacks, and median latency improves by 19.26% to 63.30%. Independent review
-and demo packaging remain. Do not use the old suggested PR at the end of this
-file as current roadmap state.
+fallbacks, and median latency improves by 19.26% to 63.30%. PR #140 passed
+independent review and merged. Issue #141 adds the offline, integrity-checked
+capstone demo. Do not use the old suggested PR at the end of this file as
+current roadmap state.
 
 ## Current State
 
@@ -69,6 +70,7 @@ mise exec -- uv run python examples/fixed_weight_inference_demo.py
 mise exec -- uv run python examples/torch_fx_frontend_demo.py
 mise exec -- uv run python examples/adapter_workload_demo.py
 mise exec -- uv run python examples/conv1d_workload_demo.py
+mise exec -- uv run python examples/olmoe_capstone_demo.py
 mise exec -- uv run python examples/case_study_artifacts.py --json-output docs/results/workload_case_studies.json
 mise exec -- uv run python benchmarks/fixed_weight.py
 ```
@@ -109,29 +111,29 @@ after dense materialization.
 ## Known Gaps
 
 - CI publishes the fixed-weight benchmark JSON as `fixed-weight-benchmark-json`.
-- No GPU or production kernels exist.
-- Benchmarks are pure-Python latency proxies, not serious performance evidence.
+- No custom production GPU kernel or upstream integration is claimed; the
+  measured route-plan backend composes PyTorch operations on one pinned H100.
+- Most historical benchmark rows are pure-Python proxies. The OLMoE cohort is
+  the bounded hardware-backed performance evidence.
 - Recovery probes are cheap heuristics and do not yet emit calibrated confidence
   intervals.
 - Approximation search is basic and not learned or hardware aware.
 
 ## Recommended Next Layer
 
-Superseded by issues #129, #132, #136, #133, and #139. The frozen H100 cohort,
-target decision, candidate implementation, and measurement are complete. The
-current order is:
+Superseded by issues #129, #132, #136, #133, #139, and #141. The frozen H100
+cohort, target decision, independently reviewed candidate, and offline demo are
+complete. The project-level roadmap can close at this bounded result.
 
-1. Obtain independent review and merge issue #139 without bypassing the green
-   CI and evidence-integrity gates.
-2. Build one compact demo that loads the committed artifact, explains the
-   stable route plan, shows stock-versus-candidate results, and states the
-   single-H100 boundary without requiring a live paid GPU.
-3. Render and review the whitepaper, synchronize the wiki, and close the
-   project-level roadmap only if those deliverables remain consistent with the
-   merged evidence.
-4. Treat broader hardware/model validation or upstreaming as separate follow-up
-   work; do not generalize the local IR from this one result without a scoped
-   issue.
+Any next layer is optional and must begin with its own evidence-based issue:
+
+1. Validate another GPU, model, or software revision as a separate cohort.
+2. Prepare a narrow Transformers contribution or maintained fork without
+   presenting upstream acceptance as already achieved.
+3. Investigate compiled-candidate or memory behavior under a new frozen
+   contract.
+4. Do not generalize the local IR or reopen the superseded PEFT CUDA roadmap by
+   default.
 
 The recommendations below are retained as historical context.
 

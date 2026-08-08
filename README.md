@@ -36,6 +36,7 @@ mise exec -- uv run python examples/torch_fx_frontend_demo.py
 mise exec -- uv run python examples/adapter_workload_demo.py
 mise exec -- uv run python examples/conv1d_workload_demo.py
 mise exec -- uv run python examples/torch_coverage_demo.py
+mise exec -- uv run python examples/olmoe_capstone_demo.py
 mise exec -- uv run python examples/case_study_artifacts.py --json-output docs/results/workload_case_studies.json
 mise exec -- uv run python benchmarks/fixed_weight.py
 ```
@@ -99,6 +100,8 @@ uv run python examples/torch_fx_frontend_demo.py
   candidate harness with correctness-first 10% win and 5% regression gates
 - `examples/olmoe_stable_route_demo.py`: deterministic exact-order and fallback
   smoke demo; it is semantic evidence, not a timing result
+- `examples/olmoe_capstone_demo.py`: offline, integrity-checked presentation of
+  the committed eight-regime H100 result; it performs no model or GPU work
 - `docs/peft_fork_setup.md`: setup, sync, branch, and issue-mapping rules for
   the PEFT fork integration branch
 - `docs/peft_low_rank_provenance_design.md`: first PEFT low-rank provenance
@@ -215,7 +218,9 @@ measured artifact at `docs/results/peft_multi_adapter_serving.json`.
   adapter-switching gain
 
 Current completion status: the matrix-focused first artifact is historical and
-internally bounded. The OLMoE candidate now satisfies the frozen quantitative,
-correctness, and fallback gates on one H100 cohort. Independent review/merge and
-demo packaging remain before calling the project deliverable complete. The PEFT
-CUDA roadmap remains paused. `docs/completion_audit.md` records the distinction.
+internally bounded. The independently reviewed OLMoE candidate satisfies the
+frozen quantitative, correctness, and fallback gates on one H100 cohort. The
+offline capstone demo revalidates and presents that evidence without renting a
+GPU. This completes the bounded project deliverable; cross-hardware/model work,
+production hardening, and upstreaming remain optional separate roadmaps. The
+PEFT CUDA roadmap is superseded. `docs/completion_audit.md` records the boundary.

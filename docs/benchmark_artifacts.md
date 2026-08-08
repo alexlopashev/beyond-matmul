@@ -261,6 +261,16 @@ model, H100 PCIe GPU, and pinned software cohort; it does not establish memory
 savings, compiled-candidate performance, other hardware/model behavior,
 production readiness, or upstream acceptance.
 
+Present the reviewed result offline with:
+
+```bash
+mise exec -- uv run python examples/olmoe_capstone_demo.py
+```
+
+The demo performs no model, CUDA, or network work. It validates the committed
+artifact hash, baseline/source bindings, raw samples, medians, throughput,
+correctness, execution audit, and decision math before displaying the table.
+
 ## Live Conv1d Whisper Dense-vs-Direct Benchmark
 
 `benchmarks/live_conv1d_whisper.py` implements the benchmark target defined by

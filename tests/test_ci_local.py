@@ -17,6 +17,9 @@ class LocalCiScriptTests(unittest.TestCase):
         olmoe_route_demo = (
             "mise exec -- uv run python examples/olmoe_stable_route_demo.py"
         )
+        olmoe_capstone_demo = (
+            "mise exec -- uv run python examples/olmoe_capstone_demo.py"
+        )
         benchmark_json = (
             "mise exec -- uv run python benchmarks/fixed_weight.py "
             "--json-output docs/results/fixed_weight.json"
@@ -86,7 +89,12 @@ class LocalCiScriptTests(unittest.TestCase):
 
         self.assertLess(workflow.index(coverage_check), workflow.index(coverage_demo))
         self.assertLess(workflow.index(coverage_demo), workflow.index(olmoe_route_demo))
-        self.assertLess(workflow.index(olmoe_route_demo), workflow.index(case_study_json))
+        self.assertLess(
+            workflow.index(olmoe_route_demo), workflow.index(olmoe_capstone_demo)
+        )
+        self.assertLess(
+            workflow.index(olmoe_capstone_demo), workflow.index(case_study_json)
+        )
         self.assertLess(workflow.index(case_study_json), workflow.index(benchmark_json))
         self.assertLess(workflow.index(benchmark_json), workflow.index(ablation_json))
         self.assertLess(workflow.index(ablation_json), workflow.index(planner_contract_json))
@@ -174,6 +182,10 @@ class LocalCiScriptTests(unittest.TestCase):
         )
         self.assertIn(
             '"$MISE_BIN" exec -- uv run python examples/olmoe_stable_route_demo.py',
+            ci_local,
+        )
+        self.assertIn(
+            '"$MISE_BIN" exec -- uv run python examples/olmoe_capstone_demo.py',
             ci_local,
         )
         self.assertIn(
@@ -275,6 +287,10 @@ class LocalCiScriptTests(unittest.TestCase):
             )
             self.assertIn(
                 "exec -- uv run python examples/olmoe_stable_route_demo.py",
+                mise_calls,
+            )
+            self.assertIn(
+                "exec -- uv run python examples/olmoe_capstone_demo.py",
                 mise_calls,
             )
             self.assertIn(

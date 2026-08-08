@@ -1,12 +1,11 @@
 # Hardware-Backed Production Performance Benchmark Contract
 
-> **Roadmap status (2026-07-14): paused.** This PEFT contract remains a valid
-> historical design artifact, but it is not the active project finish line.
-> Merged issue #129/PR #131 selects the OLMoE routed tensor program for
-> validation; issues #132 and #133 own its stock harness and measured target
-> decision. Work on issues #123 through #126 should not resume unless that
-> decision reselects PEFT or records why this contract is again the
-> highest-leverage path.
+> **Roadmap status (2026-08-08): superseded.** This PEFT contract remains a
+> valid historical design artifact, but it is not the project finish line. The
+> independently reviewed OLMoE result satisfies the bounded external-performance
+> gate. Work on issues #123 through #126 should not resume unless a new issue
+> defines why PEFT is again the highest-leverage path and freezes a new evidence
+> contract.
 
 This contract defines the first hardware-backed production/performance target
 for Beyond Matmul. It is a benchmark design target, not benchmark evidence. It

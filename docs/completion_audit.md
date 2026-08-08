@@ -37,9 +37,13 @@ candidate artifact surface. Its committed real H100 artifact passes correctness
 in all eight regimes, records 4,800 stable candidate calls and zero fallbacks,
 and improves the frozen best-correct-stock CUDA-event medians by 19.26% to
 63.30%. It therefore clears the fixed 10% win and 5% regression gates with
-`performance_claim=qualified_candidate_speedup`. Independent review and merge,
-followed by demo packaging, remain before project-level completion. The PEFT
-CUDA roadmap in issues #123 through #126 remains paused.
+`performance_claim=qualified_candidate_speedup`. The independent review
+recorded on PR #140 recomputed every row and binding, and the PR merged without
+bypass.
+Issue #141 adds an offline capstone demo that revalidates and presents the
+committed evidence without model, CUDA, network, or paid-GPU work. Together,
+these artifacts satisfy the bounded project-level completion criteria. The PEFT
+CUDA roadmap in issues #123 through #126 is superseded by this result.
 
 Merged issue #132/PR #134 adds the baseline-only harness
 `benchmarks/olmoe_stock_baseline.py`. It pins the eight required full-model
@@ -85,7 +89,7 @@ curation is paper-polish work that does not change the executable evidence.
 | Benchmark and cost claims | `benchmarks/fixed_weight.py`, `docs/results/fixed_weight.json`, `docs/results/live_conv1d_whisper.json`, `docs/results/peft_transformers_lora_inference.json`, `docs/results/peft_multi_adapter_serving.json`, `docs/results/olmoe_stock_baseline.json`, `docs/results/olmoe_stock_profile.json`, `docs/results/olmoe_stable_route_candidate.json`, `benchmarks/olmoe_stock_baseline.py`, `benchmarks/olmoe_stock_profile.py`, `benchmarks/olmoe_stable_route_candidate.py`, `tests/test_benchmark_artifacts.py`, `tests/test_live_conv1d_whisper.py`, `tests/test_peft_transformers_lora_inference.py`, `tests/test_peft_multi_adapter_serving.py`, `tests/test_olmoe_measured_artifacts.py`, `scripts/ci_local`, `docs/benchmark_artifacts.md` | Supported as generated research artifacts, pure-Python proxies, live layer-level Conv1d evidence, bounded PEFT capstone/serving evidence, a real stock-only OLMoE baseline/profile, and a source-bound H100 candidate result. The candidate clears the frozen gate on one cohort; it is not a universal, memory, production, or upstream-acceptance result. |
 | OLMoE stock-baseline capability | `benchmarks/olmoe_stock_baseline.py`, `tests/test_olmoe_stock_baseline.py`, `docs/results/olmoe_stock_baseline.json`, `docs/benchmark_artifacts.md`, `scripts/ci_local` | Supported by a frozen H100 cohort with 288 explicit rows, 160 required terminal attempts, fixed correctness gates, and eight best-correct-stock selections. Only uncompiled eager passes in every regime; correctness-failed faster rows remain ineligible. |
 | OLMoE profiler capability | `benchmarks/olmoe_stock_profile.py`, `tests/test_olmoe_stock_profile.py`, `docs/results/olmoe_stock_profile.json`, `docs/benchmark_artifacts.md`, `scripts/ci_local` | Supported by eight exact best-stock bindings with CUPTI kernel traces plus a correct real-activation layer diagnostic. The replay attributes remaining work but is never end-to-end candidate evidence. |
-| OLMoE stable-route candidate capability | `beyond_matmul/olmoe_route_plan.py`, `benchmarks/olmoe_stable_route_candidate.py`, `docs/results/olmoe_stable_route_candidate.json`, `examples/olmoe_stable_route_demo.py`, `tests/test_olmoe_stable_route.py`, `tests/test_olmoe_stable_route_candidate.py`, `tests/test_olmoe_stable_route_demo.py`, `tests/test_olmoe_measured_artifacts.py`, `scripts/ci_local` | Supported for eager-order route planning, BF16 duplicate accumulation semantics, explicit fallback/audit metadata, the frozen eight-regime contract, and the accepted source-bound H100 result. All rows pass correctness and improve median latency by 19.26% to 63.30%; cross-hardware and production generality remain unmeasured. |
+| OLMoE stable-route candidate capability | `beyond_matmul/olmoe_route_plan.py`, `benchmarks/olmoe_stable_route_candidate.py`, `docs/results/olmoe_stable_route_candidate.json`, `examples/olmoe_stable_route_demo.py`, `examples/olmoe_capstone_demo.py`, `tests/test_olmoe_stable_route.py`, `tests/test_olmoe_stable_route_candidate.py`, `tests/test_olmoe_stable_route_demo.py`, `tests/test_olmoe_capstone_demo.py`, `tests/test_olmoe_measured_artifacts.py`, `scripts/ci_local` | Supported for eager-order route planning, BF16 duplicate accumulation semantics, explicit fallback/audit metadata, the frozen eight-regime contract, the accepted source-bound H100 result, and an offline integrity-checked presentation. All rows pass correctness and improve median latency by 19.26% to 63.30%; cross-hardware and production generality remain unmeasured. |
 | External PEFT provenance | `docs/results/peft_transformers_lora_inference.json`, `docs/results/peft_multi_adapter_serving.json`, `docs/benchmark_artifacts.md`, `docs/evidence_matrix.md`, `whitepaper/main.tex` | Supported for metadata-level LoRA provenance and dense-fallback visibility on the measured CPU fp32 workloads; not production kernels, memory savings, adapter-switching gains, broader PEFT coverage, or universal Transformer speedups. |
 | Workload narratives | Torch examples, `examples/case_study_artifacts.py`, `docs/results/workload_case_studies.json`, `tests/test_case_study_artifacts.py` | Supported for adapter, Conv1d, grouped/depthwise Conv1d, fixed-mask, and per-tensor affine quantized-linear rows; broader workloads remain future work. |
 
@@ -101,9 +105,10 @@ result does invalidate project-level completion, without changing the accuracy
 of the historical first-artifact audit. Issue #132/PR #134 completed the
 baseline harness; #136 supplies the profiling prerequisite for #133, and
 #130/PR #135 synchronizes the concise wiki. Issue #133 supplies the matching
-CUDA/CUPTI artifacts and accepts one scoped experiment; issue #139 now supplies
-the measured candidate. The remaining blocker is independent review/merge and
-demo packaging, not implementation, target access, or the quantitative gate.
+CUDA/CUPTI artifacts and accepts one scoped experiment; issue #139 supplies the
+independently reviewed measured candidate, and issue #141 supplies the offline
+demo. No blocker remains against the bounded project deliverable. Broader
+validation or upstreaming requires a separate issue and claim contract.
 
 After the final-draft work merged, the first-artifact completion state became
 historical context rather than an active blocker:
@@ -202,6 +207,8 @@ adapter-switch threshold win is claimed, and `summary.performance_claim` plus
   rejection gate; the executable harness and its evidence boundary are in
   `benchmarks/olmoe_stock_baseline.py`, `benchmarks/olmoe_stock_profile.py`, and
   `docs/benchmark_artifacts.md`.
+- `examples/olmoe_capstone_demo.py` is the no-GPU presentation path: it
+  recomputes the committed candidate evidence before printing the result.
 
 ## Validation Commands
 
@@ -218,6 +225,7 @@ mise exec -- uv run --with transformers --with accelerate --with safetensors --w
 mise exec -- uv run python benchmarks/olmoe_stock_baseline.py --smoke --json-output docs/results/olmoe_stock_baseline_smoke.json
 mise exec -- uv run python benchmarks/olmoe_stock_profile.py --smoke --json-output docs/results/olmoe_stock_profile_smoke.json
 mise exec -- uv run python benchmarks/olmoe_stable_route_candidate.py --smoke --json-output docs/results/olmoe_stable_route_candidate_smoke.json
+mise exec -- uv run python examples/olmoe_capstone_demo.py
 scripts/ci_local
 ```
 
