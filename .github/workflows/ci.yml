@@ -54,6 +54,9 @@ jobs:
       - name: Run OLMoE stable-route demo
         run: mise exec -- uv run python examples/olmoe_stable_route_demo.py
 
+      - name: Run offline OLMoE capstone demo
+        run: mise exec -- uv run python examples/olmoe_capstone_demo.py
+
       - name: Run workload case-study JSON artifact
         run: mise exec -- uv run python examples/case_study_artifacts.py --json-output docs/results/workload_case_studies.json
 

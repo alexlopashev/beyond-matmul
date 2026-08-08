@@ -12,9 +12,10 @@ a valid fallback.
 The project-level claim requires one independently reviewed external
 open-source integration showing an attributable end-to-end inference
 improvement caused by a distinct provenance-enabled execution. The measured
-OLMoE candidate now clears the quantitative, correctness, and fallback gates;
-independent review/merge and demo packaging remain. The current matrix IR is
-enabling and historical evidence, not that result.
+OLMoE candidate clears the quantitative, correctness, and fallback gates, and
+PR #140's independent review accepted the result. The offline capstone demo
+revalidates the committed evidence before presenting it. The current matrix IR
+is enabling and historical evidence, not that result.
 
 ## Minimum Viable Artifact
 
@@ -84,7 +85,9 @@ fallback. The committed source-bound H100 candidate artifact contains 20
 CUDA-event samples for each of eight regimes, passes correctness everywhere,
 observes 4,800 stable calls with zero fallback, and improves median latency by
 19.26% to 63.30%. It clears the unchanged 10% win and 5% regression gates;
-independent review remains before merge.
+PR #140's independent review recomputed the result and bindings before merge.
+`examples/olmoe_capstone_demo.py` now provides the offline, integrity-checked
+presentation without rerunning the model or GPU benchmark.
 
 ## Prototype Modules
 
@@ -106,6 +109,8 @@ independent review remains before merge.
   rows while its smoke contains no timings.
 - `benchmarks/olmoe_stable_route_candidate.py`: source-bound candidate harness;
   its committed real H100 artifact records the accepted eight-regime result.
+- `examples/olmoe_capstone_demo.py`: offline verifier and plain-language
+  presentation for the reviewed baseline and candidate artifacts.
 - `examples/case_study_artifacts.py`: machine-readable adapter, Conv1d,
   fixed-mask, and quantized-linear workload case-study evidence with dense
   fallback comparisons.
@@ -240,7 +245,7 @@ Closed PEFT multi-adapter serving follow-up:
   process-memory savings, CUDA peak-memory savings, adapter-switching gains,
   training, generation loops, GPU kernels, or universal Transformer speedups.
 
-Paused PEFT hardware-backed production/performance contract:
+Superseded PEFT hardware-backed production/performance contract:
 
 - The contract is
   `docs/hardware_backed_production_benchmark_contract.md`: a design target for
@@ -252,11 +257,11 @@ Paused PEFT hardware-backed production/performance contract:
 - The contract distinguishes forward latency, CUDA memory, preprocessing,
   adapter-switching/control, and dense fallback readiness fields before any
   performance claim can be interpreted.
-- This remains a valid historical contract, but merged issue #129/PR #131
-  pauses issues #123 through #126 while OLMoE is validated under the stronger
-  gate. It is not current hardware evidence and does not move GPU speedups,
-  memory savings, production kernels, or universal Transformer acceleration
-  into the supported claim set.
+- This remains a valid historical contract, but the accepted OLMoE result
+  supersedes issues #123 through #126 as the project finish line. It is not
+  current hardware evidence and does not move PEFT GPU speedups, memory savings,
+  production kernels, or universal Transformer acceleration into the supported
+  claim set.
 
 Metrics:
 

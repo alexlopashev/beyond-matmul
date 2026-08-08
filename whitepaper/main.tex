@@ -90,7 +90,10 @@ source-bound real H100 artifact passes correctness in all eight end-to-end
 regimes, observes 4,800 stable-path calls with zero fallback, and improves
 CUDA-event median latency by 19.26\% to 63.30\% against the frozen
 best-correct-stock rows. This is a qualified result for one model, GPU, and
-software cohort; independent review remains before merge.
+software cohort. PR \#140's independent review recomputed every row and binding
+before merging without bypass. The offline capstone demo revalidates the
+committed artifacts before presenting the result without CUDA, model loading,
+network access, or paid GPU time.
 
 \section{Problem}
 
@@ -967,9 +970,10 @@ attributable external performance requirement. Merged issue \#132/PR \#134
 provides the baseline harness, issue \#133 provides the complete real H100
 cohort and scoped target-acceptance decision, and issue \#139 now supplies the
 source-bound candidate that clears the quantitative, correctness, and fallback
-gates. Independent review/merge and demo packaging remain before closing the
-project-level roadmap. The matrix artifact and its quantized, Conv1d, and PEFT
-boundaries remain accurate historical evidence.
+gates. PR \#140 passed independent review and merged without bypass; issue
+\#141 adds the offline, integrity-checked presentation. Together they close the
+bounded project-level roadmap. The matrix artifact and its quantized, Conv1d,
+and PEFT boundaries remain accurate historical evidence.
 
 \section{Capstone Boundaries}
 
@@ -995,27 +999,29 @@ threshold win, process-memory reduction, CUDA peak-memory reduction, or
 adapter-switching gain, and keeps performance and memory/control claims at
 \texttt{none}.
 
-The PEFT hardware contract and issues \#123 through \#126 are paused rather than
-erased. The OLMoE target-validation gate in
+The PEFT hardware contract remains useful historical design evidence, but the
+accepted OLMoE result supersedes issues \#123 through \#126 as the project
+finish line. The OLMoE target-validation gate in
 \texttt{docs/olmoe\_tensor\_contraction\_capstone.md} is now measured. The
 stock-only H100 artifacts identify stable routing/permutation and aggregation
 work around the contractions and accept one stable route-plan experiment. Issue
 \#139 implements that path with eager ordering and fallback semantics. Its real
 full-model artifact clears the unchanged success thresholds across all eight
-prefill/decode regimes. The result remains limited to the recorded cohort and
+prefill/decode regimes. The independent review recomputed every result and
+source binding, while the offline demo repeats those integrity and arithmetic
+checks before display. The result remains limited to the recorded cohort and
 does not authorize generalizing the IR.
 
 \section{Conclusion}
 
 Beyond Matmul treats dense, batched, and grouped multiplication as powerful
-lowerings, not the only truth a compiler or runtime should remember. By
-preserving tensor axes, routing, structure, layout, and computation reason, the
-project aims to make structured inference paths measurable, testable, and
-available to a planner. The final success condition is not a large surface area
-of code or a well-labeled negative artifact; it is one attributable external
-performance result with enough executable evidence to make the argument hard to
-dismiss. The measured OLMoE route-plan result now supplies that quantitative
-evidence for one frozen cohort; independent review and a compact reproducible
-demo are the remaining delivery gates.
+lowerings, not the only semantic truth a runtime should remember. Preserving
+tensor axes, routing, structure, layout, and computation reason makes structured
+inference paths measurable, testable, and planner-visible. The capstone is one
+attributable external performance result backed by executable evidence, not a
+large code surface. The measured OLMoE route plan supplies that result for one
+frozen cohort; independent review and the offline demo complete the bounded
+delivery. Broader hardware, model, production, memory, and upstream claims need
+separate evidence.
 
 \end{document}

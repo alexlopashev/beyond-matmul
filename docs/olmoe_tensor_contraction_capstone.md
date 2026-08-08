@@ -1,6 +1,6 @@
 # OLMoE Routed Tensor-Program Capstone
 
-Status: measured candidate clears the frozen gate; independent review pending
+Status: independently reviewed candidate clears the frozen gate
 
 Decision date: 2026-08-08
 
@@ -21,9 +21,9 @@ That target-validation decision was not itself a Beyond Matmul performance
 result. Issue #139 subsequently implemented and measured the scoped path. The
 committed candidate artifact clears the fixed 10% win, 5% cross-regime
 regression, correctness, and fallback gates below and records
-`performance_claim=qualified_candidate_speedup`. Independent review remains the
-last gate before merge; failure there would still close or correct this target
-rather than weaken the contract.
+`performance_claim=qualified_candidate_speedup`. Independent review was the
+last gate before merge. PR #140 passed that review and merged without bypass;
+the review recomputed every row and binding rather than trusting the summary.
 
 OLMoE remains a useful tensor case because its sparse mixture-of-experts layer
 retains token routing, expert identity, routing weights, and 3D expert weights
@@ -329,6 +329,12 @@ models, or future-Transformers behavior. The optimized stock rows that failed
 the immutable correctness gate remain ineligible; their lower raw timings are
 not silently reintroduced as baselines.
 
+`examples/olmoe_capstone_demo.py` is the portable delivery surface for this
+result. It runs offline, checks the committed artifact and source bindings,
+recomputes the eight medians, throughput values, improvements, correctness
+decisions, and execution audit, and only then prints the result and boundary. It
+does not rerun or simulate the GPU benchmark.
+
 The capstone succeeds only if a distinct provenance-enabled path:
 
 - improves median end-to-end latency or throughput by at least 10% against the
@@ -368,6 +374,7 @@ project and contraction with the same gate.
 The current matrix IR, Conv1d artifact, and PEFT artifacts remain accurate
 bounded evidence for semantics, provenance visibility, fallback, and benchmark
 discipline. They do not satisfy this capstone because they do not show an
-attributable external performance improvement. The PEFT CUDA issues #123 through
-#126 are paused while this target decision is reviewed; their code and contracts
-remain available if PEFT is later selected again under the stronger gate.
+attributable external performance improvement. The accepted OLMoE result
+supersedes PEFT CUDA issues #123 through #126 as the project finish line; their
+code and contracts remain available if PEFT is later selected again under a new
+evidence contract.
