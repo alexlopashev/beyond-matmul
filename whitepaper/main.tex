@@ -85,8 +85,12 @@ accumulation order while constructing routing membership and offsets once. The
 target and rejection gate are recorded in
 \texttt{docs/olmoe\_tensor\_contraction\_capstone.md}; no general tensor IR is
 authorized by this decision. Issue \#139 implements the narrow path, explicit
-eager fallback, deterministic semantic demo, and frozen candidate harness, but
-no candidate performance result exists yet.
+eager fallback, deterministic semantic demo, and frozen candidate harness. Its
+source-bound real H100 artifact passes correctness in all eight end-to-end
+regimes, observes 4,800 stable-path calls with zero fallback, and improves
+CUDA-event median latency by 19.26\% to 63.30\% against the frozen
+best-correct-stock rows. This is a qualified result for one model, GPU, and
+software cohort; independent review remains before merge.
 
 \section{Problem}
 
@@ -456,8 +460,9 @@ sparse-layer-8 replay. Within that diagnostic, sorting/permutation accounts for
 conversion 4.06\%, and routing/top-k 1.45\%. This supports one narrowly stated
 intervention hypothesis: build a stable route plan once, preserve eager token
 and expert order plus accumulation semantics, and reuse it across contraction,
-gating, and aggregation. It does not establish that the intervention wins.
-Both artifacts retain \texttt{candidate\_measurements\_present=false} and
+gating, and aggregation. That diagnostic alone does not establish that the
+intervention wins. Both stock artifacts retain
+\texttt{candidate\_measurements\_present=false} and
 \texttt{performance\_claim=none}.
 
 Issue \#139 adds an uncompiled
@@ -473,7 +478,43 @@ checksum and environment, requires five warmups and 20 samples in all eight
 regimes, recomputes medians, audits the execution path, and records a clean
 candidate git revision plus module checksum. Its CI smoke runs no model and
 retains \texttt{performance\_claim=none}; these implementation and semantic
-results do not establish a speedup.
+results alone do not establish a speedup.
+
+The separate real candidate artifact,
+\texttt{docs/results/olmoe\_stable\_route\_candidate.json}, binds candidate
+revision \texttt{34b6f14967cc5dc80f3d436e75d59c7bfae278f9} and the canonical
+stock-artifact checksum. It records five warmups and 20 CUDA-event samples in
+each regime. Table~\ref{tab:olmoe-candidate} reports the recomputed medians.
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{lrrr}
+\hline
+Regime & Stock eager (ms) & Stable route (ms) & Improvement \\
+\hline
+\texttt{prefill\_b1\_s128} & 296.094 & 108.659 & 63.30\% \\
+\texttt{prefill\_b1\_s512} & 231.673 & 114.945 & 50.38\% \\
+\texttt{prefill\_b4\_s128} & 245.158 & 179.354 & 26.84\% \\
+\texttt{prefill\_b4\_s512} & 264.093 & 125.833 & 52.35\% \\
+\texttt{decode\_b1\_p128} & 49.354 & 37.271 & 24.48\% \\
+\texttt{decode\_b1\_p512} & 49.372 & 36.853 & 25.36\% \\
+\texttt{decode\_b8\_p128} & 120.709 & 97.466 & 19.26\% \\
+\texttt{decode\_b8\_p512} & 116.120 & 65.393 & 43.69\% \\
+\hline
+\end{tabular}
+\caption{Source-bound OLMoE H100 candidate result. All rows pass the frozen
+correctness contract and the execution audit observes no fallback.}
+\label{tab:olmoe-candidate}
+\end{table}
+
+Seven rows record zero maximum-absolute and relative-$L_2$ error against a
+fresh eager reference. The \texttt{decode\_b8\_p128} row records maximum
+absolute error 0.0625 and relative-$L_2$ error 0.001772, within the frozen
+0.125 and 0.01 tolerances. The aggregate audit observes 4,800 candidate calls,
+4,800 plan builds, and no eager fallback. Every row exceeds the 10\% success
+threshold, none approaches the 5\% regression limit, and the artifact records
+\texttt{performance\_claim=qualified\_candidate\_speedup}.
 
 In the fixed-weight benchmark, the planner request allows approximate
 lowerings with a maximum relative error of $0.05$ over a batch of $32$ and
@@ -822,16 +863,23 @@ opportunity is found. In the measured cohort, eager is the only configuration
 that satisfies the immutable correctness contract; the apparently faster
 optimized rows cannot be treated as valid baselines or as performance evidence.
 
-The issue \#132 and \#136 harnesses close only measurement and diagnostic
-capability gaps. Their CI smokes execute no model, and the committed real rows
-contain only stock configurations. The profiler leaves ambiguous full-model operators
+The issue \#132 and \#136 harnesses close measurement and diagnostic capability
+gaps. Their CI smokes execute no model, and their committed real rows contain
+only stock configurations. The profiler leaves ambiguous full-model operators
 unclassified rather than assigning generic matrix multiplications to expert
 work, and its layer replay cannot substitute for end-to-end prefill or decode.
-Consequently, row/schema completeness, a complete stock cohort, or a correct
-diagnostic replay cannot be interpreted as a Beyond Matmul performance result.
-The separate issue \#133 acceptance is only permission for one scoped candidate
-experiment under the unchanged success gate. Issue \#139 supplies that
-experiment's code and measurement surface, not its H100 result.
+Consequently, those stock artifacts alone are not a Beyond Matmul performance
+result. Issue \#139 adds the distinct changed execution and the separate
+end-to-end H100 candidate artifact that clears the frozen gate.
+
+That result remains narrow. It covers one H100 PCIe GPU, one OLMoE model
+revision, one pinned Transformers/PyTorch environment, and an uncompiled
+candidate. It does not establish cross-hardware or cross-model generality,
+compiled-candidate gains, memory savings, production readiness, future-library
+behavior, or upstream acceptance. The apparently faster optimized stock rows
+remain ineligible because they fail the immutable correctness contract; the
+candidate result must not be reframed as a comparison to correct grouped or
+fused stock execution on a cohort where none exists.
 
 Recovery after provenance is lost is weaker than preserving provenance before
 dense lowering. The analyzer confidence values are probe-specific heuristic
@@ -914,13 +962,14 @@ issues. It is not the final project result.
 
 The earlier live issue audit found no unresolved priority-zero or priority-one
 blocker against the bounded matrix artifact. Merged issue \#129/PR \#131
-supersedes that project-level completion interpretation: the missing
-attributable external performance result is now an active priority-zero gap.
-Merged issue \#132/PR \#134 provides the baseline harness, while ready issue
-\#133 now provides the complete real H100 cohort and scoped target-acceptance
-decision. The still-missing external speedup remains the active priority-zero
-gap. The matrix artifact and its quantized, Conv1d, and PEFT boundaries remain
-accurate historical evidence.
+superseded that project-level completion interpretation and restored the
+attributable external performance requirement. Merged issue \#132/PR \#134
+provides the baseline harness, issue \#133 provides the complete real H100
+cohort and scoped target-acceptance decision, and issue \#139 now supplies the
+source-bound candidate that clears the quantitative, correctness, and fallback
+gates. Independent review/merge and demo packaging remain before closing the
+project-level roadmap. The matrix artifact and its quantized, Conv1d, and PEFT
+boundaries remain accurate historical evidence.
 
 \section{Capstone Boundaries}
 
@@ -951,9 +1000,10 @@ erased. The OLMoE target-validation gate in
 \texttt{docs/olmoe\_tensor\_contraction\_capstone.md} is now measured. The
 stock-only H100 artifacts identify stable routing/permutation and aggregation
 work around the contractions and accept one stable route-plan experiment. Issue
-\#139 implements only that path with eager ordering and fallback semantics. It
-must still measure full-model prefill and decode against the unchanged success
-thresholds. Failure rejects OLMoE without generalizing the IR.
+\#139 implements that path with eager ordering and fallback semantics. Its real
+full-model artifact clears the unchanged success thresholds across all eight
+prefill/decode regimes. The result remains limited to the recorded cohort and
+does not authorize generalizing the IR.
 
 \section{Conclusion}
 
@@ -964,6 +1014,8 @@ project aims to make structured inference paths measurable, testable, and
 available to a planner. The final success condition is not a large surface area
 of code or a well-labeled negative artifact; it is one attributable external
 performance result with enough executable evidence to make the argument hard to
-dismiss.
+dismiss. The measured OLMoE route-plan result now supplies that quantitative
+evidence for one frozen cohort; independent review and a compact reproducible
+demo are the remaining delivery gates.
 
 \end{document}
