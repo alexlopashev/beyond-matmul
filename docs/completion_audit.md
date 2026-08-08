@@ -31,9 +31,11 @@ eager-versus-optimized win cannot satisfy the new capstone.
 The project is still not complete. Issue #133 accepts one scoped stable
 route-plan experiment, not a general tensor IR: preserve eager token/expert and
 accumulation order while constructing route membership and offsets once for the
-expert program. The later implementation must still prove the fixed end-to-end
-win and regression gates. The PEFT CUDA roadmap in issues #123 through #126
-remains paused.
+expert program. Issue #139 now implements that narrow path, its explicit eager
+fallback and audit metadata, a deterministic exactness demo, and the frozen
+candidate artifact surface. The implementation must still prove the fixed
+end-to-end win and regression gates on the same H100 cohort. The PEFT CUDA
+roadmap in issues #123 through #126 remains paused.
 
 Merged issue #132/PR #134 adds the baseline-only harness
 `benchmarks/olmoe_stock_baseline.py`. It pins the eight required full-model
@@ -47,7 +49,9 @@ Issue #133 supplies the committed real H100 baseline and profile artifacts plus
 the binary `accept` decision. The 288-row baseline is cohort-complete; only the
 eight uncompiled eager rows pass the fixed correctness tolerance. All eight
 bound CUPTI profiles and the exact diagnostic replay are complete. Both real
-artifacts contain no candidate result and retain `performance_claim=none`.
+  artifacts contain no candidate result and retain `performance_claim=none`.
+  The issue #139 candidate CI smoke also performs no model execution and local
+  FP32/BF16 ordering checks are semantic evidence only.
 
 ## Historical Final Draft Status
 
@@ -76,6 +80,7 @@ curation is paper-polish work that does not change the executable evidence.
 | Benchmark and cost claims | `benchmarks/fixed_weight.py`, `docs/results/fixed_weight.json`, `docs/results/live_conv1d_whisper.json`, `docs/results/peft_transformers_lora_inference.json`, `docs/results/peft_multi_adapter_serving.json`, `docs/results/olmoe_stock_baseline.json`, `docs/results/olmoe_stock_profile.json`, `benchmarks/olmoe_stock_baseline.py`, `benchmarks/olmoe_stock_profile.py`, `tests/test_benchmark_artifacts.py`, `tests/test_live_conv1d_whisper.py`, `tests/test_peft_transformers_lora_inference.py`, `tests/test_peft_multi_adapter_serving.py`, `tests/test_olmoe_stock_baseline.py`, `tests/test_olmoe_stock_profile.py`, `scripts/ci_local`, `docs/benchmark_artifacts.md` | Supported as generated research artifacts, pure-Python proxies, live layer-level Conv1d evidence, bounded PEFT capstone/serving evidence, and a real stock-only OLMoE H100 baseline/profile. The OLMoE artifacts support target selection and attribution, not a candidate speedup or production result. |
 | OLMoE stock-baseline capability | `benchmarks/olmoe_stock_baseline.py`, `tests/test_olmoe_stock_baseline.py`, `docs/results/olmoe_stock_baseline.json`, `docs/benchmark_artifacts.md`, `scripts/ci_local` | Supported by a frozen H100 cohort with 288 explicit rows, 160 required terminal attempts, fixed correctness gates, and eight best-correct-stock selections. Only uncompiled eager passes in every regime; correctness-failed faster rows remain ineligible. |
 | OLMoE profiler capability | `benchmarks/olmoe_stock_profile.py`, `tests/test_olmoe_stock_profile.py`, `docs/results/olmoe_stock_profile.json`, `docs/benchmark_artifacts.md`, `scripts/ci_local` | Supported by eight exact best-stock bindings with CUPTI kernel traces plus a correct real-activation layer diagnostic. The replay attributes remaining work but is never end-to-end candidate evidence. |
+| OLMoE stable-route candidate capability | `beyond_matmul/olmoe_route_plan.py`, `benchmarks/olmoe_stable_route_candidate.py`, `examples/olmoe_stable_route_demo.py`, `tests/test_olmoe_stable_route.py`, `tests/test_olmoe_stable_route_candidate.py`, `tests/test_olmoe_stable_route_demo.py`, `scripts/ci_local` | Supported for eager-order route planning, BF16 duplicate accumulation semantics, explicit fallback/audit metadata, and a frozen eight-regime measurement contract. No real candidate artifact or performance claim exists yet. |
 | External PEFT provenance | `docs/results/peft_transformers_lora_inference.json`, `docs/results/peft_multi_adapter_serving.json`, `docs/benchmark_artifacts.md`, `docs/evidence_matrix.md`, `whitepaper/main.tex` | Supported for metadata-level LoRA provenance and dense-fallback visibility on the measured CPU fp32 workloads; not production kernels, memory savings, adapter-switching gains, broader PEFT coverage, or universal Transformer speedups. |
 | Workload narratives | Torch examples, `examples/case_study_artifacts.py`, `docs/results/workload_case_studies.json`, `tests/test_case_study_artifacts.py` | Supported for adapter, Conv1d, grouped/depthwise Conv1d, fixed-mask, and per-tensor affine quantized-linear rows; broader workloads remain future work. |
 
@@ -92,7 +97,7 @@ of the historical first-artifact audit. Issue #132/PR #134 completed the
 baseline harness; #136 supplies the profiling prerequisite for #133, and
 #130/PR #135 synchronizes the concise wiki. Issue #133 now supplies the matching
 CUDA/CUPTI artifacts and accepts one scoped experiment. The open blocker is the
-still-unimplemented and unmeasured candidate, not target access.
+still-unmeasured candidate, not implementation or target access.
 
 After the final-draft work merged, the first-artifact completion state became
 historical context rather than an active blocker:
@@ -216,8 +221,9 @@ scripts/ci_local
 - Benchmark timings remain pure-Python proxies.
 - Live Conv1d and external PEFT runs are measured local CPU artifacts, not
   production performance evidence.
-- OLMoE is accepted only for one stable route-plan experiment. No candidate has
-  been implemented, and the H100 artifacts support no Beyond Matmul speedup.
+- OLMoE is accepted only for one stable route-plan experiment. The candidate is
+  locally implemented and semantically tested, but no real candidate artifact
+  exists and the H100 stock artifacts support no Beyond Matmul speedup.
 - Current Transformers already has strong routed-expert backends. Every
   optimized executable row failed the immutable parity gate in this cohort;
   future work must preserve correctness rather than reinterpret those timings.

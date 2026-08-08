@@ -72,9 +72,15 @@ profiles to the best stock row in every regime and captures the input to sparse
 layer 8 from a real `prefill_b1_s512` model forward for router/expert replay.
 Profiler self time is classified once, with unknown event names preserved.
 Both CI smokes remain schema evidence only. Issue #133 adds the complete real
-H100 baseline and profile artifacts and the binary `accept` decision. A later
-issue must implement and measure the candidate against the same 10% win, 5%
-regression, correctness, fallback, and external-review gates.
+H100 baseline and profile artifacts and the binary `accept` decision. Issue
+#139 implements `beyond_matmul/olmoe_route_plan.py`, the deterministic
+`examples/olmoe_stable_route_demo.py`, and the checksum-bound
+`benchmarks/olmoe_stable_route_candidate.py` measurement surface. Local tests
+prove expert/slot/token traversal, BF16 duplicate accumulation, empty experts,
+zero-weight sentinels, one plan per call, registration, and explicit eager
+fallback. These are implementation and semantic results only; the unchanged
+10% win, 5% regression, correctness, fallback, and external-review gates still
+require a real H100 candidate artifact.
 
 ## Prototype Modules
 

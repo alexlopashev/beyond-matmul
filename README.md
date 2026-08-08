@@ -93,6 +93,12 @@ uv run python examples/torch_fx_frontend_demo.py
   unavailable-row semantics
 - `benchmarks/olmoe_stock_profile.py`: best-stock full-model profiler plus a
   real-activation router/expert diagnostic with explicit unclassified events
+- `beyond_matmul/olmoe_route_plan.py`: narrow eager-compatible OLMoE route-plan
+  backend with explicit eager fallback and execution-path audit metadata
+- `benchmarks/olmoe_stable_route_candidate.py`: checksum-bound eight-regime
+  candidate harness with correctness-first 10% win and 5% regression gates
+- `examples/olmoe_stable_route_demo.py`: deterministic exact-order and fallback
+  smoke demo; it is semantic evidence, not a timing result
 - `docs/peft_fork_setup.md`: setup, sync, branch, and issue-mapping rules for
   the PEFT fork integration branch
 - `docs/peft_low_rank_provenance_design.md`: first PEFT low-rank provenance
@@ -149,7 +155,10 @@ this target selection. Merged issue #129/PR #131 establishes that contract,
 merged issue #132/PR #134 implements the stock-only harness, and issue #136
 adds the profiler and real-activation diagnostic. Issue #133 contributes the
 real H100 artifacts and measured accept decision. The artifacts contain no
-candidate measurement and keep `performance_claim=none`.
+candidate measurement and keep `performance_claim=none`. Issue #139 implements
+the scoped route plan, exact local demo, fallback audit, and candidate artifact
+surface. Its CI smoke executes no model, so no candidate speedup exists until
+the real H100 run clears every frozen gate.
 
 ## PEFT Capstone Status
 
@@ -197,6 +206,6 @@ measured artifact at `docs/results/peft_multi_adapter_serving.json`.
 
 Current completion status: the matrix-focused first artifact is historical and
 internally bounded, but the project-level north star is open. The OLMoE target
-decision is now measured and accepted for one scoped implementation experiment;
-no candidate or external speedup exists yet. The PEFT CUDA roadmap remains
-paused. `docs/completion_audit.md` records the distinction.
+decision is measured, and the one scoped candidate is locally implemented but
+not yet measured on the H100 cohort; no external speedup exists yet. The PEFT
+CUDA roadmap remains paused. `docs/completion_audit.md` records the distinction.

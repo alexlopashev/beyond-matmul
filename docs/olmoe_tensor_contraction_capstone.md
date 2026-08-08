@@ -268,6 +268,25 @@ decision; neither smoke artifact, a row-complete stock cohort, nor the isolated
 layer diagnostic is a performance result. The reviewed `accept` decision, not
 artifact completeness alone, is the prerequisite for an optimization issue.
 
+Issue #139 implements that one optimization experiment. The
+`beyond_matmul_stable_route` backend flattens router assignments in eager's
+selected-expert-slot-then-token order, performs one stable grouping by expert,
+and records one reusable plan containing token indices, slot indices, routing
+weights, expert offsets, active experts, and sentinel counts. Gate/up
+projection, activation and gating, down projection, BF16 weighting, and
+`index_add_` aggregation consume the same plan. Unsupported training or expert
+layouts use the pinned eager program and expose the fallback reason. The local
+demo is bitwise exact in FP32 and BF16 test cases, including duplicate routes;
+it is not CUDA or performance evidence.
+
+`benchmarks/olmoe_stable_route_candidate.py` binds a future result to the
+canonical checksum and environment of `olmoe_stock_baseline.json`, reruns an
+eager output reference, requires five warmups and 20 CUDA-event samples for all
+eight regimes, recomputes each median, and records an aggregate execution-path
+audit. Its CI smoke has eight empty contract rows and
+`performance_claim=none`. Only a real artifact that observes the new path with
+no fallback and clears every gate below may change that claim.
+
 The capstone succeeds only if a distinct provenance-enabled path:
 
 - improves median end-to-end latency or throughput by at least 10% against the

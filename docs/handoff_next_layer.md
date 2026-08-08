@@ -16,8 +16,10 @@ gate in `docs/olmoe_tensor_contraction_capstone.md`. Merged issue #132/PR #134
 provides the stock-only baseline harness. Issue #136 adds the bound profiler
 and real-activation diagnostic prerequisite. Issue #133 now supplies the
 complete real H100 baseline/profile cohort and accepts one scoped stable
-route-plan experiment. Do not use the old suggested PR at the end of this file
-as current roadmap state.
+route-plan experiment. Issue #139 implements that route plan, deterministic
+fallback demo, and frozen candidate harness; its real H100 measurement remains
+outstanding. Do not use the old suggested PR at the end of this file as current
+roadmap state.
 
 ## Current State
 
@@ -113,16 +115,16 @@ after dense materialization.
 
 ## Recommended Next Layer
 
-Superseded by issues #129, #132, #136, and #133. The frozen H100 cohort and
-target decision are complete. The current order is:
+Superseded by issues #129, #132, #136, #133, and #139. The frozen H100 cohort,
+target decision, and local candidate implementation are complete. The current
+order is:
 
-1. Review and merge the issue #133 stock artifacts and `accept` decision.
-2. Open one implementation issue for stable route-plan expert execution only:
-   construct route membership/offsets once while preserving eager token/expert
-   order and accumulation semantics.
-3. Measure the changed full-model path against all eight selected best-correct
+1. Push the locally green issue #139 branch as the reproducible GPU checkpoint.
+2. Measure the changed full-model path against all eight selected best-correct
    stock rows; require the fixed 10% win, 5% regression, correctness, fallback,
    and external-review gates.
+3. Synchronize the artifact, docs, and whitepaper with the measured decision,
+   then obtain independent review before merge.
 4. Reject OLMoE if that scoped experiment fails. Generalize the local IR only
    from concepts required by a successful result.
 

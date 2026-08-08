@@ -84,7 +84,9 @@ is one stable route-plan expert path that preserves eager token/expert and
 accumulation order while constructing routing membership and offsets once. The
 target and rejection gate are recorded in
 \texttt{docs/olmoe\_tensor\_contraction\_capstone.md}; no general tensor IR is
-authorized by this decision, and no candidate performance result exists yet.
+authorized by this decision. Issue \#139 implements the narrow path, explicit
+eager fallback, deterministic semantic demo, and frozen candidate harness, but
+no candidate performance result exists yet.
 
 \section{Problem}
 
@@ -458,6 +460,20 @@ gating, and aggregation. It does not establish that the intervention wins.
 Both artifacts retain \texttt{candidate\_measurements\_present=false} and
 \texttt{performance\_claim=none}.
 
+Issue \#139 adds an uncompiled
+\texttt{beyond\_matmul\_stable\_route} backend through Transformers' experts
+interface. It flattens router assignments in eager's selected-slot-then-token
+order, performs one stable grouping by expert, and reuses the resulting token,
+slot, weight, and offset plan through gate/up projection, activation and gating,
+down projection, BF16 weighting, and \texttt{index\_add\_} aggregation. Local
+FP32 and BF16 tests cover duplicate routes, empty experts, zero-weight
+expert-parallel sentinels, one plan per invocation, registration, and explicit
+eager fallback. The candidate harness binds to the canonical stock-artifact
+checksum and environment, requires five warmups and 20 samples in all eight
+regimes, recomputes medians, and audits the execution path. Its CI smoke runs no
+model and retains \texttt{performance\_claim=none}; these implementation and
+semantic results do not establish a speedup.
+
 In the fixed-weight benchmark, the planner request allows approximate
 lowerings with a maximum relative error of $0.05$ over a batch of $32$ and
 $32$ requested calls. The current artifact selects exact specialized lowerings
@@ -813,7 +829,8 @@ work, and its layer replay cannot substitute for end-to-end prefill or decode.
 Consequently, row/schema completeness, a complete stock cohort, or a correct
 diagnostic replay cannot be interpreted as a Beyond Matmul performance result.
 The separate issue \#133 acceptance is only permission for one scoped candidate
-experiment under the unchanged success gate.
+experiment under the unchanged success gate. Issue \#139 supplies that
+experiment's code and measurement surface, not its H100 result.
 
 Recovery after provenance is lost is weaker than preserving provenance before
 dense lowering. The analyzer confidence values are probe-specific heuristic
@@ -932,10 +949,10 @@ The PEFT hardware contract and issues \#123 through \#126 are paused rather than
 erased. The OLMoE target-validation gate in
 \texttt{docs/olmoe\_tensor\_contraction\_capstone.md} is now measured. The
 stock-only H100 artifacts identify stable routing/permutation and aggregation
-work around the contractions and accept one stable route-plan experiment. A
-follow-up issue may implement only that path, must preserve eager ordering and
-fallback semantics, and must measure full-model prefill and decode against the
-unchanged success thresholds. Failure rejects OLMoE without generalizing the IR.
+work around the contractions and accept one stable route-plan experiment. Issue
+\#139 implements only that path with eager ordering and fallback semantics. It
+must still measure full-model prefill and decode against the unchanged success
+thresholds. Failure rejects OLMoE without generalizing the IR.
 
 \section{Conclusion}
 

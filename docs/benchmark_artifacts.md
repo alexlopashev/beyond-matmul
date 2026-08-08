@@ -17,6 +17,8 @@
 | `docs/results/olmoe_stock_baseline.json` | See the pinned CUDA command below. | Measured H100 stock-only OLMoE cohort used to choose the best correct upstream configuration per regime. | Row- and cohort-complete: 288 inventory rows, 160 required attempts, and eight best-correct-stock rows. Only uncompiled eager passed the fixed correctness tolerance. This is target-validation input, not a Beyond Matmul speedup. |
 | `docs/results/olmoe_stock_profile_smoke.json` | `mise exec -- uv run python benchmarks/olmoe_stock_profile.py --smoke --json-output docs/results/olmoe_stock_profile_smoke.json` | Contract-shaped inventory for eight best-stock full-model profiles and one pinned real-activation expert-layer diagnostic. | CI smoke performs no model execution, leaves every timing field unavailable, and records `profile_complete=false`, `target_decision_ready=false`, and `performance_claim=none`. |
 | `docs/results/olmoe_stock_profile.json` | See the pinned CUDA command below. | Measured same-cohort profiler attribution for every best stock regime plus a layer-8 router/expert diagnostic driven by a captured `prefill_b1_s512` activation. | All eight full-model CUPTI profiles and the exact diagnostic replay are complete. Profiler self time is diagnostic evidence; the isolated layer replay is not an end-to-end result or a Beyond Matmul candidate measurement. |
+| `docs/results/olmoe_stable_route_candidate_smoke.json` | `mise exec -- uv run python benchmarks/olmoe_stable_route_candidate.py --smoke --json-output docs/results/olmoe_stable_route_candidate_smoke.json` | Eight-row candidate schema plus frozen correctness, repetition, speedup, regression, checksum, and fallback-audit contracts. | CI smoke performs no model execution, records `decision=pending`, and keeps `performance_claim=none`. |
+| `docs/results/olmoe_stable_route_candidate.json` | See the pinned CUDA command below. | Future same-cohort full-model measurement of the distinct stable route-plan backend against every frozen best-correct-stock row. | This artifact is not present until a real run completes. Acceptance requires correctness everywhere, no fallback, a 10% win in at least one regime, and no regression above 5% elsewhere. |
 
 ## OLMoE Stock-Baseline Harness
 
@@ -198,6 +200,53 @@ order plus accumulation semantics while removing repeated per-expert route
 discovery/materialization. This decision is not candidate evidence: both real
 artifacts correctly retain `candidate_measurements_present=false`,
 `target_decision_ready=false`, and `performance_claim=none`.
+
+## OLMoE Stable Route-Plan Candidate
+
+`beyond_matmul/olmoe_route_plan.py` registers
+`beyond_matmul_stable_route` through Transformers' public experts interface.
+The route plan is built once per expert invocation in eager's exact
+expert/selected-slot/token order and is reused through both expert projections,
+activation/gating, routing-weight application, and `index_add_` aggregation.
+The plan exposes active experts, offsets, route counts, ordering, and build
+count. Unsupported training or expert layouts call the pinned eager program and
+record why; zero-weight expert-parallel sentinels are omitted from real expert
+work.
+
+Run the deterministic semantic demo and schema-only candidate smoke with:
+
+```bash
+mise exec -- uv run python examples/olmoe_stable_route_demo.py
+mise exec -- uv run python benchmarks/olmoe_stable_route_candidate.py --smoke --json-output docs/results/olmoe_stable_route_candidate_smoke.json
+```
+
+Neither command is performance evidence. On the same frozen H100 software and
+hardware cohort used by the stock artifact, run:
+
+```bash
+mise exec -- uv run \
+  --with 'transformers @ git+https://github.com/huggingface/transformers.git@a6895655b289cc3fdd29afec36904e0b8545ef92' \
+  --with accelerate==1.14.0 \
+  --with safetensors==0.8.0 \
+  --with huggingface-hub==1.23.0 \
+  --with kernels==0.15.2 \
+  --with nvidia-cutlass-dsl==4.6.0 \
+  --with apache-tvm-ffi==0.1.13.post2 \
+  python benchmarks/olmoe_stable_route_candidate.py \
+  --real \
+  --baseline-artifact docs/results/olmoe_stock_baseline.json \
+  --warmup-repetitions 5 \
+  --measured-repetitions 20 \
+  --json-output docs/results/olmoe_stable_route_candidate.json
+```
+
+Real mode rejects a changed GPU UUID, driver, CUDA runtime, PyTorch build,
+Transformers revision, model revision, or dtype. It validates the complete stock
+artifact by canonical SHA-256, reruns eager outputs for parity, requires exactly
+20 positive CUDA-event samples per regime, recomputes medians, and makes
+incorrect rows ineligible before interpreting timing. An observed eager
+fallback also rejects the candidate. Until this command produces a complete
+accepted artifact, the project retains `performance_claim=none`.
 
 ## Live Conv1d Whisper Dense-vs-Direct Benchmark
 
