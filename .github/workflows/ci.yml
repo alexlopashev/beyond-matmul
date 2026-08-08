@@ -51,6 +51,9 @@ jobs:
       - name: Run Torch coverage demo
         run: mise exec -- uv run python examples/torch_coverage_demo.py
 
+      - name: Run OLMoE stable-route demo
+        run: mise exec -- uv run python examples/olmoe_stable_route_demo.py
+
       - name: Run workload case-study JSON artifact
         run: mise exec -- uv run python examples/case_study_artifacts.py --json-output docs/results/workload_case_studies.json
 
@@ -77,6 +80,9 @@ jobs:
 
       - name: Run OLMoE stock-profile contract smoke artifact
         run: mise exec -- uv run python benchmarks/olmoe_stock_profile.py --smoke --json-output docs/results/olmoe_stock_profile_smoke.json
+
+      - name: Run OLMoE stable-route candidate contract smoke artifact
+        run: mise exec -- uv run python benchmarks/olmoe_stable_route_candidate.py --smoke --json-output docs/results/olmoe_stable_route_candidate_smoke.json
 
       - name: Upload fixed-weight benchmark JSON
         uses: actions/upload-artifact@v4
@@ -131,3 +137,9 @@ jobs:
         with:
           name: olmoe-stock-profile-smoke-json
           path: docs/results/olmoe_stock_profile_smoke.json
+
+      - name: Upload OLMoE stable-route candidate contract smoke JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: olmoe-stable-route-candidate-smoke-json
+          path: docs/results/olmoe_stable_route_candidate_smoke.json

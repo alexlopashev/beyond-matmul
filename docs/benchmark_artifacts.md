@@ -17,6 +17,8 @@
 | `docs/results/olmoe_stock_baseline.json` | See the pinned CUDA command below. | Measured H100 stock-only OLMoE cohort used to choose the best correct upstream configuration per regime. | Row- and cohort-complete: 288 inventory rows, 160 required attempts, and eight best-correct-stock rows. Only uncompiled eager passed the fixed correctness tolerance. This is target-validation input, not a Beyond Matmul speedup. |
 | `docs/results/olmoe_stock_profile_smoke.json` | `mise exec -- uv run python benchmarks/olmoe_stock_profile.py --smoke --json-output docs/results/olmoe_stock_profile_smoke.json` | Contract-shaped inventory for eight best-stock full-model profiles and one pinned real-activation expert-layer diagnostic. | CI smoke performs no model execution, leaves every timing field unavailable, and records `profile_complete=false`, `target_decision_ready=false`, and `performance_claim=none`. |
 | `docs/results/olmoe_stock_profile.json` | See the pinned CUDA command below. | Measured same-cohort profiler attribution for every best stock regime plus a layer-8 router/expert diagnostic driven by a captured `prefill_b1_s512` activation. | All eight full-model CUPTI profiles and the exact diagnostic replay are complete. Profiler self time is diagnostic evidence; the isolated layer replay is not an end-to-end result or a Beyond Matmul candidate measurement. |
+| `docs/results/olmoe_stable_route_candidate_smoke.json` | `mise exec -- uv run python benchmarks/olmoe_stable_route_candidate.py --smoke --json-output docs/results/olmoe_stable_route_candidate_smoke.json` | Eight-row candidate schema plus frozen correctness, repetition, speedup, regression, checksum, and fallback-audit contracts. | CI smoke performs no model execution, records `decision=pending`, and keeps `performance_claim=none`. |
+| `docs/results/olmoe_stable_route_candidate.json` | See the pinned CUDA command below. | Measured same-cohort full-model result for the distinct stable route-plan backend against every frozen best-correct-stock row. | Accepted by the frozen gate: all eight rows pass correctness, 4,800 audited calls use the candidate with zero fallback, and CUDA-event median latency improves by 19.26% to 63.30%. This is one pinned H100/software cohort, not a universal or upstream-acceptance claim. |
 
 ## OLMoE Stock-Baseline Harness
 
@@ -192,12 +194,72 @@ sorting/permutation, 28.63% expert contractions, 16.18% activation/gating,
 and 1.45% routing/top-k. The artifact keeps every source event and preserves
 total-time conservation.
 
-The binary target decision is `accept` for one later stable route-plan expert
-execution experiment. The proposed path must preserve eager token and expert
-order plus accumulation semantics while removing repeated per-expert route
-discovery/materialization. This decision is not candidate evidence: both real
-artifacts correctly retain `candidate_measurements_present=false`,
-`target_decision_ready=false`, and `performance_claim=none`.
+The binary target decision was `accept` for one stable route-plan expert
+execution experiment. The stock and profile artifacts remain target-validation
+evidence and correctly retain `candidate_measurements_present=false`,
+`target_decision_ready=false`, and `performance_claim=none`; the separate
+candidate artifact below now supplies the result.
+
+## OLMoE Stable Route-Plan Candidate
+
+`beyond_matmul/olmoe_route_plan.py` registers
+`beyond_matmul_stable_route` through Transformers' public experts interface.
+The route plan is built once per expert invocation in eager's exact
+expert/selected-slot/token order and is reused through both expert projections,
+activation/gating, routing-weight application, and `index_add_` aggregation.
+The plan exposes active experts, offsets, route counts, ordering, and build
+count. Unsupported training or expert layouts call the pinned eager program and
+record why; zero-weight expert-parallel sentinels are omitted from real expert
+work.
+
+Run the deterministic semantic demo and schema-only candidate smoke with:
+
+```bash
+mise exec -- uv run python examples/olmoe_stable_route_demo.py
+mise exec -- uv run python benchmarks/olmoe_stable_route_candidate.py --smoke --json-output docs/results/olmoe_stable_route_candidate_smoke.json
+```
+
+Neither command is performance evidence. On the same frozen H100 software and
+hardware cohort used by the stock artifact, run:
+
+```bash
+mise exec -- uv run \
+  --with 'transformers @ git+https://github.com/huggingface/transformers.git@a6895655b289cc3fdd29afec36904e0b8545ef92' \
+  --with accelerate==1.14.0 \
+  --with safetensors==0.8.0 \
+  --with huggingface-hub==1.23.0 \
+  --with kernels==0.15.2 \
+  --with nvidia-cutlass-dsl==4.6.0 \
+  --with apache-tvm-ffi==0.1.13.post2 \
+  python benchmarks/olmoe_stable_route_candidate.py \
+  --real \
+  --baseline-artifact docs/results/olmoe_stock_baseline.json \
+  --warmup-repetitions 5 \
+  --measured-repetitions 20 \
+  --json-output docs/results/olmoe_stable_route_candidate.json
+```
+
+Real mode rejects a changed GPU UUID, driver, CUDA runtime, PyTorch build,
+Transformers revision, model revision, or dtype. It validates the complete stock
+artifact by canonical SHA-256, reruns eager outputs for parity, requires exactly
+20 positive CUDA-event samples per regime, recomputes medians, and makes
+incorrect rows ineligible before interpreting timing. An observed eager
+fallback also rejects the candidate. The artifact binds the clean Beyond Matmul
+git revision and candidate-module SHA-256; real mode refuses a dirty source tree
+or checksum mismatch. The schema-only smoke continues to retain
+`performance_claim=none`; only the complete real artifact may carry the
+qualified claim.
+
+The committed real artifact was produced on 2026-08-08 at clean candidate
+revision `34b6f14967cc5dc80f3d436e75d59c7bfae278f9` and binds the canonical stock
+artifact SHA-256. It contains 20 CUDA-event samples for each of all eight rows.
+All rows pass correctness, the aggregate audit observes 4,800 stable route-plan
+calls and zero eager fallbacks, and median latency improves by 19.26% to 63.30%
+with no regression. Its decision is `accept` and its bounded claim is
+`qualified_candidate_speedup`. The claim applies only to the recorded OLMoE
+model, H100 PCIe GPU, and pinned software cohort; it does not establish memory
+savings, compiled-candidate performance, other hardware/model behavior,
+production readiness, or upstream acceptance.
 
 ## Live Conv1d Whisper Dense-vs-Direct Benchmark
 

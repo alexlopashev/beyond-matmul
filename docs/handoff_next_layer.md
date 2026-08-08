@@ -16,8 +16,12 @@ gate in `docs/olmoe_tensor_contraction_capstone.md`. Merged issue #132/PR #134
 provides the stock-only baseline harness. Issue #136 adds the bound profiler
 and real-activation diagnostic prerequisite. Issue #133 now supplies the
 complete real H100 baseline/profile cohort and accepts one scoped stable
-route-plan experiment. Do not use the old suggested PR at the end of this file
-as current roadmap state.
+route-plan experiment. Issue #139 implements that route plan, deterministic
+fallback demo, frozen candidate harness, and committed source-bound H100
+measurement. All eight rows pass correctness, the execution audit records zero
+fallbacks, and median latency improves by 19.26% to 63.30%. Independent review
+and demo packaging remain. Do not use the old suggested PR at the end of this
+file as current roadmap state.
 
 ## Current State
 
@@ -113,18 +117,21 @@ after dense materialization.
 
 ## Recommended Next Layer
 
-Superseded by issues #129, #132, #136, and #133. The frozen H100 cohort and
-target decision are complete. The current order is:
+Superseded by issues #129, #132, #136, #133, and #139. The frozen H100 cohort,
+target decision, candidate implementation, and measurement are complete. The
+current order is:
 
-1. Review and merge the issue #133 stock artifacts and `accept` decision.
-2. Open one implementation issue for stable route-plan expert execution only:
-   construct route membership/offsets once while preserving eager token/expert
-   order and accumulation semantics.
-3. Measure the changed full-model path against all eight selected best-correct
-   stock rows; require the fixed 10% win, 5% regression, correctness, fallback,
-   and external-review gates.
-4. Reject OLMoE if that scoped experiment fails. Generalize the local IR only
-   from concepts required by a successful result.
+1. Obtain independent review and merge issue #139 without bypassing the green
+   CI and evidence-integrity gates.
+2. Build one compact demo that loads the committed artifact, explains the
+   stable route plan, shows stock-versus-candidate results, and states the
+   single-H100 boundary without requiring a live paid GPU.
+3. Render and review the whitepaper, synchronize the wiki, and close the
+   project-level roadmap only if those deliverables remain consistent with the
+   merged evidence.
+4. Treat broader hardware/model validation or upstreaming as separate follow-up
+   work; do not generalize the local IR from this one result without a scoped
+   issue.
 
 The recommendations below are retained as historical context.
 

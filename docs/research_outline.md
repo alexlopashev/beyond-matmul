@@ -9,10 +9,12 @@ to choose an exact or bounded-error lowering that is cheaper than premature
 generic contraction. Matrix multiplication is the rank-2 case, and GEMM remains
 a valid fallback.
 
-The project-level claim is not complete until one external open-source project
-shows an attributable end-to-end inference improvement caused by a distinct
-provenance-enabled execution. The current matrix IR is enabling and historical
-evidence, not that final result.
+The project-level claim requires one independently reviewed external
+open-source integration showing an attributable end-to-end inference
+improvement caused by a distinct provenance-enabled execution. The measured
+OLMoE candidate now clears the quantitative, correctness, and fallback gates;
+independent review/merge and demo packaging remain. The current matrix IR is
+enabling and historical evidence, not that result.
 
 ## Minimum Viable Artifact
 
@@ -59,8 +61,8 @@ aggregation/scatter, versus 28.63% to expert contractions.
 The accepted intervention is one stable route-plan expert path: construct
 expert membership and offsets once, preserve eager token/expert and accumulation
 order, reuse the route plan across contraction, gating, and aggregation, and
-retain eager/generic fallback. This is an implementation hypothesis, not a
-performance claim or permission to generalize the local IR.
+retain eager/generic fallback. The result is narrow and is not permission to
+generalize the local IR.
 
 Merged issue #129/PR #131 fixed the target contract. Merged issue #132/PR #134
 supplies `benchmarks/olmoe_stock_baseline.py`, a baseline-only harness with the
@@ -72,9 +74,17 @@ profiles to the best stock row in every regime and captures the input to sparse
 layer 8 from a real `prefill_b1_s512` model forward for router/expert replay.
 Profiler self time is classified once, with unknown event names preserved.
 Both CI smokes remain schema evidence only. Issue #133 adds the complete real
-H100 baseline and profile artifacts and the binary `accept` decision. A later
-issue must implement and measure the candidate against the same 10% win, 5%
-regression, correctness, fallback, and external-review gates.
+H100 baseline and profile artifacts and the binary `accept` decision. Issue
+#139 implements `beyond_matmul/olmoe_route_plan.py`, the deterministic
+`examples/olmoe_stable_route_demo.py`, and the checksum-bound
+`benchmarks/olmoe_stable_route_candidate.py` measurement surface. Local tests
+prove expert/slot/token traversal, BF16 duplicate accumulation, empty experts,
+zero-weight sentinels, one plan per call, registration, and explicit eager
+fallback. The committed source-bound H100 candidate artifact contains 20
+CUDA-event samples for each of eight regimes, passes correctness everywhere,
+observes 4,800 stable calls with zero fallback, and improves median latency by
+19.26% to 63.30%. It clears the unchanged 10% win and 5% regression gates;
+independent review remains before merge.
 
 ## Prototype Modules
 
@@ -94,6 +104,8 @@ regression, correctness, fallback, and external-review gates.
 - `benchmarks/olmoe_stock_profile.py`: best-stock profiler and real-activation
   expert-layer diagnostic; the committed real artifact binds all eight stock
   rows while its smoke contains no timings.
+- `benchmarks/olmoe_stable_route_candidate.py`: source-bound candidate harness;
+  its committed real H100 artifact records the accepted eight-regime result.
 - `examples/case_study_artifacts.py`: machine-readable adapter, Conv1d,
   fixed-mask, and quantized-linear workload case-study evidence with dense
   fallback comparisons.

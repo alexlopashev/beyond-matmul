@@ -93,6 +93,12 @@ uv run python examples/torch_fx_frontend_demo.py
   unavailable-row semantics
 - `benchmarks/olmoe_stock_profile.py`: best-stock full-model profiler plus a
   real-activation router/expert diagnostic with explicit unclassified events
+- `beyond_matmul/olmoe_route_plan.py`: narrow eager-compatible OLMoE route-plan
+  backend with explicit eager fallback and execution-path audit metadata
+- `benchmarks/olmoe_stable_route_candidate.py`: checksum-bound eight-regime
+  candidate harness with correctness-first 10% win and 5% regression gates
+- `examples/olmoe_stable_route_demo.py`: deterministic exact-order and fallback
+  smoke demo; it is semantic evidence, not a timing result
 - `docs/peft_fork_setup.md`: setup, sync, branch, and issue-mapping rules for
   the PEFT fork integration branch
 - `docs/peft_low_rank_provenance_design.md`: first PEFT low-rank provenance
@@ -115,7 +121,7 @@ research goal is stronger: demonstrate that preserved tensor-contraction
 provenance causes an attributable performance improvement in an external
 open-source ML project.
 
-## Active North Star: OLMoE Stable Route-Plan Experiment
+## Measured North Star: OLMoE Stable Route-Plan Experiment
 
 The accepted experimental target is AllenAI's Apache-2.0
 `allenai/OLMoE-1B-7B-0924` model through Hugging Face Transformers. Its MoE
@@ -134,22 +140,35 @@ profiles and an exact layer-8 replay. That diagnostic attributes 29.40% of
 device self time to sorting/permutation, 28.63% to expert contractions, and
 8.97% to aggregation/scatter.
 
-Issue #133 therefore accepts one narrow stable route-plan experiment: preserve
+Issue #133 therefore accepted one narrow stable route-plan experiment: preserve
 eager token/expert ordering and accumulation semantics while constructing route
 membership and offsets once for expert execution. Current Transformers already
 has eager, batched, grouped, and optimized expert backends, so reproducing their
-existing gain remains background evidence. The candidate succeeds only if its
-distinct execution beats the best correct stock strategy by at least 10% on a
-predefined end-to-end regime, preserves correctness, and regresses no required
+existing gain remains background evidence. The candidate gate required its
+distinct execution to beat the best correct stock strategy by at least 10% on
+a predefined end-to-end regime, preserve correctness, and regress no required
 regime by more than 5%.
+
+The committed real candidate artifact now clears that frozen gate on the same
+H100 cohort. All eight prefill/decode rows pass correctness; the stable route
+path records 4,800 invocations and zero eager fallbacks. Its CUDA-event medians
+are 19.26% to 63.30% lower than the frozen best-correct-stock eager rows, with
+no regression. The artifact binds the canonical stock checksum, exact candidate
+git revision, and candidate-harness checksum and records
+`performance_claim=qualified_candidate_speedup`. This is a narrow result for
+one GPU, model, and pinned software cohort—not an upstream-acceptance,
+cross-hardware, memory, or universal MoE claim.
 
 The decision record and benchmark gate are in
 `docs/olmoe_tensor_contraction_capstone.md`. No general tensor IR is implied by
 this target selection. Merged issue #129/PR #131 establishes that contract,
 merged issue #132/PR #134 implements the stock-only harness, and issue #136
 adds the profiler and real-activation diagnostic. Issue #133 contributes the
-real H100 artifacts and measured accept decision. The artifacts contain no
-candidate measurement and keep `performance_claim=none`.
+real H100 stock artifacts and measured target decision. Issue #139 implements
+the scoped route plan, exact local demo, fallback audit, and candidate artifact
+surface; `docs/results/olmoe_stable_route_candidate.json` contains its real H100
+measurement. Its separate CI smoke still executes no model and correctly keeps
+`performance_claim=none`.
 
 ## PEFT Capstone Status
 
@@ -196,7 +215,7 @@ measured artifact at `docs/results/peft_multi_adapter_serving.json`.
   adapter-switching gain
 
 Current completion status: the matrix-focused first artifact is historical and
-internally bounded, but the project-level north star is open. The OLMoE target
-decision is now measured and accepted for one scoped implementation experiment;
-no candidate or external speedup exists yet. The PEFT CUDA roadmap remains
-paused. `docs/completion_audit.md` records the distinction.
+internally bounded. The OLMoE candidate now satisfies the frozen quantitative,
+correctness, and fallback gates on one H100 cohort. Independent review/merge and
+demo packaging remain before calling the project deliverable complete. The PEFT
+CUDA roadmap remains paused. `docs/completion_audit.md` records the distinction.

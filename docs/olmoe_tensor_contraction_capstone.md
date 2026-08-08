@@ -1,10 +1,11 @@
 # OLMoE Routed Tensor-Program Capstone
 
-Status: accepted for one scoped implementation experiment; no speedup claim
+Status: measured candidate clears the frozen gate; independent review pending
 
 Decision date: 2026-08-08
 
-Tracking issues: #129 (contract) and #133 (measured decision)
+Tracking issues: #129 (contract), #133 (measured target decision), and #139
+(candidate implementation and measurement)
 
 ## Decision
 
@@ -16,11 +17,13 @@ the Transformers expert integration in `src/transformers/integrations/moe.py`
 plus, only if a reusable kernel is required, the Hugging Face `kernels`
 project. Stock eager and generic/dense execution remain explicit fallbacks.
 
-This is a target-validation decision, not a Beyond Matmul performance result.
-The measured artifacts contain no candidate implementation and retain
-`performance_claim=none`. A later implementation must still clear the fixed
-10% win, 5% cross-regime regression, correctness, fallback, and external-review
-gates below. Failure closes this target rather than weakening those gates.
+That target-validation decision was not itself a Beyond Matmul performance
+result. Issue #139 subsequently implemented and measured the scoped path. The
+committed candidate artifact clears the fixed 10% win, 5% cross-regime
+regression, correctness, and fallback gates below and records
+`performance_claim=qualified_candidate_speedup`. Independent review remains the
+last gate before merge; failure there would still close or correct this target
+rather than weaken the contract.
 
 OLMoE remains a useful tensor case because its sparse mixture-of-experts layer
 retains token routing, expert identity, routing weights, and 3D expert weights
@@ -267,6 +270,64 @@ Issue #133 supplies the real CUDA baseline/profile artifacts and binary target
 decision; neither smoke artifact, a row-complete stock cohort, nor the isolated
 layer diagnostic is a performance result. The reviewed `accept` decision, not
 artifact completeness alone, is the prerequisite for an optimization issue.
+
+Issue #139 implements that one optimization experiment. The
+`beyond_matmul_stable_route` backend flattens router assignments in eager's
+selected-expert-slot-then-token order, performs one stable grouping by expert,
+and records one reusable plan containing token indices, slot indices, routing
+weights, expert offsets, active experts, and sentinel counts. Gate/up
+projection, activation and gating, down projection, BF16 weighting, and
+`index_add_` aggregation consume the same plan. Unsupported training or expert
+layouts use the pinned eager program and expose the fallback reason. The local
+demo is bitwise exact in FP32 and BF16 test cases, including duplicate routes;
+it is not CUDA or performance evidence.
+
+`benchmarks/olmoe_stable_route_candidate.py` binds the candidate result to the
+canonical checksum and environment of `olmoe_stock_baseline.json`, reruns an
+eager output reference, requires five warmups and 20 CUDA-event samples for all
+eight regimes, recomputes each median, and records an aggregate execution-path
+audit. It also records the clean candidate git revision and module checksum and
+rejects a dirty source tree. Its CI smoke has eight empty contract rows and
+`performance_claim=none`. Only a real artifact that observes the new path with
+no fallback and clears every gate below may change that claim.
+
+## Measured H100 Candidate Result
+
+Issue #139 ran the source-bound candidate at revision
+`34b6f14967cc5dc80f3d436e75d59c7bfae278f9` on the exact H100 and pinned
+software cohort used by the stock artifact. The candidate artifact is bound to
+the canonical baseline SHA-256
+`6b630ce7a174e0b29e21a3df2ab1358cf3b6c14dcf3d548c171eff228ba8436e`,
+contains five warmups and 20 positive CUDA-event samples in every regime, and
+recomputes each median before comparison.
+
+| Regime | Best correct stock | Stable route plan | Latency improvement |
+| --- | ---: | ---: | ---: |
+| `prefill_b1_s128` | 296.094 ms | 108.659 ms | 63.30% |
+| `prefill_b1_s512` | 231.673 ms | 114.945 ms | 50.38% |
+| `prefill_b4_s128` | 245.158 ms | 179.354 ms | 26.84% |
+| `prefill_b4_s512` | 264.093 ms | 125.833 ms | 52.35% |
+| `decode_b1_p128` | 49.354 ms | 37.271 ms | 24.48% |
+| `decode_b1_p512` | 49.372 ms | 36.853 ms | 25.36% |
+| `decode_b8_p128` | 120.709 ms | 97.466 ms | 19.26% |
+| `decode_b8_p512` | 116.120 ms | 65.393 ms | 43.69% |
+
+All eight rows pass the predeclared maximum-absolute `0.125` and relative-L2
+`0.01` correctness tolerances before their timings are interpreted. Seven rows
+match the fresh eager reference exactly in the recorded metrics; the
+`decode_b8_p128` row records maximum-absolute error `0.0625` and relative-L2
+error `0.001772`, both within contract. The aggregate execution audit observes
+4,800 candidate calls, 4,800 stable route-plan calls and plan builds, and zero
+eager fallbacks. The minimum improvement is 19.26%, so every row clears the
+10% success threshold as well as the 5% regression guard. The artifact decision
+is `accept` with `performance_claim=qualified_candidate_speedup`.
+
+This is an attributable, end-to-end result for one pinned OLMoE model, one H100
+PCIe GPU, and one software revision. It does not establish upstream acceptance,
+production readiness, memory savings, compile-path gains, other GPUs, other MoE
+models, or future-Transformers behavior. The optimized stock rows that failed
+the immutable correctness gate remain ineligible; their lower raw timings are
+not silently reintroduced as baselines.
 
 The capstone succeeds only if a distinct provenance-enabled path:
 
