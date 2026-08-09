@@ -50,6 +50,11 @@ uv run python examples/torch_fx_frontend_demo.py
 
 ## Repository Map
 
+- `articles/README.md`: public article-series index and editorial evidence
+  contract
+- `articles/01-gemm-is-a-lowering-not-the-program.md`: Substack-ready thesis
+  introduction arguing for semantic lowering without treating dense GEMM as an
+  enemy
 - `beyond_matmul/ir.py`: IR metadata and operator implementations
 - `beyond_matmul/analyzer.py`: dense-matrix structure recovery probes
 - `beyond_matmul/approximations.py`: low-rank, sparse, codebook, and binary
